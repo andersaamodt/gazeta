@@ -1470,7 +1470,6 @@
   window.__wizardryRenderResolvedReadOnlyContent = renderResolvedReadOnlyContent;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
   window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;
-  window.__wizardryPersistManagedPagePayload = persistManagedPagePayload;
   window.__wizardryAuthPayload = authPayload;
   window.__wizardrySessionAuthSignature = sessionAuthSignature;
   window.__wizardryBindSessionAuthRefresh = bindSessionAuthRefresh;

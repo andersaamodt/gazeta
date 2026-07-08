@@ -179,21 +179,6 @@
     return payloadSlug === slug && (payloadType === 'list' || payloadType === 'icon-gallery' || payloadType === 'software-gallery');
   }
 
-  function writeBootstrapCache(payload) {
-    window.__wizardryPersistManagedPagePayload(payload, {
-      slug: slug,
-      authSignature: authSignature,
-      persistMode: 'authenticated_admin'
-    });
-  }
-
-  function persistCurrentPayload() {
-    if (!state.payload || typeof state.payload !== 'object') {
-      return;
-    }
-    writeBootstrapCache(state.payload);
-  }
-
   function canPreserveStaticPrerender(payload) {
     if (!payload || typeof payload !== 'object') {
       return false;
@@ -2052,7 +2037,11 @@
       }
     });
     if (changed && state.payload) {
-      persistCurrentPayload();
+      window.__wizardryCommitManagedPagePayload(state.payload, null, {
+        slug: slug,
+        authSignature: authSignature,
+        persistMode: 'authenticated_admin'
+      });
     }
     return changed;
   }
@@ -2090,7 +2079,11 @@
     if (snapshot && typeof snapshot === 'object') {
       state.payload = snapshot;
       state.draft = readEditableStateFromPayload();
-      persistCurrentPayload();
+      window.__wizardryCommitManagedPagePayload(state.payload, null, {
+        slug: slug,
+        authSignature: authSignature,
+        persistMode: 'authenticated_admin'
+      });
     }
     if (beforeRects) {
       renderListWithFlip(beforeRects);
@@ -5448,8 +5441,7 @@
     allowWrite: function (nextPayload) {
       return !!(nextPayload && nextPayload.is_admin && window.__wizardryHasLikelyAuthenticatedSession());
     },
-    renderPayload: renderBootstrapPayload,
-    writeCache: writeBootstrapCache
+    renderPayload: renderBootstrapPayload
   });
   load();
 })();

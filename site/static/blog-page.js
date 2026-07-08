@@ -4523,14 +4523,6 @@
     });
   }
 
-  function writeBootstrapCache(payload) {
-    window.__wizardryPersistManagedPagePayload(payload, {
-      slug: slug,
-      authSignature: authSignature,
-      persistMode: 'always'
-    });
-  }
-
   function normalizedPayloadForRenderSignature() {
     if (!state.payload) {
       return null;
@@ -5335,8 +5327,7 @@
       isExpectedPayload: isExpectedPayload,
       renderPayload: function (payload) {
         return renderBootstrapPayload(payload, primeBootstrapPosts(payload));
-      },
-      writeCache: writeBootstrapCache
+      }
     });
     state.initialPageStateLoaded = true;
     state.initialPostsLoaded = true;
