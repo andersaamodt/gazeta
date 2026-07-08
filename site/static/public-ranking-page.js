@@ -981,15 +981,28 @@
     state.currentMetric = metric;
   }
 
-  function applyLiveRankingUpdate(nextRanking) {
-    window.__wizardryCommitManagedPagePayload(state.payload, {
-      state: nextRanking
-    }, {
-      includeState: false,
-      statePayload: nextRanking,
-      validationFallback: state.payload && state.payload.validation,
-      persist: false
+  function requestedMetric() {
+    var payloadState = (state.payload && state.payload.state) ? state.payload.state : {};
+    return normalizeMetric(
+      state.currentMetric
+      || payloadState.metric
+      || payloadState.default_metric
+      || (state.draft && state.draft.default_metric)
+      || 'momentum'
+    );
+  }
+
+  function canRefreshMetricFromServer() {
+    return window.__wizardryCanUseVisitorPrerenderReadOnly({
+      isAdmin: isAdmin(),
+      extraCheck: function () {
+        return !state.submitComposerOpen && !state.submitAdvancedOpen;
+      }
     });
+  }
+
+  function refreshCurrentMetricView() {
+    return load({ sortMetric: requestedMetric() });
   }
 
   async function persistDraft(options) {
@@ -1138,16 +1151,14 @@
     }
     try {
       var signedEvent = await signVoteEvent(coord);
-      var data = await apiPost('/cgi/blog-submit-public-ranking-vote', {
+      await apiPost('/cgi/blog-submit-public-ranking-vote', {
         page_slug: slug,
         target_coord: coord,
         event_json: JSON.stringify(signedEvent),
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
-      applyLiveRankingUpdate(data.ranking);
-      maybeSetMetricFromPayload();
-      renderAll();
+      await refreshCurrentMetricView();
     } catch (err) {
       var message = err && err.message ? err.message : 'Could not submit vote';
       if (err && err.code === 'vote_cooldown') {
@@ -1184,7 +1195,7 @@
     }
     var payload = readSubmissionPayload();
     try {
-      var data = await apiPostFirstAvailable([
+      await apiPostFirstAvailable([
         '/cgi/blog-submit-public-ranking-node',
         '/cgi/blog-submit-public-ranking'
       ], {
@@ -1201,9 +1212,7 @@
       });
       state.submitComposerOpen = false;
       state.submitAdvancedOpen = false;
-      applyLiveRankingUpdate(data.ranking);
-      maybeSetMetricFromPayload();
-      renderAll();
+      await refreshCurrentMetricView();
     } catch (err) {
       window.alert(err && err.message ? err.message : 'Could not submit entry');
     }
@@ -1233,7 +1242,7 @@
       return;
     }
     try {
-      var data = await apiPost('/cgi/blog-moderate-public-ranking-node', {
+      await apiPost('/cgi/blog-moderate-public-ranking-node', {
         page_slug: slug,
         action: action,
         node_coord: String(nodeCoord || ''),
@@ -1243,9 +1252,7 @@
         session_token: auth.session_token,
         csrf_token: auth.csrf_token
       });
-      applyLiveRankingUpdate(data.ranking);
-      maybeSetMetricFromPayload();
-      renderAll();
+      await refreshCurrentMetricView();
     } catch (err) {
       window.alert(err && err.message ? err.message : 'Moderation action failed');
     }
@@ -1363,8 +1370,16 @@
         return;
       }
       if (target.matches('[data-ranking-sort="metric"]') && target instanceof HTMLSelectElement) {
-        state.currentMetric = normalizeMetric(target.value);
-        renderContent();
+        var nextMetric = normalizeMetric(target.value);
+        if (nextMetric === requestedMetric()) {
+          return;
+        }
+        state.currentMetric = nextMetric;
+        if (canRefreshMetricFromServer()) {
+          load({ sortMetric: nextMetric });
+        } else {
+          renderContent();
+        }
         return;
       }
       if (isAdmin() && state.editMode && target.id && target.id.indexOf('public-ranking-edit-') === 0) {
@@ -1531,12 +1546,17 @@
     });
   }
 
-  function load() {
+  function load(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var sortMetric = normalizeMetric(opts.sortMetric || requestedMetric());
     return window.__wizardryRefreshManagedNostrPage({
       slug: slug,
       authSignature: window.__wizardrySessionAuthSignature,
       isExpectedPayload: isExpectedPayload,
       unexpectedPayloadMessage: 'Unexpected page payload for public ranking page',
+      extraParams: {
+        sort_metric: sortMetric
+      },
       renderPayload: renderBootstrapPayload,
       handleError: function (err) {
         window.__wizardryRenderLoadFallback(err, {

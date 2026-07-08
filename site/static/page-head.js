@@ -1140,6 +1140,20 @@
       session_token: auth.session_token,
       csrf_token: auth.csrf_token
     });
+    var extraParams = opts.extraParams && typeof opts.extraParams === 'object' ? opts.extraParams : null;
+    if (extraParams) {
+      Object.keys(extraParams).forEach(function (key) {
+        var name = String(key || '').trim();
+        if (!name) {
+          return;
+        }
+        var value = extraParams[key];
+        if (value === undefined || value === null) {
+          return;
+        }
+        params.set(name, String(value));
+      });
+    }
     return fetch(endpoint, {
       method: 'POST',
       cache: 'no-store',
