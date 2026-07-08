@@ -4032,8 +4032,9 @@
         state.posts = (Array.isArray(state.posts) ? state.posts : []).filter(function (post) {
           return String(post && (post.source_path || post.post_path || post.path) || '').trim() !== path;
         });
-        renderFilters();
         renderList();
+        updateRenderSignature();
+        loadPageState();
       }).catch(function (err) {
         window.alert(err && err.message ? err.message : 'Delete failed');
       }).finally(function () {

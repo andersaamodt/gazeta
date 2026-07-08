@@ -1234,13 +1234,14 @@
     return String(payload && payload.prerender && payload.prerender[key] || '');
   }
 
-  function readPrerenderHtmlFragment(payload, name) {
+  function readPrerenderHtmlFragment(payload, name, options) {
+    var opts = options && typeof options === 'object' ? options : {};
     var fragmentName = String(name || '').trim();
     if (!fragmentName) {
       return null;
     }
     var html = prerenderFragment(payload, fragmentName + '_html');
-    if (!html) {
+    if (!html && opts.allowEmpty !== true) {
       return null;
     }
     return {
@@ -1250,7 +1251,7 @@
   }
 
   function mountPrerenderHtmlFragment(targetNode, payload, name, options) {
-    var fragment = readPrerenderHtmlFragment(payload, name);
+    var fragment = readPrerenderHtmlFragment(payload, name, options);
     if (!targetNode || !fragment) {
       return false;
     }
@@ -1273,55 +1274,24 @@
     if (!payload || !tagsNode || !yearsNode || !typesNode) {
       return false;
     }
-    return mountPrerenderHtmlFragment(tagsNode, payload, 'filter_tags') &&
-      mountPrerenderHtmlFragment(yearsNode, payload, 'filter_years') &&
-      mountPrerenderHtmlFragment(typesNode, payload, 'filter_types');
-  }
-
-  function managedBlogFilterTypeLabel(value) {
-    var rawType = String(value || '').trim().toLowerCase();
-    if (rawType === 'shortform') {
-      return 'shortform';
-    }
-    if (rawType === 'capture-media') {
-      return 'capture';
-    }
-    if (rawType === 'upload-media') {
-      return 'media';
-    }
-    if (rawType === 'attachment') {
-      return 'attachment';
-    }
-    if (rawType === 'audio-note') {
-      return 'audio';
-    }
-    if (rawType === 'link-share') {
-      return 'link';
-    }
-    if (rawType === 'go-live') {
-      return 'go live';
-    }
-    return 'post';
-  }
-
-  function normalizeManagedBlogFilterTags(raw) {
-    if (Array.isArray(raw)) {
-      return raw.map(function (tag) {
-        return String(tag || '').trim();
-      }).filter(Boolean);
-    }
-    if (typeof raw === 'string') {
-      return raw.split(',').map(function (tag) {
-        return String(tag || '').trim();
-      }).filter(Boolean);
-    }
-    return [];
+    return mountPrerenderHtmlFragment(tagsNode, payload, 'filter_tags', { allowEmpty: true }) &&
+      mountPrerenderHtmlFragment(yearsNode, payload, 'filter_years', { allowEmpty: true }) &&
+      mountPrerenderHtmlFragment(typesNode, payload, 'filter_types', { allowEmpty: true });
   }
 
   function managedBlogFilterCatalogSignature(posts) {
     return JSON.stringify((Array.isArray(posts) ? posts : []).map(function (post) {
+      var tags = Array.isArray(post && post.tags)
+        ? post.tags.map(function (tag) {
+            return String(tag || '').trim();
+          }).filter(Boolean)
+        : (typeof (post && post.tags) === 'string'
+            ? String(post.tags).split(',').map(function (tag) {
+                return String(tag || '').trim();
+              }).filter(Boolean)
+            : []);
       return {
-        tags: normalizeManagedBlogFilterTags(post && post.tags),
+        tags: tags,
         year: String(post && post.year || ''),
         type: String(post && post.type || 'post')
       };
@@ -1330,10 +1300,6 @@
       var right = JSON.stringify(b);
       return left.localeCompare(right);
     }));
-  }
-
-  function managedBlogFilterButtonHtml(group, value, label, isActive) {
-    return '<button type="button" class="blog-filter-chip' + (isActive ? ' is-active' : '') + '" data-filter-group="' + escapeHtml(group) + '" data-filter-value="' + escapeHtml(value) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '">' + escapeHtml(label) + '</button>';
   }
 
   function syncManagedBlogFilterPanelState(options) {
@@ -1352,20 +1318,6 @@
         button.setAttribute('aria-pressed', active ? 'true' : 'false');
       });
     });
-  }
-
-  function uniqueManagedBlogFilterValues(items, compareFn) {
-    var map = {};
-    (Array.isArray(items) ? items : []).forEach(function (item) {
-      var key = String(item || '');
-      if (!key) {
-        return;
-      }
-      map[key] = true;
-    });
-    var out = Object.keys(map);
-    out.sort(compareFn);
-    return out;
   }
 
   function renderManagedBlogFilterPanel(options) {
@@ -1398,38 +1350,13 @@
       });
       return true;
     }
-
-    var tags = uniqueManagedBlogFilterValues(posts.reduce(function (acc, post) {
-      return acc.concat(normalizeManagedBlogFilterTags(post && post.tags));
-    }, []), function (a, b) {
-      return a.localeCompare(b);
+    syncManagedBlogFilterPanelState({
+      tagsNode: tagsNode,
+      yearsNode: yearsNode,
+      typesNode: typesNode,
+      activeFilters: activeFilters
     });
-    var years = uniqueManagedBlogFilterValues(posts.map(function (post) {
-      return post && post.year || '';
-    }), function (a, b) {
-      var an = Number(a);
-      var bn = Number(b);
-      if (isFinite(an) && isFinite(bn)) {
-        return bn - an;
-      }
-      return a.localeCompare(b);
-    });
-    var types = uniqueManagedBlogFilterValues(posts.map(function (post) {
-      return post && post.type || 'post';
-    }), function (a, b) {
-      return managedBlogFilterTypeLabel(a).localeCompare(managedBlogFilterTypeLabel(b));
-    });
-
-    tagsNode.innerHTML = tags.map(function (tag) {
-      return managedBlogFilterButtonHtml('tags', tag, tag, !!(activeFilters.tags && activeFilters.tags.has && activeFilters.tags.has(tag)));
-    }).join('');
-    yearsNode.innerHTML = years.map(function (year) {
-      return managedBlogFilterButtonHtml('years', year, year, !!(activeFilters.years && activeFilters.years.has && activeFilters.years.has(year)));
-    }).join('');
-    typesNode.innerHTML = types.map(function (type) {
-      return managedBlogFilterButtonHtml('types', type, managedBlogFilterTypeLabel(type), !!(activeFilters.types && activeFilters.types.has && activeFilters.types.has(type)));
-    }).join('');
-    return true;
+    return false;
   }
 
   function resolveManagedPagePreviewHtml(options) {
