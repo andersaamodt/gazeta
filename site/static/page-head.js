@@ -494,6 +494,38 @@
     return current;
   }
 
+  function managedNavbarTitleOptions(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var result = {
+      rootNode: opts.rootNode || null,
+      fallbackAttributeNames: Array.isArray(opts.fallbackAttributeNames)
+        ? opts.fallbackAttributeNames.slice()
+        : ['data-page-title'],
+      fallbackText: String(opts.fallbackText || '').trim() || 'Untitled'
+    };
+    [
+      'configuredText',
+      'renderState',
+      'isAdmin',
+      'editMode',
+      'titleNode',
+      'editing',
+      'inputValue',
+      'labelText',
+      'inputAriaLabel',
+      'editButtonClassName',
+      'saveButtonClassName',
+      'saveDisabled',
+      'selectOnFocus',
+      'currentText'
+    ].forEach(function (key) {
+      if (Object.prototype.hasOwnProperty.call(opts, key)) {
+        result[key] = opts[key];
+      }
+    });
+    return result;
+  }
+
   function renderManagedValidationSummary(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var containerNode = opts.containerNode || null;
@@ -1774,6 +1806,7 @@
   window.__wizardryRenderManagedNavbarTitleRow = renderManagedNavbarTitleRow;
   window.__wizardryResolveManagedNavbarTitle = resolveManagedNavbarTitle;
   window.__wizardryRenderManagedNavbarTitleState = renderManagedNavbarTitleState;
+  window.__wizardryManagedNavbarTitleOptions = managedNavbarTitleOptions;
   window.__wizardryRenderManagedValidationSummary = renderManagedValidationSummary;
   window.__wizardryRenderManagedPayloadValidationSummary = renderManagedPayloadValidationSummary;
   window.__wizardryRenderManagedSaveStatus = renderManagedSaveStatus;

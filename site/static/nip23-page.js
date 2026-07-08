@@ -285,16 +285,6 @@
     return normalizeDraftState((state.payload && state.payload.state) || { title: '', content: '' });
   }
 
-  function managedNavbarTitleResolveOptions(renderState, configuredText) {
-    return {
-      configuredText: configuredText,
-      renderState: renderState,
-      rootNode: root,
-      fallbackAttributeNames: ['data-page-title'],
-      fallbackText: 'Untitled'
-    };
-  }
-
   function renderValidation() {
     if (!els.validation) {
       return;
@@ -338,17 +328,19 @@
         messageVariant: 'local_source'
       },
       syncStatus: state.payload && state.payload.sync_status,
-      navbarTitleOptions: Object.assign(
-        managedNavbarTitleResolveOptions(s, state.navTitle),
-        {
+      navbarTitleOptions: window.__wizardryManagedNavbarTitleOptions({
+          configuredText: state.navTitle,
+          renderState: s,
+          rootNode: root,
+          fallbackAttributeNames: ['data-page-title'],
+          fallbackText: 'Untitled',
           isAdmin: isAdmin(),
           editMode: state.editMode,
           titleNode: els.title || null,
           editing: !!state.navTitleEditing,
           inputValue: state.navTitleInput,
           saveDisabled: state.navTitleBusy
-        }
-      )
+        })
     });
   }
 
@@ -571,7 +563,11 @@
 
   function saveNavbarTitle() {
     return window.__wizardrySaveManagedNavbarTitle(Object.assign(
-      managedNavbarTitleResolveOptions(),
+      window.__wizardryManagedNavbarTitleOptions({
+        rootNode: root,
+        fallbackAttributeNames: ['data-page-title'],
+        fallbackText: 'Untitled'
+      }),
       {
         state: state,
         payload: state.payload,
@@ -585,7 +581,13 @@
 
   function beginNavbarTitleEdit() {
     return window.__wizardryStartManagedNavbarTitleEdit(Object.assign(
-      managedNavbarTitleResolveOptions(getRenderState(), state.navTitle),
+      window.__wizardryManagedNavbarTitleOptions({
+        configuredText: state.navTitle,
+        renderState: getRenderState(),
+        rootNode: root,
+        fallbackAttributeNames: ['data-page-title'],
+        fallbackText: 'Untitled'
+      }),
       {
         state: state,
         renderHead: renderHead

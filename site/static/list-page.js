@@ -1426,16 +1426,6 @@
     };
   }
 
-  function managedNavbarTitleResolveOptions(renderState, configuredText) {
-    return {
-      configuredText: configuredText,
-      renderState: renderState,
-      rootNode: root,
-      fallbackAttributeNames: ['data-list-title', 'data-page-title'],
-      fallbackText: 'List'
-    };
-  }
-
   function findElementIndex(uid) {
     var elements = Array.isArray(state.draft && state.draft.elements) ? state.draft.elements : [];
     for (var i = 0; i < elements.length; i += 1) {
@@ -2822,17 +2812,19 @@
         titleInputId: 'list-head-title-input',
         descriptionInputId: 'list-head-description-input'
       } : null,
-      navbarTitleOptions: Object.assign(
-        managedNavbarTitleResolveOptions(s, state.navTitle),
-        {
+      navbarTitleOptions: window.__wizardryManagedNavbarTitleOptions({
+          configuredText: state.navTitle,
+          renderState: s,
+          rootNode: root,
+          fallbackAttributeNames: ['data-list-title', 'data-page-title'],
+          fallbackText: 'List',
           isAdmin: isAdmin(),
           editMode: state.editMode,
           titleNode: els.title || null,
           editing: !!state.navTitleEditing,
           inputValue: state.navTitleInput,
           saveDisabled: state.navTitleBusy
-        }
-      )
+        })
     });
   }
 
@@ -3698,7 +3690,11 @@
 
   function saveNavbarTitle() {
     return window.__wizardrySaveManagedNavbarTitle(Object.assign(
-      managedNavbarTitleResolveOptions(),
+      window.__wizardryManagedNavbarTitleOptions({
+        rootNode: root,
+        fallbackAttributeNames: ['data-list-title', 'data-page-title'],
+        fallbackText: 'List'
+      }),
       {
         state: state,
         payload: state.payload,
@@ -3712,7 +3708,13 @@
 
   function beginNavbarTitleEdit() {
     return window.__wizardryStartManagedNavbarTitleEdit(Object.assign(
-      managedNavbarTitleResolveOptions(getRenderState(), state.navTitle),
+      window.__wizardryManagedNavbarTitleOptions({
+        configuredText: state.navTitle,
+        renderState: getRenderState(),
+        rootNode: root,
+        fallbackAttributeNames: ['data-list-title', 'data-page-title'],
+        fallbackText: 'List'
+      }),
       {
         state: state,
         renderHead: renderHead

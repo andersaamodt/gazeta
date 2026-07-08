@@ -2628,16 +2628,6 @@
     return normalizeDraftState((state.payload && state.payload.state) || { title: 'Profile', description: '', rows: [] });
   }
 
-  function managedNavbarTitleResolveOptions(renderState, configuredText) {
-    return {
-      configuredText: configuredText,
-      renderState: renderState,
-      rootNode: root,
-      fallbackAttributeNames: ['data-page-title'],
-      fallbackText: 'Untitled'
-    };
-  }
-
   function qualifierLabel(qualifier) {
     var q = String(qualifier || '').trim().toLowerCase();
     if (!q) {
@@ -3272,9 +3262,12 @@
           state.headFocusPending = false;
         }
       } : null,
-      navbarTitleOptions: Object.assign(
-        managedNavbarTitleResolveOptions(s, state.navTitle),
-        {
+      navbarTitleOptions: window.__wizardryManagedNavbarTitleOptions({
+          configuredText: state.navTitle,
+          renderState: s,
+          rootNode: root,
+          fallbackAttributeNames: ['data-page-title'],
+          fallbackText: 'Untitled',
           isAdmin: isAdmin(),
           editMode: state.editMode,
           titleNode: els.title || null,
@@ -3285,8 +3278,7 @@
           editButtonClassName: 'list-inline-edit-link list-page-nav-title-edit-link',
           saveButtonClassName: 'list-inline-edit-link list-page-nav-title-edit-link',
           saveDisabled: state.navTitleBusy
-        }
-      )
+        })
     });
   }
 
@@ -3675,7 +3667,11 @@
 
   function saveNavbarTitle() {
     return window.__wizardrySaveManagedNavbarTitle(Object.assign(
-      managedNavbarTitleResolveOptions(),
+      window.__wizardryManagedNavbarTitleOptions({
+        rootNode: root,
+        fallbackAttributeNames: ['data-page-title'],
+        fallbackText: 'Untitled'
+      }),
       {
         state: state,
         payload: state.payload,
@@ -3689,7 +3685,13 @@
 
   function beginNavbarTitleEdit() {
     return window.__wizardryStartManagedNavbarTitleEdit(Object.assign(
-      managedNavbarTitleResolveOptions(getRenderState(), state.navTitle),
+      window.__wizardryManagedNavbarTitleOptions({
+        configuredText: state.navTitle,
+        renderState: getRenderState(),
+        rootNode: root,
+        fallbackAttributeNames: ['data-page-title'],
+        fallbackText: 'Untitled'
+      }),
       {
         state: state,
         renderHead: renderHead

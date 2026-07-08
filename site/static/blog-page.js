@@ -444,7 +444,7 @@
         html: '',
         hidden: true
       },
-      navbarTitleOptions: {
+      navbarTitleOptions: window.__wizardryManagedNavbarTitleOptions({
         configuredText: state.payload && state.payload.nav_title,
         renderState: page,
         rootNode: root,
@@ -453,7 +453,7 @@
         isAdmin: false,
         editMode: false,
         titleNode: els.title || null
-      }
+      })
     });
   }
 

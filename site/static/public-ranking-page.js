@@ -194,16 +194,6 @@
     return normalizeDraftState((state.payload && state.payload.state) || {});
   }
 
-  function managedNavbarTitleResolveOptions(renderState, configuredText) {
-    return {
-      configuredText: configuredText,
-      renderState: renderState,
-      rootNode: root,
-      fallbackAttributeNames: ['data-page-title'],
-      fallbackText: 'Public Ranking'
-    };
-  }
-
   var apiPost = window.__wizardryPostFormJson;
 
   async function apiPostFirstAvailable(urls, payload) {
@@ -344,17 +334,19 @@
         titleInputId: 'public-ranking-head-title-input',
         descriptionInputId: 'public-ranking-head-description-input'
       } : null,
-      navbarTitleOptions: Object.assign(
-        managedNavbarTitleResolveOptions(s, state.navTitle),
-        {
+      navbarTitleOptions: window.__wizardryManagedNavbarTitleOptions({
+          configuredText: state.navTitle,
+          renderState: s,
+          rootNode: root,
+          fallbackAttributeNames: ['data-page-title'],
+          fallbackText: 'Public Ranking',
           isAdmin: isAdmin(),
           editMode: state.editMode,
           titleNode: els.title || null,
           editing: !!state.navTitleEditing,
           inputValue: state.navTitleInput,
           saveDisabled: state.navTitleBusy
-        }
-      )
+        })
     });
   }
 
@@ -894,7 +886,11 @@
 
   function saveNavbarTitle() {
     return window.__wizardrySaveManagedNavbarTitle(Object.assign(
-      managedNavbarTitleResolveOptions(),
+      window.__wizardryManagedNavbarTitleOptions({
+        rootNode: root,
+        fallbackAttributeNames: ['data-page-title'],
+        fallbackText: 'Public Ranking'
+      }),
       {
         state: state,
         payload: state.payload,
@@ -908,7 +904,13 @@
 
   function beginNavbarTitleEdit() {
     return window.__wizardryStartManagedNavbarTitleEdit(Object.assign(
-      managedNavbarTitleResolveOptions(getRenderState(), state.navTitle),
+      window.__wizardryManagedNavbarTitleOptions({
+        configuredText: state.navTitle,
+        renderState: getRenderState(),
+        rootNode: root,
+        fallbackAttributeNames: ['data-page-title'],
+        fallbackText: 'Public Ranking'
+      }),
       {
         state: state,
         renderHead: renderHead
