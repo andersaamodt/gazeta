@@ -464,6 +464,13 @@
     };
   }
 
+  function fallbackPageTitle() {
+    if (!root) {
+      return 'Contact';
+    }
+    return String(root.getAttribute('data-page-title') || 'Contact').trim() || 'Contact';
+  }
+
   function storedSessionToken() {
     return String(localStorage.getItem('session_token') || '').trim();
   }
@@ -2621,7 +2628,7 @@
       state.draft = normalizeDraftState(state.draft);
       return state.draft;
     }
-    return normalizeDraftState((state.payload && state.payload.state) || { title: 'Profile', description: '', rows: [] });
+    return normalizeDraftState((state.payload && state.payload.state) || { title: fallbackPageTitle(), description: '', rows: [] });
   }
 
   function qualifierLabel(qualifier) {
@@ -3214,7 +3221,7 @@
       allowPrerenderDescription: canUsePrerenderReadOnlyView(),
       fieldStateOptions: {
         renderState: s,
-        fallbackTitleText: 'Profile',
+        fallbackTitleText: fallbackPageTitle(),
         syncMessageVariant: 'local_source',
         isAdmin: isAdmin(),
         activeField: state.activeHeadField,
@@ -3247,7 +3254,7 @@
         renderState: s,
         rootNode: root,
         fallbackAttributeNames: ['data-page-title'],
-        fallbackText: 'Untitled',
+        fallbackText: fallbackPageTitle(),
         state: state,
         slug: slug,
         isAdmin: isAdmin,
@@ -3635,7 +3642,7 @@
       payload: state.payload,
       rootNode: root,
       fallbackAttributeNames: ['data-page-title'],
-      fallbackText: 'Untitled',
+      fallbackText: fallbackPageTitle(),
       slug: slug,
       isAdmin: isAdmin,
       renderHead: renderHead
@@ -3648,7 +3655,7 @@
       renderState: getRenderState(),
       rootNode: root,
       fallbackAttributeNames: ['data-page-title'],
-      fallbackText: 'Untitled',
+      fallbackText: fallbackPageTitle(),
       state: state,
       renderHead: renderHead
     }));
