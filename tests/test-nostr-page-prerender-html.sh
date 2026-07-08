@@ -460,6 +460,110 @@ else
   fail 'second prerender leaves unchanged list mount bytes and mtime intact'
 fi
 
+INDEX_SITE_NAME=indexblog
+INDEX_SITES_DIR="$TMP_ROOT/index-sites"
+INDEX_SITE_ROOT="$INDEX_SITES_DIR/$INDEX_SITE_NAME"
+INDEX_SITE_DATA="$INDEX_SITES_DIR/.sitedata/$INDEX_SITE_NAME"
+
+mkdir -p "$INDEX_SITE_ROOT/site/includes" "$INDEX_SITE_ROOT/site/pages" "$INDEX_SITE_ROOT/site/static" "$INDEX_SITE_ROOT/build/static" "$INDEX_SITE_DATA"
+cp -R "$ROOT_DIR/site/lodestone" "$INDEX_SITE_ROOT/site/lodestone"
+
+cat > "$INDEX_SITE_ROOT/site.conf" <<'EOFCONF'
+template=blog
+theme=lapidarist
+site_title=Writing Fixture
+append_site_title_to_page_title=false
+EOFCONF
+
+cat > "$INDEX_SITE_ROOT/site/includes/head.html" <<'EOFHEAD'
+<script defer src="/static/site-bootstrap.js"></script>
+EOFHEAD
+cat > "$INDEX_SITE_ROOT/site/includes/nav.md" <<'EOFNAV'
+<nav class="site-nav">Fixture Nav</nav>
+EOFNAV
+cat > "$INDEX_SITE_ROOT/site/includes/footer.md" <<'EOFFOOT'
+<footer>Fixture Footer</footer>
+EOFFOOT
+
+export WIZARDRY_SITES_DIR="$INDEX_SITES_DIR"
+export WIZARDRY_SITE_NAME="$INDEX_SITE_NAME"
+
+env WIZARDRY_SITES_DIR="$INDEX_SITES_DIR" WIZARDRY_SITE_NAME="$INDEX_SITE_NAME" sh -c '
+  set -eu
+  ROOT_DIR=$1
+  KEY_A=$2
+  . "$ROOT_DIR/cgi/blog-lib.sh"
+  . "$ROOT_DIR/cgi/blog-list-common.sh"
+  . "$ROOT_DIR/cgi/blog-public-ranking-common.sh"
+  . "$ROOT_DIR/cgi/blog-nostr-pages-common.sh"
+  blog_init
+  printf "%s\n" "$KEY_A" > "$blog_nostr_authors_file"
+  blog_nostr_pages_save_json '"'"'{
+    "pages": [
+      {"slug":"index","type":"blog","show_in_nav":true,"placeholder_title":"Writing","default_tag":"writing"},
+      {"slug":"blog","type":"blog","show_in_nav":true,"placeholder_title":"Blog"}
+    ]
+  }'"'"'
+  cat > "$blog_posts_store_dir/writing-post.md" <<'"'"'EOFPOST'"'"'
+---
+title: "Writing Fixture Post"
+published_at: "2026-05-24T12:00:00Z"
+tags: ["writing","essay"]
+author: "author"
+visibility: "public"
+license: "CC BY 4.0"
+summary: "Writing summary"
+---
+
+This post should be present in the prerendered Writing page HTML.
+EOFPOST
+  cat > "$blog_posts_store_dir/non-writing-post.md" <<'"'"'EOFPOST'"'"'
+---
+title: "Non Writing Fixture Post"
+published_at: "2026-05-25T12:00:00Z"
+tags: ["projects"]
+author: "author"
+visibility: "public"
+license: "CC BY 4.0"
+summary: "Other summary"
+---
+
+This post should not be present in the prerendered Writing page HTML.
+EOFPOST
+  blog_nostr_page_save_draft_state_json index blog '"'"'{
+    "title":"Writing",
+    "content":"",
+    "default_tag":"writing"
+  }'"'"'
+' sh "$ROOT_DIR" "$KEY_A"
+
+BLOG_NOSTR_PAGE_PRERENDER_TIMEOUT_SECONDS=30 "$ROOT_DIR/cgi/pre-build" >/dev/null 2>&1
+
+writing_payload=$(env REQUEST_METHOD=GET CONTENT_LENGTH=0 QUERY_STRING=page_slug=index "$ROOT_DIR/cgi/blog-get-nostr-page")
+writing_body=$(printf '%s\n' "$writing_payload" | awk '{ sub(/\r$/, "") } BEGIN { body = 0 } body { print } /^$/ { body = 1 }')
+if [ -z "$writing_body" ]; then
+  writing_body=$writing_payload
+fi
+
+assert_managed_payload_contract "$writing_body" 'blog' 'index-backed Writing page payload exposes the canonical managed-page envelope'
+if printf '%s\n' "$writing_body" | jq -e '.success == true and .slug == "index" and .page_type == "blog" and .nav_title == "Writing" and .state.title == "Writing"' >/dev/null; then
+  pass
+else
+  fail 'index-backed Writing page payload keeps the managed blog identity and Writing title'
+fi
+if printf '%s\n' "$writing_body" | jq -e 'any(.bootstrap_posts[]?; .title == "Writing Fixture Post") and (any(.bootstrap_posts[]?; .title == "Non Writing Fixture Post") | not)' >/dev/null; then
+  pass
+else
+  fail 'index-backed Writing page payload filters bootstrap posts through the shared default-tag contract'
+fi
+assert_file_contains "$INDEX_SITE_ROOT/site/pages/index.md" 'data-blog-slug="index" data-page-type="blog"' 'index-backed Writing page prerender keeps the managed blog root identity'
+assert_file_contains "$INDEX_SITE_ROOT/site/pages/index.md" '<h1 id="blog-page-title"><span class="list-page-title-text">Writing</span><span id="blog-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' 'index-backed Writing page prerender includes the hydration-matching shared title shell'
+assert_file_contains "$INDEX_SITE_ROOT/site/pages/index.md" 'Writing Fixture Post' 'index-backed Writing page prerender includes the filtered writing post card'
+assert_file_not_contains "$INDEX_SITE_ROOT/site/pages/index.md" 'Non Writing Fixture Post' 'index-backed Writing page prerender excludes posts outside the default tag'
+assert_file_contains "$INDEX_SITE_ROOT/site/static/nostr-page-bootstrap/index.js" '"page_type":"blog"' 'index-backed Writing bootstrap keeps the managed blog page type'
+assert_file_contains "$INDEX_SITE_ROOT/site/static/nostr-page-bootstrap/index.js" '"Writing Fixture Post"' 'index-backed Writing bootstrap carries the filtered writing post card'
+assert_file_not_contains "$INDEX_SITE_ROOT/site/static/nostr-page-bootstrap/index.js" 'Non Writing Fixture Post' 'index-backed Writing bootstrap excludes posts outside the default tag'
+
 printf 'PASS: %s\n' "$PASS_COUNT"
 if [ "$FAIL_COUNT" -gt 0 ]; then
   printf 'FAIL: %s\n' "$FAIL_COUNT" >&2
