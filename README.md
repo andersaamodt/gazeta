@@ -140,7 +140,7 @@ visibility: "public"  # Change from "draft"
 - Public page source lives under `.sitedata/<site>/content/pages/`.
 - `site/pages/*.md` mounts and `site/pages/posts` are generated projections from that canonical content directory; the repo checkout is template code, not app state.
 - When the source checkout itself lives under `~/git`, generated page mounts and related bootstrap/catalog artifacts are written under `${XDG_STATE_HOME:-$HOME/.local/state}/gazeta/generated/<site>/` instead of back into the repo checkout.
-- Lodestone page sources in `site/lodestone/` are site-owned template overrides; their rendered Markdown outputs belong in the generated page root, not in the source checkout. When a site does not override a Lodestone template, Gazeta falls back to the bundled default under the repo `site/lodestone/` tree.
+- Lodestone page sources in `site/lodestone/` are site-specific template overrides; their rendered Markdown outputs belong in the generated page root, not in the source checkout. When a site does not override a Lodestone template, Gazeta falls back to the bundled default under the repo `site/lodestone/` tree.
 - Gazeta-owned Lodestone content components are rendered by `cgi/gazeta-lodestone-components`; Lodestone itself stays responsible only for the generic universal rendering kernel.
 - The same Gazeta-owned Lodestone component boundary should also own reusable read-only Nostr page content in prerender projections, so bootstrap payload HTML and generated page HTML stay on one render path.
 - Shared page-head and hydration helpers such as page-title reconciliation, canonical title/sync shell state assembly, canonical read-only description fallback shell state assembly, canonical editable title/description field-state assembly, canonical managed page-head/nav-title render-state composition, managed page-head rendering for both editable and read-only states, reuse of Lodestone-owned title/description/nav-title hosts, read-only render-or-fallback content mounting, prerender-owned static shell preservation, visitor- and payload-aware prerender eligibility policy, viewer/auth-event signature helpers, canonical managed-page route/slug normalization, readiness signaling, load-fallback placeholders, and session-auth refresh observation live in `site/static/page-head.js`; page-specific scripts should only own state and behavior that differs by page type.
@@ -210,7 +210,7 @@ Gazeta is migrating high-value read and admin mutation paths to the Theurgy web 
 - `cgi/blog-list-navbar-pages` execs `gazeta-read list-navbar-pages`.
 - `cgi/blog-manage-post` and `cgi/blog-upload-media` run directly in `gazeta-admin`.
 - `cgi/blog-save-post`, `cgi/blog-publish-nostr-page`, `cgi/blog-video-chat-control`, `cgi/blog-secure-chat-admin`, and `cgi/blog-payments` now enter through `gazeta-admin`.
-- `blog-publish-nostr-page` and `blog-payments` use dedicated runtime-to-site adapters (`cgi/blog-publish-nostr-page-bridge.sh`, `cgi/blog-payments-bridge.sh`) for their site-owned domain logic.
+- `blog-publish-nostr-page` and `blog-payments` use dedicated runtime-to-site adapters (`cgi/blog-publish-nostr-page-bridge.sh`, `cgi/blog-payments-bridge.sh`) for their site-specific domain logic.
 - The separate `*-legacy` scripts remain only as adapter fallback when the corresponding runtime binary is unavailable.
 - `cgi/blog-maintenance rebuild-indexes` refreshes derived public-post catalog artifacts for Deployments and build flows.
 - Build runtime binaries with:
