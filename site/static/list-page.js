@@ -1713,11 +1713,21 @@
       return;
     }
     try {
-      var auth = window.__wizardryAuthPayload();
-      var latest = await apiPost('/cgi/blog-get-nostr-page', {
-        page_slug: slug,
-        session_token: auth.session_token,
-        csrf_token: auth.csrf_token
+      var latest = await window.__wizardryRefreshManagedNostrPage({
+        slug: slug,
+        authSignature: authSignature,
+        isExpectedPayload: isExpectedPayload,
+        allowWrite: function () {
+          return false;
+        },
+        clearOnDeny: false,
+        unexpectedPayloadMessage: 'Unexpected page payload for list validation refresh',
+        renderPayload: function (payload) {
+          return payload;
+        },
+        handleError: function () {
+          return null;
+        }
       });
       if (!latest) {
         return;
