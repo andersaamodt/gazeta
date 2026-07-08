@@ -475,19 +475,16 @@
           els.description.innerHTML = '<span class="list-page-description-empty">No description.</span>';
         }
       } else {
-        var adoptedPrerenderDescription = canUsePrerenderReadOnlyView(s) &&
-          window.__wizardryRenderReadOnlyPrerenderDescriptionShell(els.description, state.payload, 'description');
-        if (!adoptedPrerenderDescription && desc) {
-          window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+        window.__wizardryRenderReadOnlyDescriptionShellFromPrerender(els.description, state.payload, 'description', {
+          allowPrerender: canUsePrerenderReadOnlyView(s),
+          fallback: desc ? {
             html: markdownInline(desc),
             hidden: false
-          });
-        } else if (!adoptedPrerenderDescription) {
-          window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+          } : {
             html: '',
             hidden: true
-          });
-        }
+          }
+        });
       }
     }
     if (isAdmin() && state.activeHeadField) {

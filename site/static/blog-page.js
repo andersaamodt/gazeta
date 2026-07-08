@@ -488,14 +488,13 @@
 	    }
     if (!els.description) {
       return;
-	    }
-	    if (window.__wizardryRenderReadOnlyPrerenderDescriptionShell(els.description, state.payload, 'description')) {
-	      return;
-	    }
-	    window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
-	      html: '',
-	      hidden: true
-	    });
+    }
+    window.__wizardryRenderReadOnlyDescriptionShellFromPrerender(els.description, state.payload, 'description', {
+      fallback: {
+        html: '',
+        hidden: true
+      }
+    });
   }
 
   function ensureFilterGutterLayout() {

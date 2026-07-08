@@ -3727,26 +3727,20 @@
           els.description.innerHTML = '';
         }
       } else if (text) {
-        var adoptedPrerenderDescription = canUsePrerenderReadOnlyView() &&
-          window.__wizardryRenderReadOnlyPrerenderDescriptionShell(els.description, state.payload, 'description');
-        if (!adoptedPrerenderDescription) {
-          window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+        window.__wizardryRenderReadOnlyDescriptionShellFromPrerender(els.description, state.payload, 'description', {
+          allowPrerender: canUsePrerenderReadOnlyView(),
+          fallback: {
             html: markdownInline(text),
             hidden: false
-          });
-        }
-      } else if (!hasMainContent) {
-	        window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
-	          html: '',
-	          hidden: true
-	        });
-	      } else {
-	        window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
-	          html: '',
-	          hidden: true
-	        });
-	      }
-	    }
+          }
+        });
+      } else {
+        window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+          html: '',
+          hidden: true
+        });
+      }
+    }
     if (isAdmin() && state.activeHeadField && state.headFocusPending) {
       requestAnimationFrame(function () {
         var id = state.activeHeadField === 'title' ? 'contact-head-title-input' : 'contact-head-description-input';

@@ -2961,14 +2961,13 @@
         }
       }
     } else {
-      var adoptedPrerenderDescription = canUsePrerenderReadOnlyView(s) &&
-        window.__wizardryRenderReadOnlyPrerenderDescriptionShell(els.description, state.payload, 'description');
-      if (!adoptedPrerenderDescription) {
-        window.__wizardryRenderReadOnlyDescriptionShell(els.description, {
+      window.__wizardryRenderReadOnlyDescriptionShellFromPrerender(els.description, state.payload, 'description', {
+        allowPrerender: canUsePrerenderReadOnlyView(s),
+        fallback: {
           text: descText,
           hidden: !descText && !hasMainContent
-        });
-      }
+        }
+      });
     }
 
     if (isAdmin() && state.activeHeadField) {

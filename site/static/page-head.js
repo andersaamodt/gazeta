@@ -210,6 +210,15 @@
     return true;
   }
 
+  function renderReadOnlyDescriptionShellFromPrerender(descriptionNode, payload, name, options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    if (opts.allowPrerender !== false && renderReadOnlyPrerenderDescriptionShell(descriptionNode, payload, name)) {
+      return true;
+    }
+    renderReadOnlyDescriptionShell(descriptionNode, opts.fallback);
+    return false;
+  }
+
   function escapeHtml(value) {
     return String(value || '')
       .replace(/&/g, '&amp;')
@@ -955,6 +964,7 @@
   window.__wizardryRenderReadOnlyTitleShellWithSync = renderReadOnlyTitleShellWithSync;
   window.__wizardryRenderReadOnlyDescriptionShell = renderReadOnlyDescriptionShell;
   window.__wizardryRenderReadOnlyPrerenderDescriptionShell = renderReadOnlyPrerenderDescriptionShell;
+  window.__wizardryRenderReadOnlyDescriptionShellFromPrerender = renderReadOnlyDescriptionShellFromPrerender;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
   window.__wizardryRenderSyncStatusPill = renderSyncStatusPill;
   window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;
