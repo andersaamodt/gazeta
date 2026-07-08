@@ -431,11 +431,16 @@ sync_lodestone_pages() {
         posts_json_tmp=$(mktemp "${TMPDIR:-/tmp}/gazeta-lodestone-posts.XXXXXX")
         printf '' > "$empty_html_tmp"
         jq -c '.posts // []' "$(blog_public_posts_catalog_static_path)" > "$posts_json_tmp" 2>/dev/null || printf '[]\n' > "$posts_json_tmp"
+        blog_posts_json=$(cat "$posts_json_tmp")
+        blog_empty_text=$(blog_post_cards_empty_text "$blog_posts_json")
+        blog_empty_attrs=$(blog_post_cards_empty_attrs "$blog_posts_json")
         "$SCRIPT_DIR/gazeta-lodestone" render-md "$stone_source" \
           --set "title=Blog" \
           --set "slug=blog" \
           --set "description_attrs= hidden" \
           --set "content_attrs= hidden" \
+          --set "empty_text=$blog_empty_text" \
+          --set "empty_attrs=$blog_empty_attrs" \
           --set "prerender_attrs=" \
           --html-file "description_html=$empty_html_tmp" \
           --html-file "content_html=$empty_html_tmp" \

@@ -20,6 +20,7 @@ else
   BLOG_NOSTR_PAGES_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 fi
 . "$BLOG_NOSTR_PAGES_DIR/gazeta-nostr-page-content-renderer.sh"
+. "$BLOG_NOSTR_PAGES_DIR/blog-post-cards-common.sh"
 
 blog_nostr_pages_config_path() {
   printf '%s/nostr-pages.json\n' "$blog_state_dir"
@@ -605,6 +606,9 @@ blog_nostr_page_render_lodestone_source() {
   else
     printf '[]\n' > "$render_posts_tmp"
   fi
+  render_posts_json=$(cat "$render_posts_tmp")
+  render_empty_text=$(blog_post_cards_empty_text "$render_posts_json")
+  render_empty_attrs=$(blog_post_cards_empty_attrs "$render_posts_json")
   "$render_lodestone_cmd" render-md "$render_template" \
     --set "title=$render_title" \
     --set "slug=$render_slug" \
@@ -612,6 +616,8 @@ blog_nostr_page_render_lodestone_source() {
     --set "description=$render_description" \
     --set "description_attrs=$render_description_attrs" \
     --set "content_attrs=$render_content_attrs" \
+    --set "empty_text=$render_empty_text" \
+    --set "empty_attrs=$render_empty_attrs" \
     --set "prerender_attrs=$render_attrs" \
     --set "list_page_js_version=$blog_nostr_list_page_js_version" \
     --set "contact_page_js_version=$blog_nostr_contact_page_js_version" \

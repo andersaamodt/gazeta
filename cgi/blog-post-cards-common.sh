@@ -1,5 +1,38 @@
 # Shared blog post card rendering for Lodestone prerender and client hydration.
 
+blog_post_cards_count() {
+  posts_json=${1-}
+  if [ -z "$posts_json" ]; then
+    printf '0\n'
+    return 0
+  fi
+  count=$(printf '%s\n' "$posts_json" | jq -r 'if type == "array" then length else 0 end' 2>/dev/null || printf '0')
+  case "$count" in
+    ''|*[!0-9]*) count=0 ;;
+  esac
+  printf '%s\n' "$count"
+}
+
+blog_post_cards_empty_text() {
+  posts_json=${1-}
+  count=$(blog_post_cards_count "$posts_json")
+  if [ "$count" -gt 0 ]; then
+    printf '\n'
+    return 0
+  fi
+  printf 'No posts to show yet.\n'
+}
+
+blog_post_cards_empty_attrs() {
+  posts_json=${1-}
+  count=$(blog_post_cards_count "$posts_json")
+  if [ "$count" -gt 0 ]; then
+    printf ' hidden\n'
+    return 0
+  fi
+  printf '\n'
+}
+
 blog_post_cards_render_card_html() {
   post_json=${1-}
   [ -n "$post_json" ] || return 1
@@ -94,27 +127,16 @@ blog_post_cards_render_card_html() {
 
 blog_post_cards_render_list_html() {
   posts_json=${1-}
-  if [ -z "$posts_json" ]; then
-    printf '%s\n' '<p class="placeholder" data-gazeta-component="blog-post-list">No posts to show yet.</p>'
-    return 0
-  fi
-
-  count=$(printf '%s\n' "$posts_json" | jq -r 'if type == "array" then length else 0 end' 2>/dev/null || printf '0')
-  case "$count" in
-    ''|*[!0-9]*) count=0 ;;
-  esac
+  count=$(blog_post_cards_count "$posts_json")
   if [ "$count" -eq 0 ]; then
-    printf '%s\n' '<p class="placeholder" data-gazeta-component="blog-post-list">No posts to show yet.</p>'
     return 0
   fi
 
   tmp=$(mktemp "${TMPDIR:-/tmp}/blog-post-cards.XXXXXX")
   printf '%s\n' "$posts_json" | jq -c '.[]' > "$tmp"
-  printf '%s\n' '<div data-gazeta-component="blog-post-list">'
   while IFS= read -r post_json || [ -n "$post_json" ]; do
     [ -n "$post_json" ] || continue
     blog_post_cards_render_card_html "$post_json"
   done < "$tmp"
-  printf '%s\n' '</div>'
   rm -f "$tmp"
 }

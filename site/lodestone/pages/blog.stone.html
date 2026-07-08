@@ -46,8 +46,8 @@ title: Blog
 </div>
 </div>
 
-<div id="blog-post-list" class="post-list"{@html prerender_attrs}><gazeta-blog-post-list posts={posts_json}></gazeta-blog-post-list></div>
-<p id="blog-empty" class="placeholder" hidden>No posts match these filters.</p>
+<div id="blog-post-list" class="post-list" data-gazeta-component="blog-post-list"{@html prerender_attrs}><gazeta-blog-post-list posts={posts_json}></gazeta-blog-post-list></div>
+<p id="blog-empty" class="placeholder"{@html empty_attrs}>{empty_text}</p>
 </div>
 </div>
 </section>

@@ -139,12 +139,17 @@ grep -Fq '/static/compose-shared.js?v=20260403-compose1' "$site_root/site/pages/
   exit 1
 }
 
-grep -Fq 'data-gazeta-component="blog-post-list"' "$site_root/site/pages/blog.md" &&
+grep -Fq '<div id="blog-post-list" class="post-list" data-gazeta-component="blog-post-list"' "$site_root/site/pages/blog.md" &&
   grep -Fq '<article class="post-item blog-post-item' "$site_root/site/pages/blog.md" &&
   grep -Fq 'Lodestone Rendered Post' "$site_root/site/pages/blog.md" || {
   printf '%s\n' "blog page missing Lodestone-rendered post cards" >&2
   exit 1
 }
+
+if grep -Fq '<div data-gazeta-component="blog-post-list">' "$site_root/site/pages/blog.md"; then
+  printf '%s\n' "blog page kept a nested prerender wrapper that hydration does not own" >&2
+  exit 1
+fi
 
 if grep -Fq '<gazeta-blog-post-list posts=' "$site_root/site/pages/blog.md"; then
   printf '%s\n' "blog page shipped an unexpanded Lodestone post-list component" >&2
