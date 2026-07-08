@@ -12,6 +12,23 @@ license: "CC BY 4.0"
 <section id="overworld-page-root" class="overworld-page-shell" data-page-slug={slug} data-page-type="overworld" data-page-title={title}{@html prerender_attrs}>
 <div class="list-page-head overworld-page-head"><h1 id="overworld-page-title"><span class="list-page-title-text">{title}</span><span id="overworld-page-title-actions" class="list-page-title-actions"></span></h1></div>
 <div class="overworld-game-mount" data-overworld-game{@html prerender_attrs}><gazeta-nostr-page-content page_type="overworld">{@html content_html}</gazeta-nostr-page-content></div>
+<template id="overworld-static-shell-template">
+<div class="overworld-godot-shell" data-overworld-static-shell="true">
+<div class="overworld-godot-frame-wrap">
+<div class="overworld-godot-splash">
+<div class="overworld-godot-splash-panel">
+<h2 class="overworld-godot-title">Overworld</h2>
+<button type="button" class="overworld-godot-download">Download (6.8 MB)</button>
+</div>
+</div>
+</div>
+<div class="overworld-godot-status">Waiting for download</div>
+<div class="overworld-godot-help">
+<div class="overworld-godot-keys"><span class="overworld-godot-key">Enter: note</span><span class="overworld-godot-key">I: inventory</span><span class="overworld-godot-key">B: spells</span><span class="overworld-godot-key">C: character</span></div>
+<div class="overworld-godot-login-note">Anonymous players can inspect the starting room. Log in with Nostr to walk through doors into the server.</div>
+</div>
+</div>
+</template>
 </section>
 
 <script src="/static/nostr-page-bootstrap/{slug}.js"></script>

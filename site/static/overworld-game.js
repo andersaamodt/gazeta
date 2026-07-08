@@ -13,23 +13,6 @@
   ];
   const DOWNLOAD_LABEL = 'Download (6.8 MB)';
   const CACHED_LABEL = 'Play cached game';
-  const OVERWORLD_STATIC_SHELL_HTML = [
-    '<div class="overworld-godot-shell" data-overworld-static-shell="true">',
-    '<div class="overworld-godot-frame-wrap">',
-    '<div class="overworld-godot-splash">',
-    '<div class="overworld-godot-splash-panel">',
-    '<h2 class="overworld-godot-title">Overworld</h2>',
-    '<button type="button" class="overworld-godot-download">Download (6.8 MB)</button>',
-    '</div>',
-    '</div>',
-    '</div>',
-    '<div class="overworld-godot-status">Waiting for download</div>',
-    '<div class="overworld-godot-help">',
-    '<div class="overworld-godot-keys"><span class="overworld-godot-key">Enter: note</span><span class="overworld-godot-key">I: inventory</span><span class="overworld-godot-key">B: spells</span><span class="overworld-godot-key">C: character</span></div>',
-    '<div class="overworld-godot-login-note">Anonymous players can inspect the starting room. Log in with Nostr to walk through doors into the server.</div>',
-    '</div>',
-    '</div>'
-  ].join('');
 
   const state = {
     payload: null
@@ -123,6 +106,14 @@
     });
   }
 
+  function staticShellTemplateHtml() {
+    const template = document.getElementById('overworld-static-shell-template');
+    if (!(template instanceof HTMLTemplateElement)) {
+      return '';
+    }
+    return template.innerHTML;
+  }
+
   function ensureStaticShell(host, payload) {
     if (!(host instanceof HTMLElement)) {
       return null;
@@ -131,7 +122,7 @@
       targetNode: host,
       payload: payload,
       renderFallback: function () {
-        return OVERWORLD_STATIC_SHELL_HTML;
+        return staticShellTemplateHtml();
       }
     });
     return host.querySelector('.overworld-godot-shell');

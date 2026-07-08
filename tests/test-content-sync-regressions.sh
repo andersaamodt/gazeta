@@ -801,7 +801,9 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'return renderCo
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'return html;' 'public-ranking read-only fallback now returns plain HTML directly'
 assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" "return '';" 'NIP-23 read-only fallback now returns plain HTML directly'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "return '';" 'blog read-only fallback now returns plain HTML directly'
-assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" 'renderFallback: function () {' 'Overworld runtime falls back to one canonical static shell through the shared read-only render helper when prerendered markup is missing or stale'
+assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" 'renderFallback: function () {' 'Overworld runtime falls back through the shared read-only render helper when prerendered markup is missing or stale'
+assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" 'staticShellTemplateHtml()' 'Overworld runtime reuses the Lodestone-owned static shell template for client fallback mounts'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" 'OVERWORLD_STATIC_SHELL_HTML' 'Overworld runtime no longer hardcodes static shell HTML in page JS once Lodestone owns that markup'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" 'function injectStyles()' 'Overworld runtime no longer duplicates stylesheet ownership in page JS'
 
 # 3) Frontend fetches must opt out of HTTP caches.
@@ -892,6 +894,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/lodestone/templates/nip23.stone.html" '<
 assert_file_contains "$SITE_SOURCE_ROOT/lodestone/templates/nip23.stone.html" 'data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"' 'NIP-23 Lodestone template owns the navbar-title host shell'
 assert_file_contains "$SITE_SOURCE_ROOT/lodestone/templates/nip23.stone.html" '<gazeta-nostr-page-content page_type="nip23">{@html content_html}</gazeta-nostr-page-content>' 'nip23 Lodestone template routes read-only page content through a Gazeta-owned component'
 assert_file_contains "$SITE_SOURCE_ROOT/lodestone/templates/overworld.stone.html" '<span class="list-page-title-text">{title}</span><span id="overworld-page-title-actions" class="list-page-title-actions"></span>' 'overworld Lodestone template ships the hydration-matching read-only title shell'
+assert_file_contains "$SITE_SOURCE_ROOT/lodestone/templates/overworld.stone.html" '<template id="overworld-static-shell-template">' 'overworld Lodestone template owns the static shell fallback markup'
 assert_file_contains "$SITE_SOURCE_ROOT/lodestone/templates/overworld.stone.html" '<gazeta-nostr-page-content page_type="overworld">{@html content_html}</gazeta-nostr-page-content>' 'overworld Lodestone template routes read-only page content through a Gazeta-owned component'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '--html-file "posts_json=$render_posts_tmp"' 'blog prerender passes structured post data into Lodestone'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" '--set "empty_text=$render_empty_text"' 'blog prerender passes the hydration-matching empty-state text into Lodestone'
