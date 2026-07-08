@@ -2003,6 +2003,37 @@
         );
       };
     }
+    if (!bootstrapNotify && opts.notifyInitialContentPainted !== false) {
+      var shouldSynthesizeNotify = Object.prototype.hasOwnProperty.call(opts, 'state')
+        || Object.prototype.hasOwnProperty.call(opts, 'rootNode')
+        || Object.prototype.hasOwnProperty.call(opts, 'loadingClass')
+        || Object.prototype.hasOwnProperty.call(opts, 'markPageReady')
+        || Object.prototype.hasOwnProperty.call(opts, 'slug');
+      if (shouldSynthesizeNotify) {
+        var notifyOptions = {};
+        if (Object.prototype.hasOwnProperty.call(opts, 'state')) {
+          notifyOptions.state = opts.state;
+        }
+        if (Object.prototype.hasOwnProperty.call(opts, 'rootNode')) {
+          notifyOptions.rootNode = opts.rootNode;
+        }
+        if (Object.prototype.hasOwnProperty.call(opts, 'loadingClass')) {
+          notifyOptions.loadingClass = opts.loadingClass;
+        }
+        if (Object.prototype.hasOwnProperty.call(opts, 'markPageReady')) {
+          notifyOptions.markPageReady = opts.markPageReady;
+        }
+        if (Object.prototype.hasOwnProperty.call(opts, 'slug')) {
+          notifyOptions.slug = opts.slug;
+        }
+        bootstrapNotify = function () {
+          notifyInitialContentPainted(
+            Object.prototype.hasOwnProperty.call(notifyOptions, 'slug') ? notifyOptions.slug : '',
+            notifyOptions
+          );
+        };
+      }
+    }
     return renderManagedNostrBootstrapPayload(payload, {
       isExpectedPayload: opts.isExpectedPayload,
       applyState: opts.applyState,

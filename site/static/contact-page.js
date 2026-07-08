@@ -640,8 +640,10 @@
 
   function renderBootstrapPayload(payload) {
     return window.__wizardryRenderManagedNostrPageBootstrapPayload(payload, {
+      state: state,
       rootNode: root,
       contentNode: els.content,
+      markPageReady: true,
       isExpectedPayload: isExpectedPayload,
       applyState: applyBootstrapState,
       canAdoptStaticPrerender: function () {
@@ -654,10 +656,6 @@
       afterRender: function () {
         syncSecureChatLastContentHtmlFromDom();
         maybeLoadVideoChatWidget();
-      },
-      notifyInitialContentPainted: {
-        state: state,
-        markPageReady: true
       }
     });
   }

@@ -239,18 +239,16 @@
 
   function renderBootstrapPayload(payload) {
     return window.__wizardryRenderManagedNostrPageBootstrapPayload(payload, {
+      state: state,
       rootNode: root,
       contentNode: els.content,
+      markPageReady: true,
       isExpectedPayload: isExpectedPayload,
       applyState: applyBootstrapState,
       renderHead: renderHead,
       renderAdmin: renderAdmin,
       renderValidation: renderValidation,
-      renderAll: renderAll,
-      notifyInitialContentPainted: {
-        state: state,
-        markPageReady: true
-      }
+      renderAll: renderAll
     });
   }
 

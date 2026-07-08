@@ -225,8 +225,11 @@
 
   function renderBootstrapPayload(payload) {
     return window.__wizardryRenderManagedNostrPageBootstrapPayload(payload, {
+      state: state,
       rootNode: root,
       contentNode: els.content,
+      loadingClass: 'is-loading',
+      markPageReady: true,
       isExpectedPayload: isExpectedPayload,
       applyState: applyBootstrapState,
       canAdoptStaticPrerender: function (optimisticPayload) {
@@ -251,12 +254,6 @@
         renderList();
         renderAdmin();
         renderValidation();
-      },
-      notifyInitialContentPainted: {
-        state: state,
-        rootNode: root,
-        loadingClass: 'is-loading',
-        markPageReady: true
       }
     });
   }
