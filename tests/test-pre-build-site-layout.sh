@@ -4,6 +4,8 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 ROOT_DIR=$(dirname "$SCRIPT_DIR")
 
+. "$SCRIPT_DIR/managed-page-test-helpers.sh"
+
 tmp_root=$(mktemp -d "${TMPDIR:-/tmp}/pre-build-site-layout.XXXXXX")
 cleanup() {
   rm -rf "$tmp_root"
@@ -213,7 +215,7 @@ grep -Fq 'hello@example.com' "$canonical_root/pages/contact.md" || {
   printf '%s\n' "contact page missing prerendered contact row after pre-build rewrite" >&2
   exit 1
 }
-grep -Fq '<h1 id="contact-page-title"><span class="list-page-title-text">Contact</span><span id="contact-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' "$canonical_root/pages/contact.md" || {
+require_managed_page_title_shell "$canonical_root/pages/contact.md" "contact-page-title" "Contact" "contact-page-title-actions" "contact page missing hydration-matching title shell after pre-build rewrite" || {
   printf '%s\n' "contact page missing hydration-matching title shell after pre-build rewrite" >&2
   exit 1
 }
@@ -249,7 +251,7 @@ grep -Fq 'window.__wizardryNostrPageBootstrap' "$canonical_root/static/nostr-pag
   printf '%s\n' "contact bootstrap missing hydration payload" >&2
   exit 1
 }
-grep -Fq '<h1 id="blog-page-title"><span class="list-page-title-text">Blog</span><span id="blog-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' "$canonical_root/pages/blog.md" || {
+require_managed_page_title_shell "$canonical_root/pages/blog.md" "blog-page-title" "Blog" "blog-page-title-actions" "blog page missing hydration-matching title shell after pre-build rewrite" || {
   printf '%s\n' "blog page missing hydration-matching title shell after pre-build rewrite" >&2
   exit 1
 }
@@ -279,8 +281,7 @@ grep -Fq 'Seeded reading entry' "$canonical_root/pages/reading-list.md" || {
   printf '%s\n' "list page missing prerendered list entry after pre-build rewrite" >&2
   exit 1
 }
-grep -Fq '<h1 id="list-page-title"><span class="list-page-title-text">' "$canonical_root/pages/reading-list.md" &&
-  grep -Fq '<span id="list-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' "$canonical_root/pages/reading-list.md" || {
+require_managed_page_title_shell "$canonical_root/pages/reading-list.md" "list-page-title" "Reading list" "list-page-title-actions" "list page missing hydration-matching title shell after pre-build rewrite" || {
   printf '%s\n' "list page missing hydration-matching title shell after pre-build rewrite" >&2
   exit 1
 }

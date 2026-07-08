@@ -7,6 +7,8 @@ REAL_HOME=${HOME:-}
 export GAZETA_LODESTONE="${GAZETA_LODESTONE:-$ROOT_DIR/../lodestone/spells/lodestone}"
 export GAZETA_SKIP_THEURGY_RUNTIME_BUILD=1
 
+. "$SCRIPT_DIR/managed-page-test-helpers.sh"
+
 tmp_root=$(mktemp -d "${TMPDIR:-/tmp}/gazeta-lodestone-pages.XXXXXX")
 trap 'rm -rf "$tmp_root"' EXIT INT TERM
 
@@ -119,7 +121,7 @@ grep -Fq 'data-prerender-painted="true"' "$site_root/site/pages/blog.md" || {
   exit 1
 }
 
-grep -Fq '<h1 id="blog-page-title"><span class="list-page-title-text">Blog</span><span id="blog-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' "$site_root/site/pages/blog.md" || {
+require_managed_page_title_shell "$site_root/site/pages/blog.md" "blog-page-title" "Blog" "blog-page-title-actions" "blog page missing hydration-matching prerendered title shell from lodestone render" || {
   printf '%s\n' "blog page missing hydration-matching prerendered title shell from lodestone render" >&2
   exit 1
 }
@@ -167,7 +169,7 @@ grep -Fq '<section id="public-ranking-root"' "$site_root/site/pages/projects.md"
   exit 1
 }
 
-grep -Fq '<h1 id="public-ranking-title"><span class="list-page-title-text">Projects</span><span id="public-ranking-page-title-actions" class="list-page-title-actions public-ranking-sync-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' "$site_root/site/pages/projects.md" || {
+require_managed_page_title_shell "$site_root/site/pages/projects.md" "public-ranking-title" "Projects" "public-ranking-page-title-actions" "projects page missing hydration-matching public-ranking title shell" "list-page-title-actions public-ranking-sync-actions" || {
   printf '%s\n' "projects page missing hydration-matching public-ranking title shell" >&2
   exit 1
 }
@@ -183,13 +185,12 @@ projects_root_count=$(grep -F '<section id="public-ranking-root"' "$site_root/si
   exit 1
 }
 
-grep -Fq '<h1 id="list-page-title"><span class="list-page-title-text">' "$site_root/site/pages/reading-list.md" &&
-  grep -Fq '<span id="list-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' "$site_root/site/pages/reading-list.md" || {
+require_managed_page_title_shell "$site_root/site/pages/reading-list.md" "list-page-title" "Reading list" "list-page-title-actions" "reading-list page missing hydration-matching list title shell" || {
   printf '%s\n' "reading-list page missing hydration-matching list title shell" >&2
   exit 1
 }
 
-grep -Fq '<h1 id="contact-page-title"><span class="list-page-title-text">Contact</span><span id="contact-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' "$site_root/site/pages/contact.md" || {
+require_managed_page_title_shell "$site_root/site/pages/contact.md" "contact-page-title" "Contact" "contact-page-title-actions" "contact page missing hydration-matching contact title shell" || {
   printf '%s\n' "contact page missing hydration-matching contact title shell" >&2
   exit 1
 }
@@ -268,7 +269,7 @@ printf '%s\n' 'console.log("stale blog page js");' > "$local_site_root/site/stat
 
 WIZARDRY_SITE_NAME="$local_site_name" "$local_site_root/cgi/pre-build"
 
-grep -Fq '<h1 id="blog-page-title"><span class="list-page-title-text">Blog</span><span id="blog-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' "$local_site_root/site/pages/blog.md" || {
+require_managed_page_title_shell "$local_site_root/site/pages/blog.md" "blog-page-title" "Blog" "blog-page-title-actions" "local-template build still rendered stale site-owned blog head instead of repo template head" || {
   printf '%s\n' "local-template build still rendered stale site-owned blog head instead of repo template head" >&2
   exit 1
 }

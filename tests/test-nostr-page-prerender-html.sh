@@ -4,6 +4,8 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 ROOT_DIR=$(dirname "$SCRIPT_DIR")
 
+. "$SCRIPT_DIR/managed-page-test-helpers.sh"
+
 PASS_COUNT=0
 FAIL_COUNT=0
 
@@ -416,7 +418,7 @@ assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'writing' 'blog prerender i
 assert_file_not_contains "$SITE_ROOT/site/pages/blog.md" 'data-post-path="posts/fixture-post.md""' 'blog prerender does not emit malformed post-path attributes in post cards'
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'class="tag blog-inline-tag is-active" data-inline-tag="writing" aria-pressed="true">writing</button>' 'blog prerender keeps the default tag visually active on post cards before hydration'
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'class="blog-filter-chip is-active" data-filter-group="tags" data-filter-value="writing" aria-pressed="true">writing</button>' 'blog prerender keeps the default tag visually active in the filter panel before hydration'
-assert_file_contains "$SITE_ROOT/site/pages/blog.md" '<h1 id="blog-page-title"><span class="list-page-title-text">Blog</span><span id="blog-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' 'blog prerender includes the hydration-matching shared title shell'
+assert_managed_page_title_shell "$SITE_ROOT/site/pages/blog.md" "blog-page-title" "Blog" "blog-page-title-actions" 'blog prerender includes the hydration-matching shared title shell'
 assert_file_not_contains "$SITE_ROOT/site/pages/blog.md" 'Filtered Out Post' 'blog prerender applies default-tag filtering before hydration'
 assert_file_not_contains "$SITE_ROOT/site/static/nostr-page-bootstrap/blog.js" 'Filtered Out Post' 'blog bootstrap excludes posts outside the default tag'
 assert_file_contains "$SITE_ROOT/site/static/nostr-page-bootstrap/blog.js" 'blog-inline-tag is-active' 'blog bootstrap carries post-card HTML with the default tag active before hydration'
@@ -561,7 +563,7 @@ else
   fail 'index-backed Writing page payload filters bootstrap posts through the shared default-tag contract'
 fi
 assert_file_contains "$INDEX_SITE_ROOT/site/pages/index.md" 'data-blog-slug="index" data-page-type="blog"' 'index-backed Writing page prerender keeps the managed blog root identity'
-assert_file_contains "$INDEX_SITE_ROOT/site/pages/index.md" '<h1 id="blog-page-title"><span class="list-page-title-text">Writing</span><span id="blog-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' 'index-backed Writing page prerender includes the hydration-matching shared title shell'
+assert_managed_page_title_shell "$INDEX_SITE_ROOT/site/pages/index.md" "blog-page-title" "Writing" "blog-page-title-actions" 'index-backed Writing page prerender includes the hydration-matching shared title shell'
 assert_file_contains "$INDEX_SITE_ROOT/site/pages/index.md" 'Writing Fixture Post' 'index-backed Writing page prerender includes the filtered writing post card'
 assert_file_not_contains "$INDEX_SITE_ROOT/site/pages/index.md" 'data-post-path="posts/writing-post.md""' 'index-backed Writing page prerender does not emit malformed post-path attributes in post cards'
 assert_file_contains "$INDEX_SITE_ROOT/site/pages/index.md" 'class="tag blog-inline-tag is-active" data-inline-tag="writing" aria-pressed="true">writing</button>' 'index-backed Writing page prerender keeps the default tag visually active on post cards before hydration'

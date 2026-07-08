@@ -4,6 +4,8 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 ROOT_DIR=$(dirname "$SCRIPT_DIR")
 
+. "$SCRIPT_DIR/managed-page-test-helpers.sh"
+
 PASS_COUNT=0
 FAIL_COUNT=0
 
@@ -155,7 +157,7 @@ assert_jq "$header_reset_json" '.success == true and .authenticated == true and 
 BLOG_NOSTR_PAGE_PRERENDER_TIMEOUT_SECONDS=2 WIZARDRY_SITES_DIR="$SITES_DIR" WIZARDRY_SITE_NAME="$SITE_NAME" "$ROOT_DIR/cgi/pre-build" >/dev/null 2>&1
 assert_file_exists "$SITE_ROOT/site/static/overworld-godot/v20260523-page-help/index.html" 'pre-build mirrors site-owned Godot export HTML into static root'
 assert_file_exists "$SITE_ROOT/build/static/overworld-godot/v20260523-page-help/index.pck" 'pre-build mirrors site-owned Godot export package into build-static root'
-assert_file_contains "$SITE_ROOT/site/pages/overworld.md" '<h1 id="overworld-page-title"><span class="list-page-title-text">Overworld</span><span id="overworld-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' 'pre-build creates Overworld page with the hydration-matching shared title shell'
+assert_managed_page_title_shell "$SITE_ROOT/site/pages/overworld.md" "overworld-page-title" "Overworld" "overworld-page-title-actions" 'pre-build creates Overworld page with the hydration-matching shared title shell'
 assert_file_contains "$SITE_ROOT/site/pages/overworld.md" '<div class="overworld-game-mount" data-overworld-game data-prerender-painted="true"' 'pre-build creates Overworld page with a prerendered game mount'
 assert_file_contains "$SITE_ROOT/site/pages/overworld.md" 'overworld-godot-frame-wrap' 'pre-build creates Overworld page with a stable play-surface shell'
 assert_file_contains "$SITE_ROOT/site/pages/overworld.md" 'overworld-godot-status' 'pre-build creates Overworld status row before runtime JS'
