@@ -1,5 +1,13 @@
 # Shared read-only Nostr page content rendering for Lodestone prerender and hydration.
 
+if [ -n "${SCRIPT_DIR:-}" ] && [ -f "$SCRIPT_DIR/blog-video-chat-schedule-common.sh" ]; then
+  # shellcheck disable=SC1090
+  . "$SCRIPT_DIR/blog-video-chat-schedule-common.sh"
+elif [ -n "${blog_site_root:-}" ] && [ -f "$blog_site_root/cgi/blog-video-chat-schedule-common.sh" ]; then
+  # shellcheck disable=SC1090
+  . "$blog_site_root/cgi/blog-video-chat-schedule-common.sh"
+fi
+
 blog_nostr_prerender_payload_input() {
   payload_json=${1-}
   if [ -n "${BLOG_NOSTR_PRERENDER_PAYLOAD_FILE:-}" ] && [ -f "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" ]; then
@@ -945,16 +953,27 @@ blog_nostr_prerender_contact_video_chat_html() {
     *) contact_video_chat_public_rooms=false ;;
   esac
   contact_video_chat_rooms=$(blog_config_get "$blog_site_conf" video_chat_rooms 2>/dev/null || printf '')
-  contact_video_chat_rooms_attr=$(printf '%s' "$contact_video_chat_rooms" | tr ';' ',' | jq -Rr '@html' 2>/dev/null || printf '')
+  contact_video_chat_scheduled_rooms=$(blog_config_get "$blog_site_conf" video_chat_scheduled_rooms 2>/dev/null || printf '')
+  contact_video_chat_schedule_now=$(blog_video_chat_schedule_now_epoch 2>/dev/null || printf '')
+  contact_video_chat_active_rooms_json=$(blog_video_chat_public_rooms_json "$contact_video_chat_rooms" "$contact_video_chat_scheduled_rooms" "$contact_video_chat_schedule_now" 2>/dev/null || printf '[]')
+  contact_video_chat_rooms_attr=$(printf '%s\n' "$contact_video_chat_active_rooms_json" | jq -r 'if type == "array" then map((. // "") | tostring) | join(",") else "" end | @html' 2>/dev/null || printf '')
+  contact_video_chat_room_theme_images_json=$(blog_video_chat_room_theme_images_json "$contact_video_chat_rooms" "$contact_video_chat_scheduled_rooms" "$contact_video_chat_schedule_now" 2>/dev/null || printf '{}')
+  contact_video_chat_room_theme_images_attr=$(printf '%s' "$contact_video_chat_room_theme_images_json" | jq -Rr '@html' 2>/dev/null || printf '{}')
   contact_video_chat_max=$(blog_config_get "$blog_site_conf" video_chat_participant_limit 2>/dev/null || printf '6')
-  contact_video_chat_loading_html=$(blog_nostr_prerender_contact_video_chat_loading_html)
   case "$contact_video_chat_max" in ''|*[!0-9]*) contact_video_chat_max=6 ;; esac
   if [ "$contact_video_chat_max" -lt 2 ]; then contact_video_chat_max=2; fi
   if [ "$contact_video_chat_max" -gt 24 ]; then contact_video_chat_max=24; fi
-
-  cat <<EOF
-<section class="contact-widget contact-widget-video-chat" aria-label="Video calling"><h2 id="contact-call-title" class="contact-section-heading"><span>Call</span></h2><div data-video-chat data-video-chat-token-endpoint="/cgi/blog-video-chat-token" data-video-chat-call-room-id="call-me" data-video-chat-call-label="Call" data-video-chat-show-heading="false" data-video-chat-center-precall="true" data-video-chat-owner-call-private="true" data-video-chat-public-rooms="$contact_video_chat_public_rooms" data-video-chat-room-list="$contact_video_chat_rooms_attr" data-video-chat-room-theme-images="{}" data-video-chat-room-policy="open" data-video-chat-max-participants="$contact_video_chat_max" data-video-chat-allow-join-link="true">$contact_video_chat_loading_html</div></section>
-EOF
+  blog_nostr_template_inner_html 'site/lodestone/templates/contact.stone.html' 'contact-video-chat-widget-template' | jq -Rs \
+    --arg public_rooms "$contact_video_chat_public_rooms" \
+    --arg room_list "$contact_video_chat_rooms_attr" \
+    --arg room_theme_images "$contact_video_chat_room_theme_images_attr" \
+    --arg max_participants "$contact_video_chat_max" \
+    '
+      gsub("__CONTACT_VIDEO_CHAT_PUBLIC_ROOMS__"; $public_rooms)
+      | gsub("__CONTACT_VIDEO_CHAT_ROOM_LIST__"; $room_list)
+      | gsub("__CONTACT_VIDEO_CHAT_ROOM_THEME_IMAGES__"; $room_theme_images)
+      | gsub("__CONTACT_VIDEO_CHAT_MAX_PARTICIPANTS__"; $max_participants)
+    ' -r 2>/dev/null || printf ''
 }
 
 blog_nostr_prerender_public_ranking_html() {
@@ -1012,10 +1031,6 @@ blog_nostr_template_inner_html() {
 
 blog_nostr_prerender_contact_secure_chat_login_gate_html() {
   blog_nostr_template_inner_html 'site/lodestone/templates/contact.stone.html' 'contact-secure-chat-login-gate-template'
-}
-
-blog_nostr_prerender_contact_video_chat_loading_html() {
-  blog_nostr_template_inner_html 'site/lodestone/templates/contact.stone.html' 'contact-video-chat-loading-shell-template'
 }
 
 blog_nostr_prerender_overworld_html() {

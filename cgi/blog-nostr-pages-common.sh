@@ -5,7 +5,7 @@ set -eu
 
 blog_nostr_list_page_js_version='20260622-single-sync-pill1'
 blog_page_js_version='20260622-single-sync-pill1'
-blog_nostr_contact_page_js_version='20260707-contact-template-owned1'
+blog_nostr_contact_page_js_version='20260707-contact-video-widget-template1'
 blog_nostr_simplex_web_default_chat_js_version='20260707-login-gate-template1'
 blog_nostr_simplex_web_adapter_init_js_version='20260516-browserprofilev2'
 blog_nostr_nip23_page_js_version='20260622-single-sync-pill1'

@@ -201,6 +201,15 @@
     return String(template.innerHTML || '');
   }
 
+  function fillTemplatePlaceholders(html, replacements) {
+    var output = String(html || '');
+    var table = replacements && typeof replacements === 'object' ? replacements : {};
+    Object.keys(table).forEach(function (key) {
+      output = output.split(String(key)).join(String(table[key] || ''));
+    });
+    return output;
+  }
+
   function secureChatLoginGateHtml() {
     return templateInnerHtml('contact-secure-chat-login-gate-template')
       || (window.SimplexWebDefaultChat && typeof window.SimplexWebDefaultChat.defaultLoginGateHtml === 'function'
@@ -208,8 +217,50 @@
         : '');
   }
 
+  function normalizedVideoChatParticipantLimit(value) {
+    var limit = Number(value);
+    if (!isFinite(limit)) {
+      return 6;
+    }
+    limit = Math.floor(limit);
+    if (limit < 2) return 2;
+    if (limit > 24) return 24;
+    return limit;
+  }
+
+  function contactVideoChatTemplateReplacements(videoConfig) {
+    var config = videoConfig && typeof videoConfig === 'object' ? videoConfig : {};
+    var publicRooms = config.public_rooms === true;
+    var activeRooms = Array.isArray(config.active_rooms) ? config.active_rooms : config.rooms;
+    var rooms = Array.isArray(activeRooms) ? activeRooms.join(',') : '';
+    var roomThemeImages = config.room_theme_images && typeof config.room_theme_images === 'object'
+      ? JSON.stringify(config.room_theme_images)
+      : '{}';
+    return {
+      '__CONTACT_VIDEO_CHAT_PUBLIC_ROOMS__': publicRooms ? 'true' : 'false',
+      '__CONTACT_VIDEO_CHAT_ROOM_LIST__': escapeAttr(rooms),
+      '__CONTACT_VIDEO_CHAT_ROOM_THEME_IMAGES__': escapeAttr(roomThemeImages),
+      '__CONTACT_VIDEO_CHAT_MAX_PARTICIPANTS__': String(normalizedVideoChatParticipantLimit(config.participant_limit))
+    };
+  }
+
+  function renderContactVideoChatWidgetHtml(videoConfig) {
+    var templateHtml = templateInnerHtml('contact-video-chat-widget-template');
+    if (!templateHtml) {
+      return '';
+    }
+    return fillTemplatePlaceholders(templateHtml, contactVideoChatTemplateReplacements(videoConfig));
+  }
+
   function videoChatUnavailableHtml() {
-    return templateInnerHtml('contact-video-chat-loading-shell-template');
+    var shellHtml = renderContactVideoChatWidgetHtml({});
+    if (!shellHtml) {
+      return '';
+    }
+    var container = document.createElement('div');
+    container.innerHTML = shellHtml;
+    var host = container.querySelector('[data-video-chat]');
+    return host ? String(host.innerHTML || '') : '';
   }
 
   function markVideoChatUnavailable(rootNode) {
@@ -316,28 +367,7 @@
       } catch (_err) {
         videoConfig = {};
       }
-      var publicRooms = videoConfig && videoConfig.public_rooms === true;
-      var activeRooms = Array.isArray(videoConfig && videoConfig.active_rooms) ? videoConfig.active_rooms : videoConfig && videoConfig.rooms;
-      var rooms = Array.isArray(activeRooms) ? activeRooms.join(',') : '';
-      var roomThemeImages = videoConfig && videoConfig.room_theme_images && typeof videoConfig.room_theme_images === 'object'
-        ? JSON.stringify(videoConfig.room_theme_images)
-        : '{}';
-      return '<section class="contact-widget contact-widget-video-chat" aria-label="Video calling">' +
-        renderContactSectionHeading('Call', 'contact-call-title') +
-        '<div data-video-chat ' +
-        'data-video-chat-token-endpoint="/cgi/blog-video-chat-token" ' +
-        'data-video-chat-call-room-id="call-me" ' +
-        'data-video-chat-call-label="Call" ' +
-        'data-video-chat-show-heading="false" ' +
-        'data-video-chat-center-precall="true" ' +
-        'data-video-chat-owner-call-private="true" ' +
-        'data-video-chat-public-rooms="' + (publicRooms ? 'true' : 'false') + '" ' +
-        'data-video-chat-room-list="' + escapeHtml(rooms) + '" ' +
-        'data-video-chat-room-theme-images="' + escapeAttr(roomThemeImages) + '" ' +
-        'data-video-chat-room-policy="open" ' +
-        'data-video-chat-max-participants="6" ' +
-        'data-video-chat-allow-join-link="true">' + videoChatUnavailableHtml() + '</div>' +
-        '</section>';
+      return renderContactVideoChatWidgetHtml(videoConfig);
     }
     return '';
   }
