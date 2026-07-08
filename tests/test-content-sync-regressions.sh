@@ -830,6 +830,8 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'function re
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'function renderSecureChatEmojiPicker() {' 'contact runtime no longer owns a local Secure Chat emoji-picker renderer once the shared chat renderer owns that shell'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'function secureChatAttachmentHtml(message) {' 'contact runtime no longer owns a local Secure Chat attachment renderer once the shared chat renderer owns that shell'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/contact-page.js" 'function secureChatSendIcon() {' 'contact runtime no longer owns a local Secure Chat send-icon renderer once the shared chat renderer owns that shell'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" '__wizardryCanUsePayloadPrerenderReadOnly' 'nip23 runtime does not gate prerender adoption on viewer-specific payload helpers because its read-only article/product shell is auth-invariant'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" '__wizardryCanUseVisitorPrerenderReadOnly' 'nip23 runtime does not need a visitor-only prerender helper because its read-only article/product shell is auth-invariant'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'function markHydrationPageReady()' 'public-ranking runtime no longer carries a vestigial hydration-ready wrapper'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'function stripLegacyNostrSyncPills' 'public-ranking runtime no longer carries a private legacy sync-pill stripper'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'function removeLegacyTitleBlock()' 'public-ranking runtime no longer carries a private legacy title-block remover'
@@ -3022,6 +3024,7 @@ assert_not_contains "$list_authenticated_html" 'placeholder="Sign in to add entr
 assert_not_contains "$list_authenticated_html" 'data-list-public-action="submit" disabled aria-disabled="true"' 'list prerender enables submit action for authenticated viewers'
 assert_contains "$list_authenticated_html" 'title="Signed-in voting enabled. Your upvote is recorded for the current cooldown window."' 'list prerender emits authenticated vote tooltip text from fetched viewer state'
 assert_contains "$list_authenticated_html" 'class="list-entry-vote-btn is-upvote is-active"' 'list prerender emits authenticated active vote state from fetched viewer state'
+list_projection_authenticated=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/blog-lib.sh"; . "$1/cgi/gazeta-nostr-page-content-renderer.sh"; blog_nostr_page_prerender_projection_json "$2" list' sh "$ROOT_DIR" "$list_authenticated_payload")
 
 list_anonymous_payload=$(jq -cn '{
   viewer_authenticated: false,
@@ -3042,6 +3045,16 @@ list_anonymous_html=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/gazeta-nostr-p
 assert_contains "$list_anonymous_html" 'placeholder="Sign in to add entries"' 'list prerender shows the anonymous submit placeholder when no authenticated viewer state is present'
 assert_contains "$list_anonymous_html" 'data-list-public-action="submit" disabled aria-disabled="true"' 'list prerender disables submit action for anonymous viewers'
 assert_contains "$list_anonymous_html" 'title="Sign in to vote."' 'list prerender keeps anonymous vote tooltip text when no authenticated viewer state is present'
+list_projection_anonymous=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/blog-lib.sh"; . "$1/cgi/gazeta-nostr-page-content-renderer.sh"; blog_nostr_page_prerender_projection_json "$2" list' sh "$ROOT_DIR" "$list_anonymous_payload")
+list_projection_authenticated_html=$(printf '%s\n' "$list_projection_authenticated" | jq -r '.content_html')
+list_projection_anonymous_html=$(printf '%s\n' "$list_projection_anonymous" | jq -r '.content_html')
+if [ "$list_projection_authenticated_html" != "$list_projection_anonymous_html" ]; then
+  pass
+else
+  fail 'list prerender projection content varies across anonymous and authenticated viewers when submission/vote chrome differs'
+fi
+assert_contains "$list_projection_authenticated_html" 'placeholder="New entry"' 'list prerender projection carries authenticated submit chrome in the shared content fragment'
+assert_contains "$list_projection_anonymous_html" 'placeholder="Sign in to add entries"' 'list prerender projection carries anonymous submit chrome in the shared content fragment'
 
 contact_prerender_base_payload='{
   "state": {
@@ -3094,6 +3107,18 @@ nip23_projection_anonymous=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/blog-li
 nip23_projection_authenticated=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/blog-lib.sh"; . "$1/cgi/gazeta-nostr-page-content-renderer.sh"; blog_nostr_page_prerender_projection_json "$2" nip23' sh "$ROOT_DIR" "$(printf '%s\n' "$nip23_projection_base_payload" | jq -c '. + {viewer_authenticated:true}')")
 assert_eq "$nip23_projection_anonymous" "$nip23_projection_authenticated" 'nip23 prerender projection stays identical across anonymous and authenticated viewers because the read-only product/article shell is not viewer-specific'
 assert_contains "$nip23_projection_authenticated" 'Add to Cart' 'nip23 prerender projection keeps the canonical Lodestone/Gazeta checkout shell in the auth-invariant read-only case'
+
+ranking_projection_submit=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/blog-lib.sh"; . "$1/cgi/gazeta-nostr-page-content-renderer.sh"; blog_nostr_page_prerender_projection_json "$2" public-ranking' sh "$ROOT_DIR" "$ranking_submit_payload")
+ranking_projection_readonly=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/blog-lib.sh"; . "$1/cgi/gazeta-nostr-page-content-renderer.sh"; blog_nostr_page_prerender_projection_json "$2" public-ranking' sh "$ROOT_DIR" "$ranking_readonly_payload")
+ranking_projection_submit_html=$(printf '%s\n' "$ranking_projection_submit" | jq -r '.content_html')
+ranking_projection_readonly_html=$(printf '%s\n' "$ranking_projection_readonly" | jq -r '.content_html')
+if [ "$ranking_projection_submit_html" != "$ranking_projection_readonly_html" ]; then
+  pass
+else
+  fail 'public ranking prerender projection content varies across submit-capable and read-only viewer states when the first-frame controls differ'
+fi
+assert_contains "$ranking_projection_submit_html" 'data-ranking-action="toggle-submit"' 'public ranking prerender projection carries the submit-composer shell when the fetched payload allows viewer submissions'
+assert_not_contains "$ranking_projection_readonly_html" 'data-ranking-action="toggle-submit"' 'public ranking prerender projection omits the submit-composer shell when the fetched payload is read-only'
 
 managed_home="$TMP_ROOT/managed-site"
 managed_release_root="$managed_home/releases/20260416000000"
