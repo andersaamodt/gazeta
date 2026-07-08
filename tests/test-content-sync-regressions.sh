@@ -1177,6 +1177,8 @@ assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" '. + {rendered_html: $rendered_
 assert_file_contains "$ROOT_DIR/src/public_post.rs" 'pub(crate) rendered_html: String,' 'public post records carry canonical rendered card HTML from the shared catalog contract'
 assert_file_contains "$ROOT_DIR/src/gazeta_read/blog_index.rs" 'let rendered = post.rendered_html.trim();' 'public blog index adopts canonical rendered card HTML instead of rebuilding post cards in Rust'
 assert_file_not_contains "$ROOT_DIR/src/gazeta_read/blog_index.rs" 'post-offsite-link-note' 'public blog index no longer carries a second Rust-owned off-site-link note renderer'
+assert_file_contains "$ROOT_DIR/cgi/blog-maintenance" 'blog_public_posts_catalog_build_json | jq -c '\''.posts[]?'\''' 'search-index rebuild starts from the canonical public-post catalog rows instead of re-deriving post metadata separately'
+assert_file_not_contains "$ROOT_DIR/cgi/blog-maintenance" 'blog_nostr_comment_counts_build "$comment_counts_tmp"' 'search-index rebuild no longer re-derives comment metadata separately once the public-post catalog already owns it'
 assert_file_contains "$ROOT_DIR/cgi/gazeta-lodestone-components" '. "$SCRIPT_DIR/blog-post-cards-common.sh"' 'Lodestone blog component reuses the shared blog card renderer'
 assert_file_not_contains "$ROOT_DIR/cgi/gazeta-lodestone-components" 'gazeta-sync-pill)' 'Gazeta Lodestone component renderer no longer carries an unused sync-pill component surface'
 assert_file_contains "$ROOT_DIR/cgi/blog-post-cards-common.sh" 'blog_post_cards_render_card_html() {' 'shared blog card renderer owns post card markup'

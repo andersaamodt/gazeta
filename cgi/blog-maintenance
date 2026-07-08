@@ -32,49 +32,29 @@ case "$action" in
       '{success:true,action:$action,rebuilt:["public-posts"],static_path:$static_path,cache_path:$cache_path,post_count:$post_count}'
     ;;
   rebuild-search-index)
-    posts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-search-index-posts.XXXXXX")
+    catalog_posts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-search-index-catalog-posts.XXXXXX")
     entries_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-search-index-entries.XXXXXX")
-    comment_counts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-search-index-comment-counts.XXXXXX")
-    trap 'rm -f "$posts_tmp" "$entries_tmp" "$comment_counts_tmp"' EXIT HUP INT TERM
-    blog_collect_public_posts "$posts_tmp"
-    blog_nostr_comment_counts_build "$comment_counts_tmp"
-    while IFS= read -r post_file || [ -n "$post_file" ]; do
+    trap 'rm -f "$catalog_posts_tmp" "$entries_tmp"' EXIT HUP INT TERM
+    blog_public_posts_catalog_build_json | jq -c '.posts[]?' > "$catalog_posts_tmp"
+    while IFS= read -r row_json || [ -n "$row_json" ]; do
+      [ -n "$row_json" ] || continue
+      source_path=$(printf '%s\n' "$row_json" | jq -r '.source_path // ""' 2>/dev/null || printf '')
+      [ -n "$source_path" ] || continue
+      post_file=$(blog_managed_page_path_for_rel "$source_path" 2>/dev/null || printf '')
       [ -f "$post_file" ] || continue
-      title=$(blog_read_front_matter_value "$post_file" title 2>/dev/null || printf '')
-      published_at=$(blog_read_front_matter_value "$post_file" published_at 2>/dev/null || printf '')
-      summary=$(blog_read_front_matter_value "$post_file" summary 2>/dev/null || printf '')
-      tags_raw=$(blog_read_front_matter_value "$post_file" tags 2>/dev/null || printf '')
-      tags_csv=$(printf '%s' "$tags_raw" | sed "s/^\[//;s/\]$//;s/\"//g;s/'//g")
-      tags=$(blog_normalize_tags "$tags_csv")
-      post_type=$(blog_read_front_matter_value "$post_file" post_type 2>/dev/null || printf '')
-      if [ -z "$post_type" ]; then
-        post_type=$(blog_read_front_matter_value "$post_file" type 2>/dev/null || printf '')
-      fi
-      post_type=$(blog_normalize_post_type "$post_type")
       body=$(blog_read_markdown_body "$post_file" 2>/dev/null || printf '')
-      title=$(blog_effective_post_title "$title" "$body" "$post_type")
-      url=$(blog_rel_post_html_url "$post_file")
-      post_address=$(blog_post_nostr_address_for_file "$post_file")
-      comment_count=$(blog_nostr_comment_count_lookup "$comment_counts_tmp" "$post_address")
-      pub_date=${published_at%%T*}
-      jq -cn \
-        --arg url "$url" \
-        --arg title "$title" \
-        --arg pub_date "$pub_date" \
-        --arg summary "$summary" \
-        --arg tags_csv "$tags" \
-        --arg body "$body" \
-        --argjson comment_count "${comment_count:-0}" \
-        '{
-          url: $url,
-          title: $title,
-          pub_date: $pub_date,
-          summary: $summary,
-          tags: ($tags_csv | split(",") | map(gsub("^\\s+|\\s+$"; "") | select(length > 0))),
-          comment_count: $comment_count,
-          search_text: ([$title, $tags_csv, $summary, $body] | join("\n"))
-        }' >> "$entries_tmp"
-    done < "$posts_tmp"
+      printf '%s\n' "$row_json" | jq -c \
+        --arg body "$body" '
+          . + {
+            search_text: [
+              (.title // ""),
+              ((.tags // []) | if type == "array" then join(",") else "" end),
+              (.summary // ""),
+              $body
+            ] | join("\n")
+          }
+        ' >> "$entries_tmp"
+    done < "$catalog_posts_tmp"
     index_json=$(jq -sc '{success:true,entries:.}' "$entries_tmp")
     static_path="$(blog_generated_static_dir)/search-index.json"
     cache_path="$blog_state_dir/search-index-cache.json"
@@ -87,7 +67,7 @@ case "$action" in
     mv "$cache_tmp" "$cache_path"
     chmod 644 "$static_path" "$cache_path" 2>/dev/null || true
     entry_count=$(printf '%s\n' "$index_json" | jq -r '(.entries // []) | length' 2>/dev/null || printf '0')
-    rm -f "$posts_tmp" "$entries_tmp" "$comment_counts_tmp"
+    rm -f "$catalog_posts_tmp" "$entries_tmp"
     trap - EXIT HUP INT TERM
     jq -cn \
       --arg action "$action" \
