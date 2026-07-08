@@ -290,8 +290,7 @@
       title: String(src.title || fallbackPageTitle()),
       content: String(src.content || ''),
       default_tag: String(src.default_tag || '').trim(),
-      extras_after: String(src.extras_after || ''),
-      extras_after_format: String(src.extras_after_format || 'markdown').trim().toLowerCase() === 'html' ? 'html' : 'markdown'
+      extras_after: String(src.extras_after || '')
     };
   }
 
@@ -3752,15 +3751,24 @@
     }
   }
 
+  function renderReadOnlyContentHtml(s) {
+    var outroText = String(s && s.extras_after || '');
+    if (!outroText.trim()) {
+      return '';
+    }
+    return '<section class="nostr-page-extra nostr-page-extra-after">' + markdownBlock(outroText) + '</section>';
+  }
+
   function renderExtrasAfter() {
     if (!els.content) {
       return;
     }
+    var page = getRenderState();
     window.__wizardryRenderResolvedReadOnlyContent({
       targetNode: els.content,
       payload: state.payload,
       renderFallback: function () {
-        return '';
+        return renderReadOnlyContentHtml(page);
       }
     });
   }
@@ -4358,7 +4366,7 @@
         renderFetchedPageStateIfChanged(previousSignature);
       }
     }
-    return window.__wizardryRefreshManagedNostrPage({
+    var refreshOptions = {
       slug: slug,
       pageSlug: requestedSlug,
       authSignature: window.__wizardryViewerAuthSignature,
@@ -4381,10 +4389,20 @@
           renderFetchedPageStateIfChanged(state.renderSignature);
         }
       },
+      consoleLabel: 'Blog page',
+      state: state,
+      contentNode: els.list,
+      fallbackText: 'Page content is still loading. The latest blog data was not available yet.',
+      rootNode: root,
+      markPageReady: true,
       onFinally: function () {
         loadDraftNoticeData();
       }
-    });
+    };
+    if (opts.deferRender) {
+      refreshOptions.notifyInitialContentPainted = false;
+    }
+    return window.__wizardryRefreshManagedNostrPageView(refreshOptions);
   }
 
   function applyOptimisticAdminFromAuthEvent(event) {
