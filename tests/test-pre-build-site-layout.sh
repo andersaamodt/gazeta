@@ -251,6 +251,10 @@ grep -Fq 'window.__wizardryNostrPageBootstrap' "$canonical_root/static/nostr-pag
   printf '%s\n' "contact bootstrap missing hydration payload" >&2
   exit 1
 }
+grep -Fq 'data-blog-slug="blog" data-page-type="blog" data-page-title="Blog"' "$canonical_root/pages/blog.md" || {
+  printf '%s\n' "blog page missing Lodestone-owned page-title root attribute after pre-build rewrite" >&2
+  exit 1
+}
 require_managed_page_title_shell "$canonical_root/pages/blog.md" "blog-page-title" "Blog" "blog-page-title-actions" "blog page missing hydration-matching title shell after pre-build rewrite" || {
   printf '%s\n' "blog page missing hydration-matching title shell after pre-build rewrite" >&2
   exit 1

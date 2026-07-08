@@ -275,11 +275,16 @@
     }).join(' ');
   }
 
+  function fallbackPageTitle() {
+    var rootTitle = root ? String(root.getAttribute('data-page-title') || '').trim() : '';
+    return rootTitle || titleizeSlug(slug);
+  }
+
   function normalizePageState(raw) {
     var src = raw || {};
     return {
       slug: String(src.slug || slug),
-      title: String(src.title || ''),
+      title: String(src.title || fallbackPageTitle()),
       content: String(src.content || ''),
       default_tag: String(src.default_tag || '').trim(),
       extras_after: String(src.extras_after || ''),
@@ -316,7 +321,7 @@
     if (state.payload && state.payload.state) {
       return normalizePageState(state.payload.state);
     }
-    return normalizePageState({ title: titleizeSlug(slug) });
+    return normalizePageState({ title: fallbackPageTitle() });
   }
 
   function isAdmin() {
@@ -337,7 +342,7 @@
       descriptionNode: els.description,
       titleStateOptions: {
         renderState: page,
-        fallbackTitleText: titleizeSlug(slug),
+        fallbackTitleText: fallbackPageTitle(),
         useFallbackForPageTitle: true
       },
       descriptionStateOptions: {
@@ -350,7 +355,7 @@
         renderState: page,
         rootNode: root,
         fallbackAttributeNames: ['data-page-title'],
-        fallbackText: titleizeSlug(slug),
+        fallbackText: fallbackPageTitle(),
         isAdmin: false,
         editMode: false
       }

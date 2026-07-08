@@ -667,6 +667,7 @@ assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'writing' 'blog prerender i
 assert_file_not_contains "$SITE_ROOT/site/pages/blog.md" 'data-post-path="posts/fixture-post.md""' 'blog prerender does not emit malformed post-path attributes in post cards'
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'class="tag blog-inline-tag is-active" data-inline-tag="writing" aria-pressed="true">writing</button>' 'blog prerender keeps the default tag visually active on post cards before hydration'
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'class="blog-filter-chip is-active" data-filter-group="tags" data-filter-value="writing" aria-pressed="true">writing</button>' 'blog prerender keeps the default tag visually active in the filter panel before hydration'
+assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'data-blog-slug="blog" data-page-type="blog" data-page-title="Blog"' 'blog prerender publishes the Lodestone-owned page title on the managed root shell'
 assert_managed_page_title_shell "$SITE_ROOT/site/pages/blog.md" "blog-page-title" "Blog" "blog-page-title-actions" 'blog prerender includes the hydration-matching shared title shell'
 assert_file_not_contains "$SITE_ROOT/site/pages/blog.md" 'Filtered Out Post' 'blog prerender applies default-tag filtering before hydration'
 assert_file_not_contains "$SITE_ROOT/site/static/nostr-page-bootstrap/blog.js" 'Filtered Out Post' 'blog bootstrap excludes posts outside the default tag'
@@ -812,7 +813,7 @@ if printf '%s\n' "$writing_body" | jq -e 'any(.bootstrap_posts[]?; .title == "Wr
 else
   fail 'index-backed Writing page payload filters bootstrap posts through the shared default-tag contract'
 fi
-assert_file_contains "$INDEX_SITE_ROOT/site/pages/index.md" 'data-blog-slug="index" data-page-type="blog"' 'index-backed Writing page prerender keeps the managed blog root identity'
+assert_file_contains "$INDEX_SITE_ROOT/site/pages/index.md" 'data-blog-slug="index" data-page-type="blog" data-page-title="Writing"' 'index-backed Writing page prerender keeps the managed blog root identity and publishes the Lodestone-owned page title'
 assert_managed_page_title_shell "$INDEX_SITE_ROOT/site/pages/index.md" "blog-page-title" "Writing" "blog-page-title-actions" 'index-backed Writing page prerender includes the hydration-matching shared title shell'
 assert_file_contains "$INDEX_SITE_ROOT/site/pages/index.md" 'Writing Fixture Post' 'index-backed Writing page prerender includes the filtered writing post card'
 assert_file_not_contains "$INDEX_SITE_ROOT/site/pages/index.md" 'data-post-path="posts/writing-post.md""' 'index-backed Writing page prerender does not emit malformed post-path attributes in post cards'

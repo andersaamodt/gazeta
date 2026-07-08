@@ -121,6 +121,11 @@ grep -Fq 'data-prerender-painted="true"' "$site_root/site/pages/blog.md" || {
   exit 1
 }
 
+grep -Fq 'data-blog-slug="blog" data-page-type="blog" data-page-title="Blog"' "$site_root/site/pages/blog.md" || {
+  printf '%s\n' "blog page missing Lodestone-owned page-title root attribute" >&2
+  exit 1
+}
+
 require_managed_page_title_shell "$site_root/site/pages/blog.md" "blog-page-title" "Blog" "blog-page-title-actions" "blog page missing hydration-matching prerendered title shell from lodestone render" || {
   printf '%s\n' "blog page missing hydration-matching prerendered title shell from lodestone render" >&2
   exit 1
@@ -252,7 +257,7 @@ title: Blog
 ---
 
 <lode-page>
-<section id="blog-page-root" class="blog-page" data-blog-slug={slug} data-page-type="blog" aria-live="polite"{@html prerender_attrs}>
+<section id="blog-page-root" class="blog-page" data-blog-slug={slug} data-page-type="blog" data-page-title={title} aria-live="polite"{@html prerender_attrs}>
 <div class="blog-main-column">
 <div class="list-page-head">
 <h1 id="blog-page-title" hidden></h1>
@@ -268,6 +273,11 @@ EOFBLOGSTALE
 printf '%s\n' 'console.log("stale blog page js");' > "$local_site_root/site/static/blog-page.js"
 
 WIZARDRY_SITE_NAME="$local_site_name" "$local_site_root/cgi/pre-build"
+
+grep -Fq 'data-blog-slug="blog" data-page-type="blog" data-page-title="Blog"' "$local_site_root/site/pages/blog.md" || {
+  printf '%s\n' "local-template build missing Lodestone-owned blog page-title root attribute" >&2
+  exit 1
+}
 
 require_managed_page_title_shell "$local_site_root/site/pages/blog.md" "blog-page-title" "Blog" "blog-page-title-actions" "local-template build still rendered a stale local blog head override instead of the repo template head" || {
   printf '%s\n' "local-template build still rendered a stale local blog head override instead of the repo template head" >&2
