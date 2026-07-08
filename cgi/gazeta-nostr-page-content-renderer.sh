@@ -37,6 +37,63 @@ blog_nostr_prerender_description() {
   blog_nostr_prerender_payload_input "$payload_json" | jq -r '(.state.description // .state.content // "") | tostring' 2>/dev/null || printf ''
 }
 
+blog_nostr_page_component_command_path() {
+  if [ -n "${SCRIPT_DIR:-}" ] && [ -x "$SCRIPT_DIR/gazeta-lodestone-components" ]; then
+    printf '%s\n' "$SCRIPT_DIR/gazeta-lodestone-components"
+    return 0
+  fi
+  if [ -n "${blog_site_root:-}" ] && [ -x "$blog_site_root/cgi/gazeta-lodestone-components" ]; then
+    printf '%s\n' "$blog_site_root/cgi/gazeta-lodestone-components"
+    return 0
+  fi
+  return 1
+}
+
+blog_nostr_page_render_component_html() {
+  component_name=${1-}
+  page_type=$(printf '%s' "${2-}" | tr '[:upper:]' '[:lower:]')
+  payload_json=${3-}
+  fallback_body=${4-}
+  [ -n "$component_name" ] || {
+    printf '%s' "$fallback_body"
+    return 0
+  }
+  component_command=$(blog_nostr_page_component_command_path 2>/dev/null || printf '')
+  [ -n "$component_command" ] || {
+    printf '%s' "$fallback_body"
+    return 0
+  }
+  payload_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-component-payload.XXXXXX")
+  printf '%s\n' "$payload_json" > "$payload_tmp"
+  prev_prerender_payload_file=${BLOG_NOSTR_PRERENDER_PAYLOAD_FILE-}
+  BLOG_NOSTR_PRERENDER_PAYLOAD_FILE=$payload_tmp
+  export BLOG_NOSTR_PRERENDER_PAYLOAD_FILE
+  component_payload=$(
+    jq -cn --arg name "$component_name" --arg page_type "$page_type" --arg body "$fallback_body" '{
+      name: $name,
+      attrs: { page_type: $page_type },
+      frontmatter: { page_type: $page_type },
+      body: $body
+    }' 2>/dev/null || printf ''
+  )
+  rendered_html=''
+  if [ -n "$component_payload" ]; then
+    rendered_html=$(printf '%s\n' "$component_payload" | "$component_command" 2>/dev/null || printf '')
+  fi
+  rm -f "$payload_tmp"
+  if [ -n "$prev_prerender_payload_file" ]; then
+    BLOG_NOSTR_PRERENDER_PAYLOAD_FILE=$prev_prerender_payload_file
+    export BLOG_NOSTR_PRERENDER_PAYLOAD_FILE
+  else
+    unset BLOG_NOSTR_PRERENDER_PAYLOAD_FILE
+  fi
+  if [ -n "$rendered_html" ]; then
+    printf '%s' "$rendered_html"
+    return 0
+  fi
+  printf '%s' "$fallback_body"
+}
+
 blog_nostr_prerender_inline_html_from_text() {
   inline_text=${1-}
   printf '%s\n' "$inline_text" | jq -Rrs '

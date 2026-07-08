@@ -479,26 +479,6 @@
     return 'repainted';
   }
 
-  function renderReadOnlyContentFromPrerender(options) {
-    var opts = options && typeof options === 'object' ? options : {};
-    var resolved = resolveReadOnlyContentFromPrerender({
-      payload: opts.payload,
-      name: opts.name,
-      allowPrerender: opts.allowPrerender
-    });
-    if (resolved && resolved.adopted) {
-      mountPrerenderHtmlFragment(opts.targetNode || null, opts.payload, String(opts.name || 'content'), opts.mountOptions);
-      if (typeof opts.afterAdopt === 'function') {
-        opts.afterAdopt();
-      }
-      return true;
-    }
-    if (typeof opts.renderFallback === 'function') {
-      opts.renderFallback();
-    }
-    return false;
-  }
-
   function renderResolvedReadOnlyContent(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var targetNode = opts.targetNode || null;
@@ -1400,7 +1380,6 @@
   window.__wizardryResolveReadOnlyContentFromPrerender = resolveReadOnlyContentFromPrerender;
   window.__wizardryEnsureMatchingStaticShell = ensureMatchingStaticShell;
   window.__wizardryReconcileAdoptedPrerenderRefresh = reconcileAdoptedPrerenderRefresh;
-  window.__wizardryRenderReadOnlyContentFromPrerender = renderReadOnlyContentFromPrerender;
   window.__wizardryRenderResolvedReadOnlyContent = renderResolvedReadOnlyContent;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
   window.__wizardryRenderSyncStatusPill = renderSyncStatusPill;
