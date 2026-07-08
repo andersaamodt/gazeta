@@ -721,39 +721,6 @@
     return result;
   }
 
-  function managedNavbarTitlePageActionOptions(options) {
-    var opts = options && typeof options === 'object' ? options : {};
-    return Object.assign(
-      managedNavbarTitleOptions({
-        configuredText: opts.configuredText,
-        payload: opts.payload,
-        renderState: opts.renderState,
-        rootNode: opts.rootNode,
-        fallbackAttributeNames: opts.fallbackAttributeNames,
-        fallbackText: opts.fallbackText,
-        isAdmin: opts.isAdmin,
-        editMode: opts.editMode,
-        titleNode: opts.titleNode,
-        editing: opts.editing,
-        inputValue: opts.inputValue,
-        labelText: opts.labelText,
-        inputAriaLabel: opts.inputAriaLabel,
-        editButtonClassName: opts.editButtonClassName,
-        saveButtonClassName: opts.saveButtonClassName,
-        saveDisabled: opts.saveDisabled,
-        selectOnFocus: opts.selectOnFocus
-      }),
-      {
-        state: opts.state,
-        payload: opts.payload,
-        rootNode: opts.rootNode || null,
-        slug: opts.slug,
-        isAdmin: opts.isAdmin,
-        renderHead: opts.renderHead
-      }
-    );
-  }
-
   function managedNavbarTitlePageOptions(options) {
     var opts = options && typeof options === 'object' ? options : {};
     return Object.assign(
@@ -1063,11 +1030,11 @@
   }
 
   function saveManagedNavbarTitleForPage(options) {
-    return saveManagedNavbarTitle(managedNavbarTitlePageActionOptions(options));
+    return saveManagedNavbarTitle(managedNavbarTitlePageOptions(options));
   }
 
   function startManagedNavbarTitleEditForPage(options) {
-    return startManagedNavbarTitleEdit(managedNavbarTitlePageActionOptions(options));
+    return startManagedNavbarTitleEdit(managedNavbarTitlePageOptions(options));
   }
 
   function handleManagedNavbarTitleAction(event, target, options) {
@@ -2654,14 +2621,11 @@
   window.__wizardryRemoveLegacyTitleBlock = removeLegacyTitleBlock;
   window.__wizardryRenderManagedPageHeadForPage = renderManagedPageHeadForPage;
   window.__wizardryRenderManagedPageHead = renderManagedPageHead;
-  window.__wizardryManagedNavbarTitlePageOptions = managedNavbarTitlePageOptions;
   window.__wizardryHandleManagedNavbarTitleAction = handleManagedNavbarTitleAction;
   window.__wizardryRenderManagedPayloadValidationSummary = renderManagedPayloadValidationSummary;
   window.__wizardryRenderManagedSaveStatus = renderManagedSaveStatus;
   window.__wizardryRenderManagedAdminActionBar = renderManagedAdminActionBar;
-  window.__wizardryStartManagedNavbarTitleEdit = startManagedNavbarTitleEdit;
   window.__wizardryStartManagedNavbarTitleEditForPage = startManagedNavbarTitleEditForPage;
-  window.__wizardrySaveManagedNavbarTitle = saveManagedNavbarTitle;
   window.__wizardrySaveManagedNavbarTitleForPage = saveManagedNavbarTitleForPage;
   window.__wizardryResolveRootAttributeFallbackText = resolveRootAttributeFallbackText;
   window.__wizardryResetManagedNavbarTitleState = resetManagedNavbarTitleState;

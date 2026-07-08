@@ -842,7 +842,7 @@
   }
 
   function saveNavbarTitle() {
-    return window.__wizardrySaveManagedNavbarTitleForPage(window.__wizardryManagedNavbarTitlePageOptions({
+    return window.__wizardrySaveManagedNavbarTitleForPage({
       configuredText: state.navTitle,
       renderState: getRenderState(),
       state: state,
@@ -853,11 +853,11 @@
       slug: slug,
       isAdmin: isAdmin,
       renderHead: renderHead
-    }));
+    });
   }
 
   function beginNavbarTitleEdit() {
-    return window.__wizardryStartManagedNavbarTitleEditForPage(window.__wizardryManagedNavbarTitlePageOptions({
+    return window.__wizardryStartManagedNavbarTitleEditForPage({
       configuredText: state.navTitle,
       renderState: getRenderState(),
       rootNode: root,
@@ -865,7 +865,7 @@
       fallbackText: fallbackPageTitle(),
       state: state,
       renderHead: renderHead
-    }));
+    });
   }
 
   function maybeSetMetricFromPayload() {
