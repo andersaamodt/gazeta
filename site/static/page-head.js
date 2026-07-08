@@ -1728,17 +1728,60 @@
     return nostrPublishDialogPromise;
   }
 
+  var managedMarkdownParserPromise = null;
+  var MANAGED_MARKDOWN_PARSER_SRC = 'https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js';
+
   function markedParserReady() {
     return !!(window.marked && typeof window.marked.parse === 'function' && typeof window.marked.parseInline === 'function');
   }
 
-  function scheduleMarkedUpgrade(upgradeState, onReady) {
+  function ensureManagedMarkdownParser() {
+    if (markedParserReady()) {
+      return Promise.resolve(true);
+    }
+    if (managedMarkdownParserPromise) {
+      return managedMarkdownParserPromise;
+    }
+    managedMarkdownParserPromise = new Promise(function (resolve) {
+      var script = document.querySelector('script[src="' + MANAGED_MARKDOWN_PARSER_SRC + '"]');
+      function finish(ok) {
+        if (!ok) {
+          managedMarkdownParserPromise = null;
+        }
+        resolve(ok);
+      }
+      function handleLoad() {
+        finish(markedParserReady());
+      }
+      function handleError() {
+        finish(false);
+      }
+      if (!script) {
+        script = document.createElement('script');
+        script.src = MANAGED_MARKDOWN_PARSER_SRC;
+        script.async = true;
+        script.setAttribute('data-managed-markdown-parser', 'true');
+      }
+      script.addEventListener('load', handleLoad, { once: true });
+      script.addEventListener('error', handleError, { once: true });
+      if (!script.parentNode) {
+        document.head.appendChild(script);
+      }
+    });
+    return managedMarkdownParserPromise;
+  }
+
+  function scheduleMarkedUpgrade(upgradeState, onReady, options) {
     var state = upgradeState && typeof upgradeState === 'object' ? upgradeState : null;
+    var opts = options && typeof options === 'object' ? options : {};
     if (!state || typeof onReady !== 'function' || markedParserReady()) {
       return false;
     }
     if (state.timer) {
       return false;
+    }
+    if (opts.loadParser) {
+      ensureManagedMarkdownParser();
     }
     state.attempts = 0;
     function pollForMarked() {
@@ -1768,7 +1811,7 @@
       return window.marked.parseInline(value);
     }
     if (opts.upgradeState && typeof opts.onUpgrade === 'function') {
-      scheduleMarkedUpgrade(opts.upgradeState, opts.onUpgrade);
+      scheduleMarkedUpgrade(opts.upgradeState, opts.onUpgrade, opts);
     }
     if (typeof opts.renderFallback === 'function') {
       return opts.renderFallback(value);
@@ -1821,7 +1864,7 @@
       return window.marked.parse(value);
     }
     if (opts.upgradeState && typeof opts.onUpgrade === 'function') {
-      scheduleMarkedUpgrade(opts.upgradeState, opts.onUpgrade);
+      scheduleMarkedUpgrade(opts.upgradeState, opts.onUpgrade, opts);
     }
     if (typeof opts.renderFallback === 'function') {
       return opts.renderFallback(value);
@@ -2643,6 +2686,7 @@
   window.__wizardryCanUseVisitorPrerenderReadOnly = canUseVisitorPrerenderReadOnly;
   window.__wizardryCanUsePayloadPrerenderReadOnly = canUsePayloadPrerenderReadOnly;
   window.__wizardryEnsureNostrPublishDialog = ensureNostrPublishDialog;
+  window.__wizardryEnsureManagedMarkdownParser = ensureManagedMarkdownParser;
   window.__wizardryRenderManagedMarkdownInline = renderManagedMarkdownInline;
   window.__wizardryRenderManagedMarkdownInlineLinkFallback = renderManagedMarkdownInlineLinkFallback;
   window.__wizardryRenderManagedMarkdownBlock = renderManagedMarkdownBlock;

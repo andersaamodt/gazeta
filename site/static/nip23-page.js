@@ -48,6 +48,9 @@
   };
   var BOOTSTRAP_CACHE_MAX_AGE_MS = 15000;
   var markedUpgradeState = { timer: 0, attempts: 0 };
+  if (window.__wizardryEnsureManagedMarkdownParser) {
+    window.__wizardryEnsureManagedMarkdownParser();
+  }
 
   function escapeHtml(text) {
     return String(text || '')
@@ -61,7 +64,8 @@
   function markdownBlock(md) {
     return window.__wizardryRenderManagedMarkdownBlock(window.__wizardryStripLegacyNostrSyncPills(md), {
       upgradeState: markedUpgradeState,
-      onUpgrade: renderAll
+      onUpgrade: renderAll,
+      loadParser: true
     });
   }
 

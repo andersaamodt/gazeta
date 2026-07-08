@@ -16,6 +16,9 @@
   var secureChatEmojiDatabase = null;
   var secureChatEmojiGroupsLoadPromise = null;
   var markedUpgradeState = { timer: 0, attempts: 0 };
+  if (window.__wizardryEnsureManagedMarkdownParser) {
+    window.__wizardryEnsureManagedMarkdownParser();
+  }
   var secureChatRecentEmojiLimit = 32;
   var videoChatWidgetBuildVersion = '20260525-soft-actions2';
   var secureChatEmojiSectionDefs = [
@@ -338,7 +341,8 @@
   function markdownBlock(md) {
     return window.__wizardryRenderManagedMarkdownBlock(window.__wizardryStripLegacyNostrSyncPills(md), {
       upgradeState: markedUpgradeState,
-      onUpgrade: renderAll
+      onUpgrade: renderAll,
+      loadParser: true
     });
   }
 
@@ -428,6 +432,7 @@
     return window.__wizardryRenderManagedMarkdownInline(md, {
       upgradeState: markedUpgradeState,
       onUpgrade: renderAll,
+      loadParser: true,
       renderFallback: escapeHtml
     });
   }

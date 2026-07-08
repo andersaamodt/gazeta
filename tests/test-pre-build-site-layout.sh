@@ -195,8 +195,8 @@ grep -Fq 'body { background: #fff; }' "$canonical_root/static/style.css" || {
   printf '%s\n' "missing generated contact page" >&2
   exit 1
 }
-grep -Fq 'https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js' "$canonical_root/pages/contact.md" || {
-  printf '%s\n' "contact page missing marked dependency after pre-build" >&2
+grep -Fq 'https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js' "$canonical_root/pages/contact.md" && {
+  printf '%s\n' "contact page still hardcodes the marked dependency after pre-build" >&2
   exit 1
 }
 grep -Fq '/static/simplex-web-transport.js' "$canonical_root/pages/contact.md" || {

@@ -40,6 +40,9 @@
   };
   var BOOTSTRAP_CACHE_MAX_AGE_MS = 15000;
   var markedUpgradeState = { timer: 0, attempts: 0 };
+  if (window.__wizardryEnsureManagedMarkdownParser) {
+    window.__wizardryEnsureManagedMarkdownParser();
+  }
 
   function isExpectedPayload(payload) {
     if (!payload || typeof payload !== 'object') {
@@ -118,6 +121,7 @@
     return window.__wizardryRenderManagedMarkdownInline(md, {
       upgradeState: markedUpgradeState,
       onUpgrade: renderAll,
+      loadParser: true,
       renderFallback: escapeHtml
     });
   }
@@ -125,7 +129,8 @@
   function markdownBlock(md) {
     return window.__wizardryRenderManagedMarkdownBlock(md, {
       upgradeState: markedUpgradeState,
-      onUpgrade: renderAll
+      onUpgrade: renderAll,
+      loadParser: true
     });
   }
 
