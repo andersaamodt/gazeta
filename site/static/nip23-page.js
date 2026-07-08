@@ -313,14 +313,10 @@
     if (!els.validation) {
       return;
     }
-    var v = (state.payload && state.payload.validation) ? state.payload.validation : {};
-    var errors = Array.isArray(v.errors) ? v.errors : [];
-    var warnings = Array.isArray(v.warnings) ? v.warnings : [];
-    window.__wizardryRenderManagedValidationSummary({
+    window.__wizardryRenderManagedPayloadValidationSummary({
       containerNode: els.validation,
-      visible: isAdmin(),
-      errors: errors,
-      warnings: warnings
+      payload: state.payload,
+      visible: isAdmin()
     });
   }
 

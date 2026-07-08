@@ -3644,26 +3644,11 @@
     if (!els.validation) {
       return;
     }
-    var v = (state.payload && state.payload.validation) ? state.payload.validation : {};
-    var errors = (Array.isArray(v.errors) ? v.errors : []).filter(function (msg) {
-      var text = String(msg || '').trim().toLowerCase();
-      if (!text) {
-        return false;
-      }
-      return !(/could not validate .*state/.test(text) || /validation .*temporarily unavailable/.test(text));
-    });
-    var warnings = (Array.isArray(v.warnings) ? v.warnings : []).filter(function (msg) {
-      var text = String(msg || '').trim().toLowerCase();
-      if (!text) {
-        return false;
-      }
-      return !(/could not validate .*state/.test(text) || /validation .*temporarily unavailable/.test(text));
-    });
-    window.__wizardryRenderManagedValidationSummary({
+    window.__wizardryRenderManagedPayloadValidationSummary({
       containerNode: els.validation,
+      payload: state.payload,
       visible: true,
-      errors: errors,
-      warnings: warnings
+      suppressTransientStateErrors: true
     });
   }
 

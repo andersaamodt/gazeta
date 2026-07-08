@@ -777,43 +777,12 @@
     if (!els.validation) {
       return;
     }
-    var validation = (state.payload && state.payload.validation) ? state.payload.validation : {};
-    var errors = (Array.isArray(validation.errors) ? validation.errors : []).filter(function (msg) {
-      var text = String(msg || '').trim().toLowerCase();
-      if (!text) {
-        return false;
-      }
-      return !(/could not validate .*state/.test(text) || /validation .*temporarily unavailable/.test(text));
+    window.__wizardryRenderManagedPayloadValidationSummary({
+      containerNode: els.validation,
+      payload: state.payload,
+      visible: isAdmin(),
+      suppressTransientStateErrors: true
     });
-    var warnings = (Array.isArray(validation.warnings) ? validation.warnings : []).filter(function (msg) {
-      var text = String(msg || '').trim().toLowerCase();
-      if (!text) {
-        return false;
-      }
-      return !(/could not validate .*state/.test(text) || /validation .*temporarily unavailable/.test(text));
-    });
-    if (!isAdmin() || (!errors.length && !warnings.length)) {
-      els.validation.hidden = true;
-      els.validation.innerHTML = '';
-      return;
-    }
-    var html = '';
-    if (errors.length) {
-      html += '<div class="list-validation-block is-error"><strong>Validation errors</strong><ul>';
-      errors.forEach(function (msg) {
-        html += '<li>' + escapeHtml(msg) + '</li>';
-      });
-      html += '</ul></div>';
-    }
-    if (warnings.length) {
-      html += '<div class="list-validation-block is-warn"><strong>Validation warnings</strong><ul>';
-      warnings.forEach(function (msg) {
-        html += '<li>' + escapeHtml(msg) + '</li>';
-      });
-      html += '</ul></div>';
-    }
-    els.validation.hidden = false;
-    els.validation.innerHTML = html;
   }
 
   function pageSettingsTags() {

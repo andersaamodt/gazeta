@@ -301,13 +301,11 @@
     if (!els.validation) {
       return;
     }
-    var v = (state.payload && state.payload.validation) ? state.payload.validation : {};
-    var errors = Array.isArray(v.errors) ? v.errors : [];
-    window.__wizardryRenderManagedValidationSummary({
+    window.__wizardryRenderManagedPayloadValidationSummary({
       containerNode: els.validation,
+      payload: state.payload,
       visible: isAdmin() && state.editMode,
-      errors: errors,
-      warnings: []
+      includeWarnings: false
     });
   }
 
@@ -372,13 +370,6 @@
       if (state.saveTimer) {
         clearTimeout(state.saveTimer);
         state.saveTimer = null;
-      }
-      var nonAdminActionsHost = document.getElementById('public-ranking-page-title-actions');
-      if (nonAdminActionsHost) {
-        nonAdminActionsHost.classList.add('public-ranking-sync-actions');
-        nonAdminActionsHost.innerHTML = window.__wizardrySyncStatusPillHtml(state.payload && state.payload.sync_status, {
-          messageVariant: 'local_source'
-        });
       }
       els.admin.hidden = true;
       els.admin.innerHTML = '';
