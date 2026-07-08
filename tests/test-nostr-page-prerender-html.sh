@@ -723,6 +723,8 @@ assert_file_contains "$SITE_ROOT/site/pages/projects.md" 'data-ranking-action="v
 assert_file_not_contains "$SITE_ROOT/site/static/nostr-page-bootstrap/projects.js" '"view_mode":"static-fallback"' 'public ranking bootstrap comes from the shared hydrated payload path'
 assert_prerender_fragment_contract "$SITE_ROOT/site/pages/projects.md" "$SITE_ROOT/site/static/nostr-page-bootstrap/projects.js" projects public-ranking-content public-ranking-description 'projects page'
 assert_file_contains "$ROOT_DIR/cgi/blog-public-ranking-common.sh" '.allow_signed_in_submissions == true' 'public ranking normalization maps legacy signed-in submissions flag to open mode'
+assert_file_contains "$SITE_ROOT/site/pages/overworld.md" 'data-page-slug="overworld" data-page-type="overworld" data-page-title="Overworld"' 'Overworld prerender publishes the Lodestone-owned page title on the managed root shell'
+assert_managed_page_title_shell "$SITE_ROOT/site/pages/overworld.md" "overworld-page-title" "Overworld" "overworld-page-title-actions" 'Overworld prerender includes the hydration-matching shared title shell'
 assert_file_contains "$SITE_ROOT/site/pages/overworld.md" 'overworld-godot-frame-wrap' 'Overworld prerender includes stable play surface'
 assert_file_contains "$SITE_ROOT/site/pages/overworld.md" 'Download (6.8 MB)' 'Overworld prerender includes splash controls'
 
