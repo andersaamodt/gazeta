@@ -4061,10 +4061,17 @@
     var stableSimplexInfo = document.querySelector('#secure-chat-thread > .secure-chat-simplex-info');
     var inlineMode = isAdmin() && state.editMode;
     root.classList.toggle('contact-edit-mode', inlineMode);
-    var prerenderContentFragment = canUsePrerenderReadOnlyView()
-      ? window.__wizardryReadPrerenderHtmlFragment(state.payload, 'content')
-      : null;
-    var nextContentHtml = prerenderContentFragment ? prerenderContentFragment.html : renderContentHtml();
+    var resolvedContent = window.__wizardryResolveReadOnlyContentFromPrerender({
+      payload: state.payload,
+      allowPrerender: canUsePrerenderReadOnlyView(),
+      renderFallback: function () {
+        return {
+          html: renderContentHtml(),
+          hidden: false
+        };
+      }
+    });
+    var nextContentHtml = resolvedContent ? resolvedContent.html : '';
     var nextContentSignature = stableSecureChatContentHtml(nextContentHtml);
     if (state.lastContentHtml === nextContentSignature) {
       restoreSecureChatRenderState(secureChatRenderState);
@@ -4072,7 +4079,7 @@
       return;
     }
     state.lastContentHtml = nextContentSignature;
-    els.content.hidden = prerenderContentFragment ? prerenderContentFragment.hidden : false;
+    els.content.hidden = !!(resolvedContent && resolvedContent.hidden);
     els.content.innerHTML = nextContentHtml;
     restoreVideoChatWidgetHost(videoChatHost);
     reconnectVideoChatAutoMountAfterRender(videoChatObserverPaused);

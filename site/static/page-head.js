@@ -238,11 +238,52 @@
     }
   }
 
+  function resolveReadOnlyContentFromPrerender(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    if (opts.allowPrerender !== false) {
+      var fragment = readPrerenderHtmlFragment(opts.payload, String(opts.name || 'content'));
+      if (fragment) {
+        return {
+          adopted: true,
+          html: fragment.html,
+          hidden: fragment.hidden
+        };
+      }
+    }
+    if (typeof opts.renderFallback === 'function') {
+      var fallback = opts.renderFallback();
+      if (fallback && typeof fallback === 'object') {
+        return {
+          adopted: false,
+          html: String(fallback.html || ''),
+          hidden: !!fallback.hidden
+        };
+      }
+      if (typeof fallback === 'string') {
+        return {
+          adopted: false,
+          html: fallback,
+          hidden: false
+        };
+      }
+      return {
+        adopted: false,
+        html: '',
+        hidden: false
+      };
+    }
+    return null;
+  }
+
   function renderReadOnlyContentFromPrerender(options) {
     var opts = options && typeof options === 'object' ? options : {};
-    var adopted = opts.allowPrerender !== false &&
+    var resolved = resolveReadOnlyContentFromPrerender({
+      payload: opts.payload,
+      name: opts.name,
+      allowPrerender: opts.allowPrerender
+    });
+    if (resolved && resolved.adopted) {
       mountPrerenderHtmlFragment(opts.targetNode || null, opts.payload, String(opts.name || 'content'), opts.mountOptions);
-    if (adopted) {
       if (typeof opts.afterAdopt === 'function') {
         opts.afterAdopt();
       }
@@ -1001,6 +1042,7 @@
   window.__wizardryRenderReadOnlyPrerenderDescriptionShell = renderReadOnlyPrerenderDescriptionShell;
   window.__wizardryRenderReadOnlyDescriptionShellFromPrerender = renderReadOnlyDescriptionShellFromPrerender;
   window.__wizardryRenderReadOnlyPageHead = renderReadOnlyPageHead;
+  window.__wizardryResolveReadOnlyContentFromPrerender = resolveReadOnlyContentFromPrerender;
   window.__wizardryRenderReadOnlyContentFromPrerender = renderReadOnlyContentFromPrerender;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
   window.__wizardryRenderSyncStatusPill = renderSyncStatusPill;
