@@ -13,8 +13,6 @@
   var KEY_NIP46_PAIR = 'nostr_nip46_pair_v1';
   var NAV_TOAST_KEY = 'wizardry_blog_nav_toast_v1';
   var NOSTR_PAGE_BOOTSTRAP_CACHE_PREFIX = 'nostr_page_bootstrap_v1:';
-  var ARCHIVE_CACHE_KEY = 'wizardry_archive_html_v1';
-  var TAGS_CACHE_KEY = 'wizardry_tags_html_v1';
   var SITE_TITLE_CACHE_KEY = 'wizardry_blog_site_title_v1';
   var APPEND_SITE_TITLE_CACHE_KEY = 'wizardry_blog_append_site_title_to_page_title_v1';
   var THEME_CACHE_KEY = 'wizardry_blog_theme_v1';
@@ -525,41 +523,6 @@
       });
   }
 
-  function prefetchStaticPageHtmlForSlug(slug) {
-    var safeSlug = String(slug || '').trim();
-    var endpoint = '';
-    var cacheKey = '';
-    if (safeSlug === 'archive') {
-      endpoint = '/cgi/blog-archive';
-      cacheKey = ARCHIVE_CACHE_KEY;
-    } else if (safeSlug === 'tags') {
-      endpoint = '/cgi/blog-tags';
-      cacheKey = TAGS_CACHE_KEY;
-    } else {
-      return;
-    }
-    if (state.prefetchedNostrPageSlugs['static:' + safeSlug]) {
-      return;
-    }
-    state.prefetchedNostrPageSlugs['static:' + safeSlug] = true;
-    fetch(endpoint, { credentials: 'same-origin' })
-      .then(function (res) { return res.text(); })
-      .then(function (html) {
-        var text = String(html || '');
-        if (!text) {
-          return;
-        }
-        try {
-          localStorage.setItem(cacheKey, text);
-        } catch (_err) {
-          // Ignore cache write failures.
-        }
-      })
-      .catch(function () {
-        // Ignore prefetch failures.
-      });
-  }
-
   function bindNavbarNostrPagePrefetch() {
     var navCenter = document.querySelector('.nav-center');
     if (!navCenter) {
@@ -578,7 +541,6 @@
       if (!slug) {
         return;
       }
-      prefetchStaticPageHtmlForSlug(slug);
       prefetchNostrPageBootstrap(slug);
     }
 
@@ -4171,8 +4133,6 @@
     placeNavOverflowMenuWithPageLinks();
 
     renderComposeIcon(readComposeIconIndex());
-    prefetchStaticPageHtmlForSlug('archive');
-    prefetchStaticPageHtmlForSlug('tags');
     highlightCurrentPage();
     applyInitialHighlightInSyncWithContent();
     if (!optimisticIsLoggedIn) {

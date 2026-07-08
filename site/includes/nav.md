@@ -13,6 +13,8 @@
       document.getElementById('public-ranking-root') ||
       document.getElementById('overworld-page-root') ||
       document.getElementById('contact-page-root') ||
+      document.getElementById('archive-page-root') ||
+      document.getElementById('tags-page-root') ||
       document.getElementById('search-page-root') ||
       document.getElementById('admin-panel')
     );
@@ -741,6 +743,8 @@
       document.getElementById('public-ranking-root') ||
       document.getElementById('overworld-page-root') ||
       document.getElementById('contact-page-root') ||
+      document.getElementById('archive-page-root') ||
+      document.getElementById('tags-page-root') ||
       document.getElementById('search-page-root') ||
       document.getElementById('admin-panel')
     );

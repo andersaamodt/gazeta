@@ -154,6 +154,14 @@ EOFSTALE
   printf '%s\n' "missing generated blog page" >&2
   exit 1
 }
+[ -f "$canonical_root/pages/archive.md" ] || {
+  printf '%s\n' "missing generated archive page" >&2
+  exit 1
+}
+[ -f "$canonical_root/pages/tags.md" ] || {
+  printf '%s\n' "missing generated tags page" >&2
+  exit 1
+}
 [ ! -e "$site_root/build/contact/index.html" ] || {
   printf '%s\n' "stale clean-url contact build copy was not pruned" >&2
   exit 1
@@ -253,6 +261,22 @@ grep -Fq 'window.__wizardryNostrPageBootstrap' "$canonical_root/static/nostr-pag
 }
 grep -Fq 'data-blog-slug="blog" data-page-type="blog" data-page-title="Blog"' "$canonical_root/pages/blog.md" || {
   printf '%s\n' "blog page missing Lodestone-owned page-title root attribute after pre-build" >&2
+  exit 1
+}
+grep -Fq 'id="archive-page-root"' "$canonical_root/pages/archive.md" || {
+  printf '%s\n' "archive page missing generated Lodestone shell" >&2
+  exit 1
+}
+grep -Fq '/static/archive-page.js' "$canonical_root/pages/archive.md" || {
+  printf '%s\n' "archive page missing runtime loader script" >&2
+  exit 1
+}
+grep -Fq 'id="tags-page-root"' "$canonical_root/pages/tags.md" || {
+  printf '%s\n' "tags page missing generated Lodestone shell" >&2
+  exit 1
+}
+grep -Fq '/static/tags-page.js' "$canonical_root/pages/tags.md" || {
+  printf '%s\n' "tags page missing runtime loader script" >&2
   exit 1
 }
 grep -Fq '<h1 id="blog-page-title"><span class="list-page-title-text">Blog</span><span id="blog-page-title-static-actions" class="list-page-title-static-actions"><button id="blog-filter-toggle"' "$canonical_root/pages/blog.md" &&

@@ -100,6 +100,8 @@ for stone_rel in \
   checkout.stone.html \
   embed/video-chat.stone.html \
   login-security.stone.html \
+  archive.stone.html \
+  tags.stone.html \
   search.stone.html
 do
   stone_file="$site_root/site/lodestone/pages/$stone_rel"
@@ -109,7 +111,7 @@ do
   }
 done
 
-for page in blog contact values projects overworld reading-list software; do
+for page in archive blog contact tags values projects overworld reading-list software; do
   grep -Fq 'data-lodestone-root="page"' "$site_root/site/pages/$page.md" || {
     printf '%s\n' "$page page missing lodestone render root" >&2
     exit 1
