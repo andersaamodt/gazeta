@@ -671,6 +671,71 @@
     return html;
   }
 
+  function renderManagedAdminActionBar(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var adminNode = opts.adminNode || null;
+    var actionsHostNode = opts.actionsHostNode || null;
+    if (actionsHostNode && opts.clearActionsHost !== false) {
+      actionsHostNode.innerHTML = '';
+    }
+    if (opts.isAdmin !== true) {
+      if (typeof opts.onHide === 'function') {
+        opts.onHide();
+      }
+      if (adminNode) {
+        adminNode.hidden = true;
+        adminNode.innerHTML = '';
+      }
+      return false;
+    }
+    var payload = opts.payload && typeof opts.payload === 'object' ? opts.payload : {};
+    var hasCanonical = !!payload.canonical_exists;
+    var hasDraftChanges = !!payload.draft_differs;
+    var canRevert = Object.prototype.hasOwnProperty.call(opts, 'canRevert')
+      ? opts.canRevert === true
+      : (hasCanonical && hasDraftChanges);
+    var html = renderManagedAdminActionBarHtml({
+      saveIndicatorVisible: opts.saveIndicatorVisible === true,
+      saveStatusId: opts.saveStatusId,
+      saveStatus: opts.saveStatus,
+      showRevert: Object.prototype.hasOwnProperty.call(opts, 'showRevert')
+        ? opts.showRevert === true
+        : opts.editMode === true,
+      revertActionAttrName: opts.revertActionAttrName,
+      revertAction: opts.revertAction,
+      revertTitle: String(
+        opts.revertTitle || (
+          canRevert
+            ? 'Revert draft to Nostr version'
+            : (hasCanonical ? 'No local changes to revert' : 'No Nostr version found')
+        )
+      ),
+      canRevert: canRevert,
+      syncStatus: payload.sync_status,
+      syncOptions: opts.syncOptions,
+      showPublish: Object.prototype.hasOwnProperty.call(opts, 'showPublish')
+        ? opts.showPublish === true
+        : (opts.editMode === true || hasDraftChanges),
+      publishActionAttrName: opts.publishActionAttrName,
+      publishAction: opts.publishAction,
+      publishLabel: opts.publishLabel,
+      editActionAttrName: opts.editActionAttrName,
+      editAction: opts.editAction,
+      editMode: opts.editMode === true,
+      editLabel: opts.editLabel,
+      doneLabel: opts.doneLabel,
+      primaryButtonClassName: opts.primaryButtonClassName
+    });
+    if (actionsHostNode) {
+      actionsHostNode.innerHTML = html;
+    }
+    if (adminNode) {
+      adminNode.hidden = true;
+      adminNode.innerHTML = '';
+    }
+    return true;
+  }
+
   function startManagedNavbarTitleEdit(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var state = opts.state && typeof opts.state === 'object' ? opts.state : null;
@@ -1811,6 +1876,7 @@
   window.__wizardryRenderManagedPayloadValidationSummary = renderManagedPayloadValidationSummary;
   window.__wizardryRenderManagedSaveStatus = renderManagedSaveStatus;
   window.__wizardryRenderManagedAdminActionBarHtml = renderManagedAdminActionBarHtml;
+  window.__wizardryRenderManagedAdminActionBar = renderManagedAdminActionBar;
   window.__wizardryStartManagedNavbarTitleEdit = startManagedNavbarTitleEdit;
   window.__wizardrySaveManagedNavbarTitle = saveManagedNavbarTitle;
   window.__wizardryRenderResolvedReadOnlyContent = renderResolvedReadOnlyContent;

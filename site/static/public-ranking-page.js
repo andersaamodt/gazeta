@@ -354,45 +354,29 @@
     if (!els.admin) {
       return;
     }
-    if (!isAdmin()) {
-      if (state.saveTimer) {
-        clearTimeout(state.saveTimer);
-        state.saveTimer = null;
-      }
-      els.admin.hidden = true;
-      els.admin.innerHTML = '';
-      return;
-    }
-    var hasCanonical = !!(state.payload && state.payload.canonical_exists);
-    var hasDraftChanges = !!(state.payload && state.payload.draft_differs);
-    var showRevert = !!state.editMode;
-    var showPublish = !!state.editMode || hasDraftChanges;
-    var canRevert = hasCanonical && hasDraftChanges;
-    var revertTitle = canRevert ? 'Revert draft to Nostr version' : (hasCanonical ? 'No local changes to revert' : 'No Nostr version found');
-    var actionsHost = document.getElementById('public-ranking-page-title-actions');
-    var html = window.__wizardryRenderManagedAdminActionBarHtml({
+    window.__wizardryRenderManagedAdminActionBar({
+      adminNode: els.admin,
+      actionsHostNode: document.getElementById('public-ranking-page-title-actions'),
+      isAdmin: isAdmin(),
+      payload: state.payload,
       saveIndicatorVisible: state.saveIndicatorVisible,
       saveStatusId: 'public-ranking-save-status',
       saveStatus: state.saveStatus,
-      showRevert: showRevert,
+      editMode: state.editMode,
       revertActionAttrName: 'data-ranking-action',
       revertAction: 'revert',
-      revertTitle: revertTitle,
-      canRevert: canRevert,
-      syncStatus: state.payload && state.payload.sync_status,
       syncOptions: { messageVariant: 'local_source' },
-      showPublish: showPublish,
       publishActionAttrName: 'data-ranking-action',
       publishAction: 'publish',
       editActionAttrName: 'data-ranking-action',
       editAction: 'toggle-edit',
-      editMode: state.editMode
+      onHide: function () {
+        if (state.saveTimer) {
+          clearTimeout(state.saveTimer);
+          state.saveTimer = null;
+        }
+      }
     });
-    if (actionsHost) {
-      actionsHost.innerHTML = html;
-    }
-    els.admin.hidden = true;
-    els.admin.innerHTML = '';
     setSaveStatus(state.saveStatus, state.saveError);
   }
 

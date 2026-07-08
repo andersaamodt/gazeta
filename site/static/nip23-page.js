@@ -350,43 +350,23 @@
     if (!els.admin) {
       return;
     }
-    if (!isAdmin()) {
-      els.admin.hidden = true;
-      els.admin.innerHTML = '';
-      return;
-    }
-
-    var hasCanonical = !!state.payload.canonical_exists;
-    var hasDraftChanges = !!state.payload.draft_differs;
-    var showRevert = !!state.editMode;
-    var showPublish = !!state.editMode || hasDraftChanges;
-    var canRevert = hasCanonical && hasDraftChanges;
-    var revertTitle = canRevert ? 'Revert draft to Nostr version' : (hasCanonical ? 'No local changes to revert' : 'No Nostr version found');
-
-    var actionsHost = document.getElementById('nip23-page-title-actions');
-    var html = window.__wizardryRenderManagedAdminActionBarHtml({
+    window.__wizardryRenderManagedAdminActionBar({
+      adminNode: els.admin,
+      actionsHostNode: document.getElementById('nip23-page-title-actions'),
+      isAdmin: isAdmin(),
+      payload: state.payload,
       saveIndicatorVisible: state.saveIndicatorVisible,
       saveStatusId: 'nip23-admin-save-status',
       saveStatus: state.saveStatus,
-      showRevert: showRevert,
+      editMode: state.editMode,
       revertActionAttrName: 'data-nip23-action',
       revertAction: 'revert',
-      revertTitle: revertTitle,
-      canRevert: canRevert,
-      syncStatus: state.payload && state.payload.sync_status,
       syncOptions: { messageVariant: 'local_source' },
-      showPublish: showPublish,
       publishActionAttrName: 'data-nip23-action',
       publishAction: 'publish',
       editActionAttrName: 'data-nip23-action',
-      editAction: 'toggle-edit',
-      editMode: state.editMode
+      editAction: 'toggle-edit'
     });
-    if (actionsHost) {
-      actionsHost.innerHTML = html;
-    }
-    els.admin.hidden = true;
-    els.admin.innerHTML = '';
   }
 
   function renderProductCard(s) {
