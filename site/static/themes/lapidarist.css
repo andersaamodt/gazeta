@@ -895,11 +895,10 @@ input[type="reset"]:focus-visible:not(:disabled),
   transform: none !important;
 }
 
-#blog-page-title .blog-title-action-bar {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.34rem;
-  flex-wrap: nowrap;
+#blog-page-title .list-page-title-static-actions {
+  flex: 0 0 auto;
+  width: auto;
+  white-space: nowrap;
 }
 
 #blog-page-title .blog-filter-toggle {
@@ -1389,7 +1388,7 @@ html body :is(
   .blog-compose-camera-capture,
   .compose-media-btn,
   .secure-chat-login-btn,
-  #blog-page-title .list-page-title-actions .blog-filter-toggle
+  #blog-page-title .list-page-title-static-actions .blog-filter-toggle
 ):not(.blog-compose-fab) {
   appearance: none !important;
   -moz-appearance: none !important;
@@ -1436,7 +1435,7 @@ html body :is(
   .blog-compose-camera-capture,
   .compose-media-btn,
   .secure-chat-login-btn,
-  #blog-page-title .list-page-title-actions .blog-filter-toggle
+  #blog-page-title .list-page-title-static-actions .blog-filter-toggle
 ):not(.blog-compose-fab):hover:not(:disabled),
 html body :is(
   #list-page-title .list-page-title-actions .list-admin-primary-btn,
@@ -1452,9 +1451,9 @@ html body :is(
   .blog-compose-camera-capture,
   .compose-media-btn,
   .secure-chat-login-btn,
-  #blog-page-title .list-page-title-actions .blog-filter-toggle
+  #blog-page-title .list-page-title-static-actions .blog-filter-toggle
 ):not(.blog-compose-fab):focus-visible:not(:disabled),
-html body #blog-page-title .list-page-title-actions .blog-filter-toggle[aria-expanded="true"] {
+html body #blog-page-title .list-page-title-static-actions .blog-filter-toggle[aria-expanded="true"] {
   background: var(--action-soft-hover-bg, #f0d7c5) !important;
   background-color: var(--action-soft-hover-bg, #f0d7c5) !important;
   background-image: none !important;
@@ -1478,7 +1477,7 @@ html body :is(
   .blog-compose-camera-capture,
   .compose-media-btn,
   .secure-chat-login-btn,
-  #blog-page-title .list-page-title-actions .blog-filter-toggle
+  #blog-page-title .list-page-title-static-actions .blog-filter-toggle
 ):not(.blog-compose-fab):active:not(:disabled) {
   background: var(--action-soft-active-bg, #e8c9b3) !important;
   background-color: var(--action-soft-active-bg, #e8c9b3) !important;
@@ -1574,15 +1573,15 @@ html body :is(
 }
 
 .list-page-title-actions .list-admin-primary-btn::-moz-focus-inner,
-.list-page-title-actions .blog-filter-toggle::-moz-focus-inner {
+.list-page-title-static-actions .blog-filter-toggle::-moz-focus-inner {
   border: 0 !important;
   padding: 0 !important;
 }
 
-html body #blog-page-title .list-page-title-actions button.blog-filter-toggle,
-html body #blog-page-title .list-page-title-actions button.blog-filter-toggle:hover,
-html body #blog-page-title .list-page-title-actions button.blog-filter-toggle:focus-visible,
-html body #blog-page-title .list-page-title-actions button.blog-filter-toggle[aria-expanded="true"] {
+html body #blog-page-title .list-page-title-static-actions button.blog-filter-toggle,
+html body #blog-page-title .list-page-title-static-actions button.blog-filter-toggle:hover,
+html body #blog-page-title .list-page-title-static-actions button.blog-filter-toggle:focus-visible,
+html body #blog-page-title .list-page-title-static-actions button.blog-filter-toggle[aria-expanded="true"] {
   appearance: none !important;
   -moz-appearance: none !important;
   -webkit-appearance: none !important;

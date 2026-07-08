@@ -365,23 +365,6 @@
     });
   }
 
-  function filterColumnHost() {
-    if (!root) {
-      return;
-    }
-    return root.querySelector('.blog-filter-column');
-  }
-
-  function syncFilterTogglePlacement() {
-    if (!els.toggle) {
-      return;
-    }
-    var filterCol = filterColumnHost();
-    if (filterCol && els.toggle.parentNode !== filterCol) {
-      filterCol.appendChild(els.toggle);
-    }
-  }
-
   function clearDraftNoticeState() {
     state.draftNotice.loading = false;
     state.draftNotice.loaded = false;
@@ -735,31 +718,6 @@
     }, 240);
   }
 
-  function syncBlogTitleActionBar() {
-    var actionsHost = document.getElementById('blog-page-title-actions');
-    if (!actionsHost) {
-      syncFilterTogglePlacement();
-      return null;
-    }
-    var controls = actionsHost.querySelector('.list-page-admin-bar');
-    if (!(controls instanceof HTMLElement)) {
-      syncFilterTogglePlacement();
-      return null;
-    }
-    controls.classList.add('blog-title-action-bar');
-    if (els.toggle) {
-      var editButton = controls.querySelector('[data-blog-action="toggle-page-settings"]');
-      if (els.toggle.parentNode !== controls) {
-        if (editButton && editButton.parentNode === controls) {
-          controls.insertBefore(els.toggle, editButton);
-        } else {
-          controls.appendChild(els.toggle);
-        }
-      }
-    }
-    return controls;
-  }
-
   function renderAdmin() {
     if (!els.admin) {
       return;
@@ -776,13 +734,11 @@
       editAction: 'toggle-page-settings',
       onHide: function () {
         state.pageSettingsOpen = false;
-        syncFilterTogglePlacement();
       }
     });
     if (!isAdmin()) {
       return;
     }
-    syncBlogTitleActionBar();
     var page = getRenderState();
     var selectedTag = String(page.default_tag || '').trim();
     var tags = pageSettingsTags();
@@ -5022,8 +4978,6 @@
   });
 
   window.__wizardryRemoveLegacyTitleBlock(root);
-  syncFilterTogglePlacement();
-
   (function bootstrapOnce() {
     hydrateDraftNoticeFromCache();
     window.__wizardryRenderManagedNostrBootstrapSources({

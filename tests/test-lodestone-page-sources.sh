@@ -126,8 +126,13 @@ grep -Fq 'data-blog-slug="blog" data-page-type="blog" data-page-title="Blog"' "$
   exit 1
 }
 
-require_managed_page_title_shell "$site_root/site/pages/blog.md" "blog-page-title" "Blog" "blog-page-title-actions" "blog page missing hydration-matching prerendered title shell from lodestone render" || {
-  printf '%s\n' "blog page missing hydration-matching prerendered title shell from lodestone render" >&2
+grep -Fq '<h1 id="blog-page-title"><span class="list-page-title-text">Blog</span><span id="blog-page-title-static-actions" class="list-page-title-static-actions"><button id="blog-filter-toggle"' "$site_root/site/pages/blog.md" || {
+  printf '%s\n' "blog page missing Lodestone-owned static filter title-action host" >&2
+  exit 1
+}
+
+grep -Fq '<span id="blog-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' "$site_root/site/pages/blog.md" || {
+  printf '%s\n' "blog page missing hydration-matching dynamic title-action and nav-title hosts from lodestone render" >&2
   exit 1
 }
 
@@ -327,7 +332,8 @@ grep -Fq 'data-blog-slug="blog" data-page-type="blog" data-page-title="Blog"' "$
   exit 1
 }
 
-require_managed_page_title_shell "$local_site_root/site/pages/blog.md" "blog-page-title" "Blog" "blog-page-title-actions" "local-template build still rendered a stale local blog head override instead of the repo template head" || {
+grep -Fq '<span id="blog-page-title-static-actions" class="list-page-title-static-actions"><button id="blog-filter-toggle"' "$local_site_root/site/pages/blog.md" &&
+  grep -Fq '<span id="blog-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' "$local_site_root/site/pages/blog.md" || {
   printf '%s\n' "local-template build still rendered a stale local blog head override instead of the repo template head" >&2
   exit 1
 }

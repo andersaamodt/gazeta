@@ -255,7 +255,8 @@ grep -Fq 'data-blog-slug="blog" data-page-type="blog" data-page-title="Blog"' "$
   printf '%s\n' "blog page missing Lodestone-owned page-title root attribute after pre-build" >&2
   exit 1
 }
-require_managed_page_title_shell "$canonical_root/pages/blog.md" "blog-page-title" "Blog" "blog-page-title-actions" "blog page missing hydration-matching title shell after pre-build" || {
+grep -Fq '<h1 id="blog-page-title"><span class="list-page-title-text">Blog</span><span id="blog-page-title-static-actions" class="list-page-title-static-actions"><button id="blog-filter-toggle"' "$canonical_root/pages/blog.md" &&
+  grep -Fq '<span id="blog-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' "$canonical_root/pages/blog.md" || {
   printf '%s\n' "blog page missing hydration-matching title shell after pre-build" >&2
   exit 1
 }
