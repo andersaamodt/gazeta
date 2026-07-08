@@ -41,13 +41,6 @@
     setInputValue(document.querySelector('.nav-search input[name="q"]'), query);
   }
 
-  function renderSearchLoadFallback(err) {
-    if (err && window.console && typeof window.console.warn === 'function') {
-      window.console.warn('Search page request failed:', err);
-    }
-    content.innerHTML = '<p class="placeholder">Search results are still loading. The latest search data was not available yet.</p>';
-  }
-
   function focusNavbarSearchInput() {
     var input = document.querySelector('.nav-search input[name="q"]');
     if (!(input instanceof HTMLInputElement)) {
@@ -91,23 +84,18 @@
 
     content.innerHTML = '<p class="placeholder">Searching for <strong>' + escapeHtml(query) + '</strong>...</p>';
 
-    fetch('/cgi/blog-search?q=' + encodeURIComponent(query), {
-      credentials: 'same-origin'
-    })
-      .then(function (res) { return res.text(); })
-      .then(function (html) {
-        if (!String(html || '').trim()) {
-          throw new Error('Search returned no content.');
-        }
-        content.innerHTML = html;
-      })
-      .catch(function (err) {
-        renderSearchLoadFallback(err);
-      })
-      .finally(function () {
+    window.__wizardryLoadPublicPageFragment({
+      endpoint: '/cgi/blog-search?q=' + encodeURIComponent(query),
+      contentNode: content,
+      slug: 'search',
+      markPageReady: true,
+      consoleLabel: 'Search page',
+      fallbackText: 'Search results are still loading. The latest search data was not available yet.',
+      emptyMessage: 'Search returned no content.',
+      afterRender: function () {
         focusPageSearchInput();
-        markInitialContentPainted();
-      });
+      }
+    });
   }
 
   if (form instanceof HTMLFormElement && pageInput instanceof HTMLInputElement) {

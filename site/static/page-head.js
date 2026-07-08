@@ -1901,6 +1901,57 @@
     return notifyInitialContentPainted(opts.slug || '', opts);
   }
 
+  function loadPublicPageFragment(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var endpoint = String(opts.endpoint || '').trim();
+    var contentNode = opts.contentNode || null;
+    if (!endpoint || !contentNode) {
+      return Promise.resolve(false);
+    }
+
+    var requestOptions = Object.assign({
+      cache: 'no-store',
+      credentials: 'same-origin'
+    }, opts.requestOptions || {});
+    var didNotify = false;
+
+    function notifyReady() {
+      if (didNotify) {
+        return false;
+      }
+      didNotify = true;
+      return notifyInitialContentPainted(opts.slug || '', opts);
+    }
+
+    return fetch(endpoint, requestOptions)
+      .then(function (res) { return res.text(); })
+      .then(function (html) {
+        var rendered = String(html || '').trim();
+        if (!rendered) {
+          throw new Error(String(opts.emptyMessage || 'Public page fragment returned no content.'));
+        }
+        if (typeof opts.renderFragment === 'function') {
+          opts.renderFragment(rendered);
+        } else {
+          contentNode.innerHTML = rendered;
+        }
+        if (typeof opts.afterRender === 'function') {
+          opts.afterRender(rendered);
+        }
+        notifyReady();
+        return true;
+      })
+      .catch(function (err) {
+        if (typeof opts.afterError === 'function') {
+          opts.afterError(err);
+        }
+        if (renderLoadFallback(err, opts)) {
+          didNotify = true;
+        }
+        return false;
+      });
+  }
+
   function renderManagedNostrBootstrapPayload(payload, options) {
     var opts = options && typeof options === 'object' ? options : {};
     var isExpectedPayload = typeof opts.isExpectedPayload === 'function' ? opts.isExpectedPayload : null;
@@ -2491,6 +2542,7 @@
   window.__wizardryNotifyInitialContentPainted = notifyInitialContentPainted;
   window.__wizardryNotifyCurrentManagedPageReady = notifyCurrentManagedPageReady;
   window.__wizardryRenderLoadFallback = renderLoadFallback;
+  window.__wizardryLoadPublicPageFragment = loadPublicPageFragment;
   window.__wizardryRenderManagedNostrPageBootstrapPayload = renderManagedNostrPageBootstrapPayload;
   window.__wizardryRemoveLegacyTitleBlock = removeLegacyTitleBlock;
   window.__wizardryRenderManagedPageHeadForPage = renderManagedPageHeadForPage;

@@ -11,19 +11,6 @@
     return;
   }
 
-  function markInitialContentPainted() {
-    window.__wizardryNotifyInitialContentPainted('tags', {
-      markPageReady: true
-    });
-  }
-
-  function renderLoadFallback(err) {
-    if (err && window.console && typeof window.console.warn === 'function') {
-      window.console.warn('Tags page request failed:', err);
-    }
-    content.innerHTML = '<p class="placeholder">Tags are still loading. The latest tag data was not available yet.</p>';
-  }
-
   function decodeHashValue(value) {
     var text = String(value || '').replace(/^#/, '').trim();
     if (!text) {
@@ -145,22 +132,16 @@
 
   window.addEventListener('hashchange', applyTagSelection);
 
-  fetch('/cgi/blog-tags', {
-    cache: 'no-store',
-    credentials: 'same-origin'
-  })
-    .then(function (res) { return res.text(); })
-    .then(function (html) {
-      if (!String(html || '').trim()) {
-        throw new Error('Tags returned no content.');
-      }
-      content.innerHTML = html;
+  window.__wizardryLoadPublicPageFragment({
+    endpoint: '/cgi/blog-tags',
+    contentNode: content,
+    slug: 'tags',
+    markPageReady: true,
+    consoleLabel: 'Tags page',
+    fallbackText: 'Tags are still loading. The latest tag data was not available yet.',
+    emptyMessage: 'Tags returned no content.',
+    afterRender: function () {
       applyTagSelection();
-    })
-    .catch(function (err) {
-      renderLoadFallback(err);
-    })
-    .finally(function () {
-      markInitialContentPainted();
-    });
+    }
+  });
 })();
