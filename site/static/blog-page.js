@@ -4026,12 +4026,14 @@
     if (!els.content) {
       return;
     }
-    window.__wizardryRenderReadOnlyContentFromPrerender({
+    window.__wizardryRenderResolvedReadOnlyContent({
       targetNode: els.content,
       payload: state.payload,
       renderFallback: function () {
-        els.content.hidden = false;
-        els.content.innerHTML = '';
+        return {
+          html: '',
+          hidden: false
+        };
       }
     });
   }

@@ -644,12 +644,14 @@
       return;
     }
 
-    window.__wizardryRenderReadOnlyContentFromPrerender({
+    window.__wizardryRenderResolvedReadOnlyContent({
       targetNode: els.content,
       payload: state.payload,
       renderFallback: function () {
-        els.content.innerHTML = '';
-        els.content.hidden = false;
+        return {
+          html: '',
+          hidden: false
+        };
       }
     });
   }

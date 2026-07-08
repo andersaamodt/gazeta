@@ -336,6 +336,38 @@
     return false;
   }
 
+  function renderResolvedReadOnlyContent(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var targetNode = opts.targetNode || null;
+    var resolved = resolveReadOnlyContentFromPrerender({
+      payload: opts.payload,
+      name: opts.name,
+      allowPrerender: opts.allowPrerender,
+      renderFallback: opts.renderFallback
+    });
+    if (!resolved || !targetNode) {
+      return resolved;
+    }
+    if (resolved.adopted) {
+      mountPrerenderHtmlFragment(targetNode, opts.payload, String(opts.name || 'content'), opts.mountOptions);
+      if (typeof opts.afterAdopt === 'function') {
+        opts.afterAdopt(resolved);
+      }
+    } else {
+      var mountOptions = opts.mountOptions && typeof opts.mountOptions === 'object' ? opts.mountOptions : {};
+      if (typeof mountOptions.applyHtml === 'function') {
+        mountOptions.applyHtml(resolved.html);
+      } else {
+        targetNode.innerHTML = resolved.html;
+      }
+      targetNode.hidden = !!resolved.hidden;
+    }
+    if (typeof opts.afterRender === 'function') {
+      opts.afterRender(resolved);
+    }
+    return resolved;
+  }
+
   function escapeHtml(value) {
     return String(value || '')
       .replace(/&/g, '&amp;')
@@ -1104,6 +1136,7 @@
   window.__wizardryEnsureMatchingStaticShell = ensureMatchingStaticShell;
   window.__wizardryReconcileAdoptedPrerenderRefresh = reconcileAdoptedPrerenderRefresh;
   window.__wizardryRenderReadOnlyContentFromPrerender = renderReadOnlyContentFromPrerender;
+  window.__wizardryRenderResolvedReadOnlyContent = renderResolvedReadOnlyContent;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
   window.__wizardryRenderSyncStatusPill = renderSyncStatusPill;
   window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;

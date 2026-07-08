@@ -3737,17 +3737,26 @@
       if (fullEditMode) {
         replaceListContentHtml(renderInlineEditor([]) + afterContent);
       } else {
-        var adoptedEmptyPrerenderContent = window.__wizardryRenderReadOnlyContentFromPrerender({
+        var emptyContent = window.__wizardryRenderResolvedReadOnlyContent({
           targetNode: els.content,
           payload: state.payload,
           allowPrerender: usePrerenderReadOnly,
+          renderFallback: function () {
+            return {
+              html: renderPublicListSubmissionForm(s) + '<p class="list-page-empty-state">No content yet.</p>' + afterContent,
+              hidden: false
+            };
+          },
           mountOptions: {
             applyHtml: replaceListContentHtml
+          },
+          afterAdopt: function () {
+            initializePrerenderMarkerFiltersFromPayload();
+            refreshProductCartButtons();
           }
         });
-        if (!adoptedEmptyPrerenderContent) {
-          els.content.hidden = false;
-          replaceListContentHtml(renderPublicListSubmissionForm(s) + '<p class="list-page-empty-state">No content yet.</p>' + afterContent);
+        if (!emptyContent || !emptyContent.adopted) {
+          refreshProductCartButtons();
         }
       }
       renderAdmin();
@@ -3761,26 +3770,31 @@
       return;
     }
 
-    var adoptedPrerenderContent = window.__wizardryRenderReadOnlyContentFromPrerender({
+    var readOnlyContent = window.__wizardryRenderResolvedReadOnlyContent({
       targetNode: els.content,
       payload: state.payload,
       allowPrerender: usePrerenderReadOnly,
+      renderFallback: function () {
+        return {
+          html: renderPublicListSubmissionForm(s) + renderGroupByReadOnly(elements.filter(function (el) {
+            return isEntryType(String(el && el.type || 'entry'));
+          }), s.group_by, currentReadViewMode(s), !!s.show_marker_filters, !!s.show_markers, !!s.alphabetize_markers, s.default_markers) + afterContent,
+          hidden: false
+        };
+      },
       mountOptions: {
         applyHtml: replaceListContentHtml
+      },
+      afterAdopt: function () {
+        initializePrerenderMarkerFiltersFromPayload();
+        refreshProductCartButtons();
       }
     });
-    if (adoptedPrerenderContent) {
-      initializePrerenderMarkerFiltersFromPayload();
-      refreshProductCartButtons();
+    if (readOnlyContent && readOnlyContent.adopted) {
       renderAdmin();
       return;
     }
 
-    var readViewMode = currentReadViewMode(s);
-    els.content.hidden = false;
-    replaceListContentHtml(renderPublicListSubmissionForm(s) + renderGroupByReadOnly(elements.filter(function (el) {
-      return isEntryType(String(el && el.type || 'entry'));
-    }), s.group_by, readViewMode, !!s.show_marker_filters, !!s.show_markers, !!s.alphabetize_markers, s.default_markers) + afterContent);
     refreshProductCartButtons();
     renderAdmin();
   }
