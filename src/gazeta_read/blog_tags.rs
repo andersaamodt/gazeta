@@ -1,19 +1,9 @@
-use crate::gazeta_read::{
-    html_escape, public_posts::public_posts_catalog_value, CgiResponse, ReadError, Result,
-};
+use crate::gazeta_read::{html_escape, public_posts::load_public_posts, CgiResponse, Result};
 use crate::public_post::PublicPost;
-use serde_json::Value;
 use std::collections::HashMap;
 
 pub(crate) fn blog_tags() -> Result<CgiResponse> {
-    let catalog = public_posts_catalog_value()?;
-    let posts_json = catalog
-        .get("posts")
-        .and_then(Value::as_array)
-        .ok_or_else(|| {
-            ReadError::new("catalog_invalid", "Gazeta public posts catalog is invalid.")
-        })?;
-    let posts: Vec<PublicPost> = posts_json.iter().filter_map(PublicPost::from_value).collect();
+    let posts = load_public_posts()?;
     Ok(CgiResponse::html(render_tags(&posts)))
 }
 

@@ -3,6 +3,7 @@ mod admin_security;
 mod config_kv;
 mod markdown_content;
 mod public_post;
+mod public_posts_catalog;
 mod runtime_types;
 mod site_runtime;
 mod urlcodec;

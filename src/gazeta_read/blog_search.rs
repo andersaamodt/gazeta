@@ -1,11 +1,11 @@
 use crate::gazeta_read::{
-    html_escape, public_posts::public_posts_catalog_value, read_json_file, CgiResponse, ReadError,
-    Result, SitePaths,
+    html_escape,
+    public_posts::{load_public_posts, public_posts_by_source_path, public_posts_by_url},
+    read_json_file, CgiResponse, ReadError, Result, SitePaths,
 };
 use crate::public_post::PublicPost;
 use crate::urlcodec::query_param as query_param_value;
 use serde_json::Value;
-use std::collections::HashMap;
 use std::path::Path;
 
 pub(crate) fn blog_search() -> Result<CgiResponse> {
@@ -15,31 +15,9 @@ pub(crate) fn blog_search() -> Result<CgiResponse> {
     }
 
     let entries = search_index_entries()?;
-    let posts = public_posts_catalog_value()?
-        .get("posts")
-        .and_then(Value::as_array)
-        .map(|rows| {
-            rows.iter()
-                .filter_map(PublicPost::from_value)
-                .collect::<Vec<_>>()
-        })
-        .ok_or_else(|| {
-            ReadError::new("catalog_invalid", "Gazeta public posts catalog is invalid.")
-        })?;
-    let posts_by_source_path: HashMap<String, &PublicPost> = posts
-        .iter()
-        .filter_map(|post| {
-            let source_path = post.source_path.trim().to_string();
-            (!source_path.is_empty()).then_some((source_path, post))
-        })
-        .collect();
-    let posts_by_url: HashMap<String, &PublicPost> = posts
-        .iter()
-        .filter_map(|post| {
-            let url = post.url.trim().to_string();
-            (!url.is_empty()).then_some((url, post))
-        })
-        .collect();
+    let posts = load_public_posts()?;
+    let posts_by_source_path = public_posts_by_source_path(&posts);
+    let posts_by_url = public_posts_by_url(&posts);
     let query_lc = query.to_ascii_lowercase();
     let matches: Vec<&PublicPost> = entries
         .iter()
@@ -65,10 +43,6 @@ fn search_index_entries() -> Result<Vec<SearchIndexEntry>> {
     let paths = SitePaths::from_env()?;
     let static_index = paths.generated_static_dir().join("search-index.json");
     let cache_index = paths.state_dir.join("search-index-cache.json");
-    if let Some(entries) = read_entries(&static_index).or_else(|| read_entries(&cache_index)) {
-        return Ok(entries);
-    }
-
     read_entries(&static_index)
         .or_else(|| read_entries(&cache_index))
         .ok_or_else(|| {

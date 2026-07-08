@@ -1,6 +1,7 @@
 use crate::action_registry::{action_allowed, RuntimeDomain};
 use crate::markdown_content::front_matter_value;
 use crate::public_post::PublicPost;
+use crate::public_posts_catalog::load_public_posts as load_catalog_public_posts;
 pub use crate::runtime_types::CgiResponse;
 use crate::runtime_types::RuntimeError;
 use crate::site_runtime::{
@@ -233,23 +234,12 @@ fn comments_for_address(paths: &SitePaths, address: &str) -> Vec<Value> {
 }
 
 fn public_posts(paths: &SitePaths) -> Result<Vec<PublicPost>> {
-    let catalog = read_json_object(&paths.public_posts_catalog_static())
-        .or_else(|| read_json_object(&paths.public_posts_catalog_cache()))
-        .ok_or_else(|| {
-            ReadError::new(
-                "catalog_missing",
-                "Gazeta public posts catalog is not available.",
-            )
-        })?;
-    let posts_json = catalog
-        .get("posts")
-        .and_then(Value::as_array)
-        .cloned()
-        .ok_or_else(|| ReadError::new("catalog_invalid", "Gazeta public posts catalog is invalid."))?;
-    Ok(posts_json
-        .iter()
-        .filter_map(PublicPost::from_value)
-        .collect())
+    load_catalog_public_posts(
+        &paths.public_posts_catalog_static(),
+        &paths.public_posts_catalog_cache(),
+        read_json_object,
+        "Gazeta public posts catalog is not available.",
+    )
 }
 
 fn context_post_json(paths: &SitePaths, post: &PublicPost) -> Value {
