@@ -68,7 +68,8 @@
 
   function renderSyncStatusPill() {
     const payload = bootstrapPayload();
-    window.__wizardryRenderReadOnlyPageHead({
+    window.__wizardryRenderManagedPageHead({
+      isAdmin: false,
       pageTitle: 'Overworld',
       titleNode: document.getElementById('overworld-page-title'),
       titleText: 'Overworld',

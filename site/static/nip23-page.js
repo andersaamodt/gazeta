@@ -380,7 +380,8 @@
 
   function renderHead() {
     var s = getRenderState();
-    window.__wizardryRenderReadOnlyPageHead({
+    window.__wizardryRenderManagedPageHead({
+      isAdmin: false,
       pageTitle: s && s.title ? String(s.title) : null,
       titleNode: els.title,
       titleText: String(s.title || 'Untitled'),

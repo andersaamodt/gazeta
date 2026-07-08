@@ -458,7 +458,8 @@
   function renderHead() {
     var page = getRenderState();
     var title = String(page.title || '').trim() || titleizeSlug(slug);
-    window.__wizardryRenderReadOnlyPageHead({
+    window.__wizardryRenderManagedPageHead({
+      isAdmin: false,
       pageTitle: title,
       titleNode: els.title,
       titleText: title,
