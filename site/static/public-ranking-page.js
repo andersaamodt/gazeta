@@ -249,19 +249,7 @@
     state.saveStatus = next;
     state.saveError = String(errorMessage || '');
     var node = document.getElementById('public-ranking-save-status');
-    if (!node) {
-      return;
-    }
-    node.classList.toggle('is-error', next === 'error');
-    if (next === 'saving') {
-      node.innerHTML = '<span class="save-spinner" aria-hidden="true"></span>Saving...';
-      return;
-    }
-    if (next === 'error') {
-      node.textContent = 'Save failed';
-      return;
-    }
-    node.textContent = 'Saved';
+    window.__wizardryRenderManagedSaveStatus(node, next);
   }
 
   function queueAutosave(delayMs) {
@@ -315,21 +303,12 @@
     }
     var v = (state.payload && state.payload.validation) ? state.payload.validation : {};
     var errors = Array.isArray(v.errors) ? v.errors : [];
-    if (!isAdmin() || !state.editMode || !errors.length) {
-      els.validation.hidden = true;
-      els.validation.innerHTML = '';
-      return;
-    }
-    var html = '';
-    if (errors.length) {
-      html += '<div class="list-validation-block is-error"><strong>Validation errors</strong><ul>';
-      errors.forEach(function (msg) {
-        html += '<li>' + escapeHtml(msg) + '</li>';
-      });
-      html += '</ul></div>';
-    }
-    els.validation.hidden = false;
-    els.validation.innerHTML = html;
+    window.__wizardryRenderManagedValidationSummary({
+      containerNode: els.validation,
+      visible: isAdmin() && state.editMode,
+      errors: errors,
+      warnings: []
+    });
   }
 
   function renderHead() {

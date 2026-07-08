@@ -1519,19 +1519,7 @@
     state.saveStatus = next;
     state.saveError = String(errorMessage || '');
     var node = document.getElementById('list-admin-save-status');
-    if (!node) {
-      return;
-    }
-    node.classList.toggle('is-error', next === 'error');
-    if (next === 'saving') {
-      node.innerHTML = '<span class="save-spinner" aria-hidden="true"></span>Saving...';
-      return;
-    }
-    if (next === 'error') {
-      node.textContent = 'Save failed';
-      return;
-    }
-    node.textContent = 'Saved';
+    window.__wizardryRenderManagedSaveStatus(node, next);
   }
 
   function queueAutosave(delayMs) {
@@ -3671,28 +3659,12 @@
       }
       return !(/could not validate .*state/.test(text) || /validation .*temporarily unavailable/.test(text));
     });
-    if (!errors.length && !warnings.length) {
-      els.validation.hidden = true;
-      els.validation.innerHTML = '';
-      return;
-    }
-    var html = '';
-    if (errors.length) {
-      html += '<div class="list-validation-block is-error"><strong>Validation errors</strong><ul>';
-      errors.forEach(function (msg) {
-        html += '<li>' + escapeHtml(msg) + '</li>';
-      });
-      html += '</ul></div>';
-    }
-    if (warnings.length) {
-      html += '<div class="list-validation-block is-warn"><strong>Validation warnings</strong><ul>';
-      warnings.forEach(function (msg) {
-        html += '<li>' + escapeHtml(msg) + '</li>';
-      });
-      html += '</ul></div>';
-    }
-    els.validation.hidden = false;
-    els.validation.innerHTML = html;
+    window.__wizardryRenderManagedValidationSummary({
+      containerNode: els.validation,
+      visible: true,
+      errors: errors,
+      warnings: warnings
+    });
   }
 
   function renderAdmin() {

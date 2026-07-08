@@ -488,6 +488,58 @@
     return current;
   }
 
+  function renderManagedValidationSummary(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var containerNode = opts.containerNode || null;
+    if (!containerNode) {
+      return false;
+    }
+    var visible = opts.visible === true;
+    var errors = Array.isArray(opts.errors) ? opts.errors : [];
+    var warnings = Array.isArray(opts.warnings) ? opts.warnings : [];
+    if (!visible || (!errors.length && !warnings.length)) {
+      containerNode.hidden = true;
+      containerNode.innerHTML = '';
+      return false;
+    }
+    var html = '';
+    if (errors.length) {
+      html += '<div class="list-validation-block is-error"><strong>Validation errors</strong><ul>';
+      errors.forEach(function (msg) {
+        html += '<li>' + escapeHtml(msg) + '</li>';
+      });
+      html += '</ul></div>';
+    }
+    if (warnings.length) {
+      html += '<div class="list-validation-block is-warn"><strong>Validation warnings</strong><ul>';
+      warnings.forEach(function (msg) {
+        html += '<li>' + escapeHtml(msg) + '</li>';
+      });
+      html += '</ul></div>';
+    }
+    containerNode.hidden = false;
+    containerNode.innerHTML = html;
+    return true;
+  }
+
+  function renderManagedSaveStatus(node, status) {
+    if (!node) {
+      return false;
+    }
+    var nextStatus = String(status || '').trim();
+    node.classList.toggle('is-error', nextStatus === 'error');
+    if (nextStatus === 'saving') {
+      node.innerHTML = '<span class="save-spinner" aria-hidden="true"></span>Saving...';
+      return true;
+    }
+    if (nextStatus === 'error') {
+      node.textContent = 'Save failed';
+      return true;
+    }
+    node.textContent = 'Saved';
+    return true;
+  }
+
   function startManagedNavbarTitleEdit(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var state = opts.state && typeof opts.state === 'object' ? opts.state : null;
@@ -1628,6 +1680,8 @@
   window.__wizardryRenderManagedNavbarTitleRow = renderManagedNavbarTitleRow;
   window.__wizardryResolveManagedNavbarTitle = resolveManagedNavbarTitle;
   window.__wizardryRenderManagedNavbarTitleState = renderManagedNavbarTitleState;
+  window.__wizardryRenderManagedValidationSummary = renderManagedValidationSummary;
+  window.__wizardryRenderManagedSaveStatus = renderManagedSaveStatus;
   window.__wizardryStartManagedNavbarTitleEdit = startManagedNavbarTitleEdit;
   window.__wizardrySaveManagedNavbarTitle = saveManagedNavbarTitle;
   window.__wizardryRenderResolvedReadOnlyContent = renderResolvedReadOnlyContent;
