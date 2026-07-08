@@ -197,8 +197,8 @@ case "$index_output" in
   *) fail 'CGI blog index distinguishes link-share cards as off-site links linked by the post author' ;;
 esac
 case "$index_output" in
-  *'<a href="https://links.example.com/articles/2026/06/a-very-long-path-that-should-keep-its-ending-when-displayed?with=query#final-section">Useful linked page</a>'*) pass ;;
-  *) fail 'CGI blog index preserves markdown summary links as anchors' ;;
+  *'<a class="post-offsite-url" href="https://links.example.com/articles/2026/06/a-very-long-path-that-should-keep-its-ending-when-displayed?with=query#final-section"'*) pass ;;
+  *) fail 'CGI blog index exposes the canonical shared off-site link note URL anchor' ;;
 esac
 case "$(blog_markdown_block_html '[unsafe](javascript:alert)')" in
   *'href="javascript:'*) fail 'markdown summary renderer rejects unsafe javascript hrefs' ;;

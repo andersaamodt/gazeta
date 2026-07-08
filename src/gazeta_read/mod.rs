@@ -16,7 +16,7 @@ mod site_paths;
 pub use self::error::{ReadError, Result};
 pub use self::response::CgiResponse;
 
-pub(crate) use self::html::{html_escape, markdown_block_html};
+pub(crate) use self::html::html_escape;
 pub(crate) use self::json_io::{read_json_file, write_json_atomic};
 pub(crate) use self::site_paths::SitePaths;
 
