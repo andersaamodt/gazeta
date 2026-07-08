@@ -493,6 +493,8 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/page-head.js" 'window.__wizar
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/page-head.js" 'window.__wizardryFocusEditableNavbarTitleInput' 'shared page-head utility no longer exports the lower-level editable navbar-title focus helper directly'
 assert_file_contains "$SITE_SOURCE_ROOT/static/page-head.js" 'function titleActionsHostHtml(titleNode, options) {' 'shared page-head utility derives editable title action-host markup from the Lodestone-owned shell instead of making each page script restate it'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/page-head.js" 'opts.actionsHtml' 'shared page-head utility no longer carries a dead custom title-actions-shell HTML override path'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/page-head.js" 'opts.actionsId' 'shared page-head utility no longer lets page scripts redefine Lodestone-owned title-action ids'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/page-head.js" 'opts.actionsClassName' 'shared page-head utility no longer lets page scripts redefine Lodestone-owned title-action classes'
 assert_file_contains "$SITE_SOURCE_ROOT/static/page-head.js" 'function resolveManagedNavbarTitleHost(options) {' 'shared page-head utility owns navbar-title host placement instead of page scripts creating that mount ad hoc'
 assert_file_contains "$SITE_SOURCE_ROOT/static/page-head.js" 'window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;' 'shared page-head utility exports the canonical sync-status pill renderer'
 assert_file_contains "$SITE_SOURCE_ROOT/static/page-head.js" 'window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;' 'shared page-head utility exports the canonical legacy sync-pill stripper'

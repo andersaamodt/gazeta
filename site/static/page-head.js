@@ -100,8 +100,8 @@
     }
     var opts = options && typeof options === 'object' ? options : {};
     var existingActions = titleNode.querySelector('.list-page-title-actions');
-    var actionsId = String(opts.actionsId || (existingActions && existingActions.id) || '').trim();
-    var actionsClassName = String(opts.actionsClassName || (existingActions && existingActions.className) || 'list-page-title-actions').trim() || 'list-page-title-actions';
+    var actionsId = String(existingActions && existingActions.id || '').trim();
+    var actionsClassName = String(existingActions && existingActions.className || 'list-page-title-actions').trim() || 'list-page-title-actions';
     var fallbackText = String(opts.fallbackText || '').trim();
     var text = titleNode.querySelector('.list-page-title-text');
     var actions = actionsId ? document.getElementById(actionsId) : existingActions;
@@ -147,12 +147,11 @@
   }
 
   function titleActionsHostHtml(titleNode, options) {
-    var opts = options && typeof options === 'object' ? options : {};
     var existingActions = titleNode && titleNode.querySelector
       ? titleNode.querySelector('.list-page-title-actions')
       : null;
-    var actionsId = String(opts.actionsId || (existingActions && existingActions.id) || '').trim();
-    var actionsClassName = String(opts.actionsClassName || (existingActions && existingActions.className) || 'list-page-title-actions').trim() || 'list-page-title-actions';
+    var actionsId = String(existingActions && existingActions.id || '').trim();
+    var actionsClassName = String(existingActions && existingActions.className || 'list-page-title-actions').trim() || 'list-page-title-actions';
     return '<span' +
       (actionsId ? ' id="' + escapeHtml(actionsId) + '"' : '') +
       ' class="' + escapeHtml(actionsClassName) + '"></span>';
@@ -188,7 +187,7 @@
     if (titleNode && opts.unhide !== false) {
       titleNode.hidden = false;
     }
-    var syncTarget = opts.syncTarget || opts.actionsId || (shell && shell.actions ? shell.actions : null);
+    var syncTarget = opts.syncTarget || (shell && shell.actions ? shell.actions : null);
     if (syncTarget) {
       renderSyncStatusPill(syncTarget, syncStatus, opts.syncOptions);
     }
