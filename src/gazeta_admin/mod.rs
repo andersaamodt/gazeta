@@ -606,7 +606,7 @@ fn blog_publish_nostr_page() -> Result<Value> {
         })
         .transpose()?
         .unwrap_or_default();
-    let response = run_publish_nostr_page_bridge(
+    let response = run_publish_nostr_page_adapter(
         &[raw_slug, preview_only, event_json],
         &[
             ("BLOG_SESSION_USERNAME", session.username),
@@ -619,7 +619,7 @@ fn blog_publish_nostr_page() -> Result<Value> {
 
 fn blog_payments() -> Result<Value> {
     let request = RequestParams::from_env_and_stdin();
-    let response = run_payments_bridge(&request)
+    let response = run_payments_adapter(&request)
         .map_err(|message| AdminError::new("payments_failed", message))?;
     Ok(response)
 }
@@ -2721,7 +2721,7 @@ fn run_blog_lib_function(function: &str, args: &[String]) -> std::result::Result
     run_shell_function(&["cgi/blog-lib.sh"], function, args, &[])
 }
 
-fn run_publish_nostr_page_bridge(
+fn run_publish_nostr_page_adapter(
     args: &[String],
     envs: &[(&str, String)],
 ) -> std::result::Result<Value, String> {
@@ -2769,7 +2769,7 @@ fn run_shell_function(
     }
 }
 
-fn run_payments_bridge(request: &RequestParams) -> std::result::Result<Value, String> {
+fn run_payments_adapter(request: &RequestParams) -> std::result::Result<Value, String> {
     let repo_root = gazeta_repo_root();
     let method = env::var("REQUEST_METHOD").unwrap_or_else(|_| "GET".to_string());
     let content_type = env::var("CONTENT_TYPE").unwrap_or_default();

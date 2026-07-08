@@ -442,8 +442,6 @@ jq -cn \
     }
   }' > "$response_tmp"
 response_json=$(cat "$response_tmp")
-response_json=$(blog_nostr_page_attach_prerender_projection "$response_json" "$page_type")
-response_signature=$(blog_nostr_prerender_signature "$response_json")
-printf '%s\n' "$response_json" | jq -c --arg signature "$response_signature" '. + {prerender_signature: $signature}'
+blog_nostr_page_finalize_prerender_payload "$response_json" "$page_type"
 rm -f "$state_tmp" "$canonical_state_tmp" "$canonical_event_tmp" "$sync_status_tmp" "$zap_config_tmp" "$validation_tmp" "$response_tmp"
 printf '\n'

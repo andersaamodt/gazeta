@@ -291,7 +291,7 @@ case "$page_type" in
     ;;
 esac
 
-jq -cn \
+response_json=$(jq -cn \
   --arg slug "$page_slug" \
   --arg page_type "$page_type" \
   --argjson state "$enriched" \
@@ -307,5 +307,6 @@ jq -cn \
       can_publish: $validation.can_publish
     },
     message: "Draft saved."
-  }'
+  }')
+blog_nostr_page_finalize_prerender_payload "$response_json" "$page_type"
 printf '\n'

@@ -233,8 +233,6 @@ write_bootstrap_js() {
   [ -n "$slug" ] || return 1
   payload_json=${2-}
   [ -n "$payload_json" ] || return 1
-  signature=$(blog_nostr_prerender_signature "$payload_json")
-  payload_json=$(printf '%s\n' "$payload_json" | jq -c --arg signature "$signature" '. + {prerender_signature: $signature}' 2>/dev/null || printf '%s\n' "$payload_json")
 
   js_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-bootstrap-js.XXXXXX")
   {
@@ -433,7 +431,7 @@ printf '%s\n' "$cfg_json" | jq -r '.pages[]? | [(.slug // ""), (.type // "list")
       payload_json=$(printf '%s\n' "$payload_json" | jq -c --argjson posts "$posts_json" '. + {bootstrap_posts: ($posts.posts // [])}' 2>/dev/null || printf '%s\n' "$payload_json")
     fi
   fi
-  payload_json=$(blog_nostr_page_attach_prerender_projection "$payload_json" "$page_type")
+  payload_json=$(blog_nostr_page_finalize_prerender_payload "$payload_json" "$page_type")
   blog_nostr_page_write_prerendered_source "$slug" "$page_type" "$payload_json" >/dev/null 2>&1 || true
   write_bootstrap_js "$slug" "$payload_json" || true
 done

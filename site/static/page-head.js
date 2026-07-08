@@ -1394,6 +1394,7 @@
   window.__wizardryScheduleMarkedUpgrade = scheduleMarkedUpgrade;
   window.__wizardryRenderManagedNostrBootstrapSources = renderManagedNostrBootstrapSources;
   window.__wizardryRefreshManagedNostrPage = refreshManagedNostrPage;
+  window.__wizardryReadPrerenderHtmlFragment = readPrerenderHtmlFragment;
   window.__wizardryCommitManagedPagePayload = commitManagedPagePayload;
   window.__wizardryPostFormJson = postFormJson;
 

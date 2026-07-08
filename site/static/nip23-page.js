@@ -512,23 +512,40 @@
     return html;
   }
 
+  function renderLocalPreviewHtml(s) {
+    var outroHtml = '';
+    if (String(s.extras_after || '').trim()) {
+      outroHtml = '<section class="nostr-page-extra nostr-page-extra-after">' +
+        markdownBlock(s.extras_after || '') +
+        '</section>';
+    }
+    var hasMainContent = String(s.content || '').trim().length > 0;
+    var readOnlyMain = hasMainContent
+      ? '<article class="list-entry-markdown">' + markdownBlock(s.content || '') + '</article>'
+      : '<p class="list-page-empty-state">No content yet.</p>';
+    return renderProductCard(s) + readOnlyMain + outroHtml;
+  }
+
+  function currentPayloadPreviewHtml(renderState) {
+    if (!state.payload || !window.__wizardryReadPrerenderHtmlFragment) {
+      return '';
+    }
+    var payloadState = normalizeDraftState((state.payload && state.payload.state) || { title: '', content: '' });
+    var currentState = normalizeDraftState(renderState || getRenderState());
+    if (JSON.stringify(payloadState) !== JSON.stringify(currentState)) {
+      return '';
+    }
+    var fragment = window.__wizardryReadPrerenderHtmlFragment(state.payload, 'content');
+    return fragment && !fragment.hidden ? String(fragment.html || '') : '';
+  }
+
   function renderContent() {
     if (!els.content) {
       return;
     }
     var s = getRenderState();
     if (isAdmin() && state.editMode) {
-      var outroHtml = '';
-      if (String(s.extras_after || '').trim()) {
-        outroHtml = '<section class="nostr-page-extra nostr-page-extra-after">' +
-          markdownBlock(s.extras_after || '') +
-          '</section>';
-      }
-      var hasMainContent = String(s.content || '').trim().length > 0;
-      var readOnlyMain = hasMainContent
-        ? '<article class="list-entry-markdown">' + markdownBlock(s.content || '') + '</article>'
-        : '<p class="list-page-empty-state">No content yet.</p>';
-      var productCardHtml = renderProductCard(s);
+      var previewHtml = currentPayloadPreviewHtml(s) || renderLocalPreviewHtml(s);
       var html = '';
       html += '<section class="nostr-page-extras-editor" aria-label="Page editor">';
       html += '<h3 class="nostr-page-extras-heading">Edit page</h3>';
@@ -548,9 +565,7 @@
       html += '</section>';
       html += '<label class="nostr-page-extra-edit"><span>After content <span class="nostr-page-scope-pill is-local">Local</span></span><textarea id="nip23-outro-input" rows="5" placeholder="Optional local content shown after the main content section">' + escapeHtml(s.extras_after || '') + '</textarea></label>';
       html += '</section>';
-      html += productCardHtml;
-      html += readOnlyMain;
-      html += outroHtml;
+      html += previewHtml;
       els.content.innerHTML = html;
       return;
     }
@@ -663,6 +678,7 @@
         : normalizeDraftState(state.draft || {});
       window.__wizardryCommitManagedPagePayload(state.payload, data, {
         validationFallback: { errors: [], warnings: [], can_publish: true },
+        passthroughFields: ['prerender', 'prerender_signature'],
         statePayload: nextState,
         draftExists: true,
         draftDiffers: localChangedDuringSave,
@@ -732,6 +748,7 @@
     }).then(function (data) {
       window.__wizardryCommitManagedPagePayload(state.payload, data, {
         validationFallback: { errors: [], warnings: [], can_publish: true },
+        passthroughFields: ['prerender', 'prerender_signature'],
         statePayload: data.state,
         draftExists: true,
         draftDiffers: false,

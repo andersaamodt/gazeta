@@ -886,6 +886,14 @@ blog_nostr_page_attach_prerender_projection() {
   printf '%s\n' "$payload_json" | jq -c --argjson prerender "$projection_json" '. + {prerender: $prerender}' 2>/dev/null || printf '%s\n' "$payload_json"
 }
 
+blog_nostr_page_finalize_prerender_payload() {
+  payload_json=${1-}
+  page_type=${2-}
+  projected_json=$(blog_nostr_page_attach_prerender_projection "$payload_json" "$page_type")
+  signature=$(blog_nostr_prerender_signature "$projected_json")
+  printf '%s\n' "$projected_json" | jq -c --arg signature "$signature" '. + {prerender_signature: $signature}' 2>/dev/null || printf '%s\n' "$projected_json"
+}
+
 blog_nostr_prerender_contact_html() {
   payload_json=${1-}
   contact_video_chat_html=$(blog_nostr_prerender_contact_video_chat_html)
