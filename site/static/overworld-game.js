@@ -51,12 +51,19 @@
 
   function renderSyncStatusPill() {
     const payload = bootstrapPayload();
+    const currentTitle = String(payload && payload.nav_title || '').trim() || 'Overworld';
     window.__wizardryRenderManagedPageHead({
       isAdmin: false,
       pageTitle: 'Overworld',
       titleNode: document.getElementById('overworld-page-title'),
       titleText: 'Overworld',
       syncStatus: payload && payload.sync_status
+    });
+    window.__wizardryRenderManagedNavbarTitleRow({
+      isAdmin: false,
+      editMode: false,
+      titleNode: document.getElementById('overworld-page-title'),
+      currentText: currentTitle
     });
   }
 
