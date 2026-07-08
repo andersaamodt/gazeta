@@ -1062,6 +1062,25 @@
     return startManagedNavbarTitleEdit(managedNavbarTitlePageActionOptions(options));
   }
 
+  function resetManagedNavbarTitleState(state, options) {
+    var targetState = state && typeof state === 'object' ? state : null;
+    var opts = options && typeof options === 'object' ? options : {};
+    if (!targetState) {
+      return false;
+    }
+    if (Object.prototype.hasOwnProperty.call(opts, 'payload')) {
+      targetState.navTitle = String(opts.payload && opts.payload.nav_title || '').trim();
+    } else if (Object.prototype.hasOwnProperty.call(opts, 'navTitle')) {
+      targetState.navTitle = String(opts.navTitle || '').trim();
+    } else if (!Object.prototype.hasOwnProperty.call(targetState, 'navTitle')) {
+      targetState.navTitle = '';
+    }
+    targetState.navTitleEditing = false;
+    targetState.navTitleInput = '';
+    targetState.navTitleBusy = false;
+    return true;
+  }
+
   function renderResolvedReadOnlyContent(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var targetNode = opts.targetNode || null;
@@ -2543,6 +2562,7 @@
   window.__wizardryStartManagedNavbarTitleEditForPage = startManagedNavbarTitleEditForPage;
   window.__wizardrySaveManagedNavbarTitle = saveManagedNavbarTitle;
   window.__wizardrySaveManagedNavbarTitleForPage = saveManagedNavbarTitleForPage;
+  window.__wizardryResetManagedNavbarTitleState = resetManagedNavbarTitleState;
   window.__wizardryRenderResolvedReadOnlyContent = renderResolvedReadOnlyContent;
   window.__wizardryRenderManagedBlogFilterPanel = renderManagedBlogFilterPanel;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;

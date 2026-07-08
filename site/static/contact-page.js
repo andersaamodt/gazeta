@@ -633,10 +633,7 @@
   function applyBootstrapState(optimisticPayload, payload) {
     state.payload = optimisticPayload;
     state.draft = normalizeDraftState((payload && payload.state) || { title: '', description: '', rows: [] });
-    state.navTitle = String((payload && payload.nav_title) || '').trim();
-    state.navTitleEditing = false;
-    state.navTitleInput = '';
-    state.navTitleBusy = false;
+    window.__wizardryResetManagedNavbarTitleState(state, { payload: payload });
     state.activeHeadField = '';
     state.headFocusPending = false;
     state.activeRowIndex = -1;
@@ -3725,8 +3722,7 @@
   function exitEditModeNow() {
     state.editMode = false;
     state.pendingToggleEditOff = false;
-    state.navTitleEditing = false;
-    state.navTitleInput = '';
+    window.__wizardryResetManagedNavbarTitleState(state);
     state.activeHeadField = '';
     state.headFocusPending = false;
     clearActiveRowField();

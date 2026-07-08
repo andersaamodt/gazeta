@@ -197,10 +197,7 @@
     cachedPayload.validation.can_publish = true;
     state.payload = cachedPayload;
     state.draft = readEditableStateFromPayload();
-    state.navTitle = String((cachedPayload && cachedPayload.nav_title) || '').trim();
-    state.navTitleEditing = false;
-    state.navTitleInput = '';
-    state.navTitleBusy = false;
+    window.__wizardryResetManagedNavbarTitleState(state, { payload: cachedPayload });
     state.pendingNewEntry = null;
     state.markerFilterInclude = [];
     state.markerFilterExclude = [];
@@ -1762,8 +1759,7 @@
     state.readInlineEditField = '';
     state.activeHeadField = '';
     state.rowMenuOpenUid = '';
-    state.navTitleEditing = false;
-    state.navTitleInput = '';
+    window.__wizardryResetManagedNavbarTitleState(state);
     state.settingsPanelReveal = false;
     resetInlineHistory();
     renderList();
@@ -5081,10 +5077,7 @@
       });
       state.payload = payload;
       state.draft = readEditableStateFromPayload();
-      state.navTitle = String(payload.nav_title || '').trim();
-      state.navTitleEditing = false;
-      state.navTitleInput = '';
-      state.navTitleBusy = false;
+      window.__wizardryResetManagedNavbarTitleState(state, { payload: payload });
       state.pendingNewEntry = null;
       state.markerFilterInclude = [];
       state.markerFilterExclude = [];

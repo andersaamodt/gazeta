@@ -188,35 +188,35 @@ grep -Fq 'body { background: #fff; }' "$canonical_root/static/style.css" || {
   exit 1
 }
 grep -Fq 'https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js' "$canonical_root/pages/contact.md" || {
-  printf '%s\n' "contact page missing marked dependency after pre-build rewrite" >&2
+  printf '%s\n' "contact page missing marked dependency after pre-build" >&2
   exit 1
 }
 grep -Fq '/static/simplex-web-transport.js' "$canonical_root/pages/contact.md" || {
-  printf '%s\n' "contact page missing simplex-web transport after pre-build rewrite" >&2
+  printf '%s\n' "contact page missing simplex-web transport after pre-build" >&2
   exit 1
 }
 grep -Fq '/static/simplex-web-browser-adapter-init.mjs?v=20260516-browserprofilev2' "$canonical_root/pages/contact.md" || {
-  printf '%s\n' "contact page missing cache-busted simplex-web browser adapter after pre-build rewrite" >&2
+  printf '%s\n' "contact page missing cache-busted simplex-web browser adapter after pre-build" >&2
   exit 1
 }
 grep -Fq '/static/simplex-web-default-chat.js' "$canonical_root/pages/contact.md" || {
-  printf '%s\n' "contact page missing shared simplex-web renderer after pre-build rewrite" >&2
+  printf '%s\n' "contact page missing shared simplex-web renderer after pre-build" >&2
   exit 1
 }
 grep -Fq '/static/simplex-web-session-store.js' "$canonical_root/pages/contact.md" || {
-  printf '%s\n' "contact page missing shared simplex-web session store after pre-build rewrite" >&2
+  printf '%s\n' "contact page missing shared simplex-web session store after pre-build" >&2
   exit 1
 }
 grep -Fq '/static/contact-page.js?v=20260707-contact-video-widget-template1' "$canonical_root/pages/contact.md" || {
-  printf '%s\n' "contact page missing cache-busted contact page script after pre-build rewrite" >&2
+  printf '%s\n' "contact page missing cache-busted contact page script after pre-build" >&2
   exit 1
 }
 grep -Fq 'hello@example.com' "$canonical_root/pages/contact.md" || {
-  printf '%s\n' "contact page missing prerendered contact row after pre-build rewrite" >&2
+  printf '%s\n' "contact page missing prerendered contact row after pre-build" >&2
   exit 1
 }
-require_managed_page_title_shell "$canonical_root/pages/contact.md" "contact-page-title" "Contact" "contact-page-title-actions" "contact page missing hydration-matching title shell after pre-build rewrite" || {
-  printf '%s\n' "contact page missing hydration-matching title shell after pre-build rewrite" >&2
+require_managed_page_title_shell "$canonical_root/pages/contact.md" "contact-page-title" "Contact" "contact-page-title-actions" "contact page missing hydration-matching title shell after pre-build" || {
+  printf '%s\n' "contact page missing hydration-matching title shell after pre-build" >&2
   exit 1
 }
 grep -Fq 'class="contact-qualifier-pill contact-qualifier-open" data-qualifier="preferred">Preferred</span>' "$canonical_root/pages/contact.md" || {
@@ -228,19 +228,19 @@ grep -Fq 'class="contact-qualifier-pill contact-qualifier-open" data-qualifier="
   exit 1
 }
 grep -Fq 'secure-chat-panel' "$canonical_root/pages/contact.md" || {
-  printf '%s\n' "contact page missing prerendered secure chat panel after pre-build rewrite" >&2
+  printf '%s\n' "contact page missing prerendered secure chat panel after pre-build" >&2
   exit 1
 }
 grep -Fq 'contact-widget-video-chat' "$canonical_root/pages/contact.md" || {
-  printf '%s\n' "contact page missing prerendered video chat shell after pre-build rewrite" >&2
+  printf '%s\n' "contact page missing prerendered video chat shell after pre-build" >&2
   exit 1
 }
 grep -Fq 'contact-archived-group' "$canonical_root/pages/contact.md" || {
-  printf '%s\n' "contact page missing prerendered archived contact group after pre-build rewrite" >&2
+  printf '%s\n' "contact page missing prerendered archived contact group after pre-build" >&2
   exit 1
 }
 grep -Fq 'data-prerender-painted="true"' "$canonical_root/pages/contact.md" || {
-  printf '%s\n' "contact page missing prerender marker after pre-build rewrite" >&2
+  printf '%s\n' "contact page missing prerender marker after pre-build" >&2
   exit 1
 }
 if grep -Fq 'Loading page content' "$canonical_root/pages/contact.md" || grep -Fq 'data-page-initial-placeholder' "$canonical_root/pages/contact.md"; then
@@ -252,15 +252,15 @@ grep -Fq 'window.__wizardryNostrPageBootstrap' "$canonical_root/static/nostr-pag
   exit 1
 }
 grep -Fq 'data-blog-slug="blog" data-page-type="blog" data-page-title="Blog"' "$canonical_root/pages/blog.md" || {
-  printf '%s\n' "blog page missing Lodestone-owned page-title root attribute after pre-build rewrite" >&2
+  printf '%s\n' "blog page missing Lodestone-owned page-title root attribute after pre-build" >&2
   exit 1
 }
-require_managed_page_title_shell "$canonical_root/pages/blog.md" "blog-page-title" "Blog" "blog-page-title-actions" "blog page missing hydration-matching title shell after pre-build rewrite" || {
-  printf '%s\n' "blog page missing hydration-matching title shell after pre-build rewrite" >&2
+require_managed_page_title_shell "$canonical_root/pages/blog.md" "blog-page-title" "Blog" "blog-page-title-actions" "blog page missing hydration-matching title shell after pre-build" || {
+  printf '%s\n' "blog page missing hydration-matching title shell after pre-build" >&2
   exit 1
 }
 if grep -Fq '<nostr-sync-pill slug=' "$canonical_root/pages/blog.md"; then
-  printf '%s\n' "blog page still emits a stale static sync pill after pre-build rewrite" >&2
+  printf '%s\n' "blog page still emits a stale static sync pill after pre-build" >&2
   exit 1
 fi
 grep -Fq 'class="footer-version"' "$ROOT_DIR/site/includes/footer.md" || {
@@ -282,27 +282,27 @@ fi
   exit 1
 }
 grep -Fq 'Seeded reading entry' "$canonical_root/pages/reading-list.md" || {
-  printf '%s\n' "list page missing prerendered list entry after pre-build rewrite" >&2
+  printf '%s\n' "list page missing prerendered list entry after pre-build" >&2
   exit 1
 }
-require_managed_page_title_shell "$canonical_root/pages/reading-list.md" "list-page-title" "Reading list" "list-page-title-actions" "list page missing hydration-matching title shell after pre-build rewrite" || {
-  printf '%s\n' "list page missing hydration-matching title shell after pre-build rewrite" >&2
+require_managed_page_title_shell "$canonical_root/pages/reading-list.md" "list-page-title" "Reading list" "list-page-title-actions" "list page missing hydration-matching title shell after pre-build" || {
+  printf '%s\n' "list page missing hydration-matching title shell after pre-build" >&2
   exit 1
 }
 grep -Fq 'data-list-slug="reading-list"' "$canonical_root/pages/reading-list.md" || {
-  printf '%s\n' "list page missing Lodestone-owned list slug on the root shell after pre-build rewrite" >&2
+  printf '%s\n' "list page missing Lodestone-owned list slug on the root shell after pre-build" >&2
   exit 1
 }
 grep -Fq 'data-list-title="Reading list"' "$canonical_root/pages/reading-list.md" || {
-  printf '%s\n' "list page missing Lodestone-owned list title on the root shell after pre-build rewrite" >&2
+  printf '%s\n' "list page missing Lodestone-owned list title on the root shell after pre-build" >&2
   exit 1
 }
 grep -Fq 'data-page-title="Reading list"' "$canonical_root/pages/reading-list.md" || {
-  printf '%s\n' "list page missing Lodestone-owned page title on the root shell after pre-build rewrite" >&2
+  printf '%s\n' "list page missing Lodestone-owned page title on the root shell after pre-build" >&2
   exit 1
 }
 grep -Fq 'data-page-type="list"' "$canonical_root/pages/reading-list.md" || {
-  printf '%s\n' "list page missing managed page type on the root shell after pre-build rewrite" >&2
+  printf '%s\n' "list page missing managed page type on the root shell after pre-build" >&2
   exit 1
 }
 if grep -Fq 'Loading page content' "$canonical_root/pages/reading-list.md" || grep -Fq 'data-page-initial-placeholder' "$canonical_root/pages/reading-list.md"; then

@@ -236,10 +236,7 @@
   function applyBootstrapState(optimisticPayload, payload) {
     state.payload = optimisticPayload;
     state.draft = normalizeDraftState((payload && payload.state) || { title: '', content: '' });
-    state.navTitle = String((payload && payload.nav_title) || '').trim();
-    state.navTitleEditing = false;
-    state.navTitleInput = '';
-    state.navTitleBusy = false;
+    window.__wizardryResetManagedNavbarTitleState(state, { payload: payload });
     state.saveIndicatorVisible = false;
     setSaveStatus('saved');
   }
@@ -705,8 +702,7 @@
       if (action === 'toggle-edit') {
         state.editMode = !state.editMode;
         if (!state.editMode) {
-          state.navTitleEditing = false;
-          state.navTitleInput = '';
+          window.__wizardryResetManagedNavbarTitleState(state);
         }
         renderAll();
         return;

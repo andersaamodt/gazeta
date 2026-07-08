@@ -53,10 +53,7 @@
   function applyBootstrapState(optimisticPayload, payload) {
     state.payload = optimisticPayload;
     state.draft = normalizeDraftState((payload && payload.state) || {});
-    state.navTitle = String((payload && payload.nav_title) || '').trim();
-    state.navTitleEditing = false;
-    state.navTitleInput = '';
-    state.navTitleBusy = false;
+    window.__wizardryResetManagedNavbarTitleState(state, { payload: payload });
     state.currentMetric = normalizeMetric((payload.state && (payload.state.metric || payload.state.default_metric)) || state.draft.default_metric || 'momentum');
     state.activeHeadField = '';
     state.submitComposerOpen = false;
@@ -1387,8 +1384,7 @@
             state.settingsPanelReveal = false;
           }
           if (!state.editMode) {
-            state.navTitleEditing = false;
-            state.navTitleInput = '';
+            window.__wizardryResetManagedNavbarTitleState(state);
           }
           renderAll();
           return;
