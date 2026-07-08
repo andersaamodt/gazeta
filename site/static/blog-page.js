@@ -739,30 +739,54 @@
     }, 240);
   }
 
-  function renderAdmin() {
+  function syncBlogTitleActionBar() {
     var actionsHost = document.getElementById('blog-page-title-actions');
-    if (actionsHost) {
-      actionsHost.innerHTML = '';
+    if (!actionsHost) {
+      syncFilterTogglePlacement();
+      return null;
     }
+    var controls = actionsHost.querySelector('.list-page-admin-bar');
+    if (!(controls instanceof HTMLElement)) {
+      syncFilterTogglePlacement();
+      return null;
+    }
+    controls.classList.add('blog-title-action-bar');
+    if (els.toggle) {
+      var editButton = controls.querySelector('[data-blog-action="toggle-page-settings"]');
+      if (els.toggle.parentNode !== controls) {
+        if (editButton && editButton.parentNode === controls) {
+          controls.insertBefore(els.toggle, editButton);
+        } else {
+          controls.appendChild(els.toggle);
+        }
+      }
+    }
+    return controls;
+  }
+
+  function renderAdmin() {
     if (!els.admin) {
       return;
     }
+    window.__wizardryRenderManagedAdminActionBar({
+      adminNode: els.admin,
+      actionsHostNode: document.getElementById('blog-page-title-actions'),
+      isAdmin: isAdmin(),
+      payload: state.payload,
+      editMode: state.pageSettingsOpen,
+      showRevert: false,
+      showPublish: false,
+      editActionAttrName: 'data-blog-action',
+      editAction: 'toggle-page-settings',
+      onHide: function () {
+        state.pageSettingsOpen = false;
+        syncFilterTogglePlacement();
+      }
+    });
     if (!isAdmin()) {
-      state.pageSettingsOpen = false;
-      els.admin.hidden = true;
-      els.admin.innerHTML = '';
-      syncFilterTogglePlacement();
       return;
     }
-    if (actionsHost) {
-      var controls = document.createElement('span');
-      controls.className = 'list-page-admin-bar blog-title-action-bar';
-      if (els.toggle) {
-        controls.appendChild(els.toggle);
-      }
-      controls.insertAdjacentHTML('beforeend', '<button type="button" class="list-admin-primary-btn" data-blog-action="toggle-page-settings" aria-expanded="' + (state.pageSettingsOpen ? 'true' : 'false') + '" aria-controls="blog-page-settings-panel">Edit</button>');
-      actionsHost.appendChild(controls);
-    }
+    syncBlogTitleActionBar();
     var page = getRenderState();
     var selectedTag = String(page.default_tag || '').trim();
     var tags = pageSettingsTags();
