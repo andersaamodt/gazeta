@@ -295,20 +295,6 @@
     };
   }
 
-  function renderNavbarTitleRow(renderState) {
-    return window.__wizardryRenderManagedNavbarTitleState(Object.assign(
-      managedNavbarTitleResolveOptions(renderState, state.navTitle),
-      {
-      isAdmin: isAdmin(),
-      editMode: state.editMode,
-      titleNode: els.title || null,
-      editing: !!state.navTitleEditing,
-      inputValue: state.navTitleInput,
-      saveDisabled: state.navTitleBusy
-      }
-    ));
-  }
-
   function renderValidation() {
     if (!els.validation) {
       return;
@@ -351,9 +337,19 @@
       titleSyncOptions: {
         messageVariant: 'local_source'
       },
-      syncStatus: state.payload && state.payload.sync_status
+      syncStatus: state.payload && state.payload.sync_status,
+      navbarTitleOptions: Object.assign(
+        managedNavbarTitleResolveOptions(s, state.navTitle),
+        {
+          isAdmin: isAdmin(),
+          editMode: state.editMode,
+          titleNode: els.title || null,
+          editing: !!state.navTitleEditing,
+          inputValue: state.navTitleInput,
+          saveDisabled: state.navTitleBusy
+        }
+      )
     });
-    renderNavbarTitleRow(s);
   }
 
 	  window.__wizardryRemoveLegacyTitleBlock(root);

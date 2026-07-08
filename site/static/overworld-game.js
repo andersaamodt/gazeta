@@ -57,13 +57,13 @@
       pageTitle: 'Overworld',
       titleNode: document.getElementById('overworld-page-title'),
       titleText: 'Overworld',
-      syncStatus: payload && payload.sync_status
-    });
-    window.__wizardryRenderManagedNavbarTitleRow({
-      isAdmin: false,
-      editMode: false,
-      titleNode: document.getElementById('overworld-page-title'),
-      currentText: currentTitle
+      syncStatus: payload && payload.sync_status,
+      navbarTitleOptions: {
+        isAdmin: false,
+        editMode: false,
+        titleNode: document.getElementById('overworld-page-title'),
+        currentText: currentTitle
+      }
     });
   }
 

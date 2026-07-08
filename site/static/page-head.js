@@ -285,6 +285,9 @@
       if (opts.focusOptions && typeof opts.focusOptions === 'object') {
         focusEditablePageHeadField(opts.focusOptions);
       }
+      if (opts.navbarTitleOptions && typeof opts.navbarTitleOptions === 'object') {
+        renderManagedNavbarTitleState(opts.navbarTitleOptions);
+      }
       return true;
     }
     if (Object.prototype.hasOwnProperty.call(opts, 'pageTitle') && opts.pageTitle !== null && typeof opts.pageTitle !== 'undefined') {
@@ -313,6 +316,9 @@
       } else {
         renderReadOnlyDescriptionShell(opts.descriptionNode, opts.descriptionFallback);
       }
+    }
+    if (opts.navbarTitleOptions && typeof opts.navbarTitleOptions === 'object') {
+      renderManagedNavbarTitleState(opts.navbarTitleOptions);
     }
     return true;
   }

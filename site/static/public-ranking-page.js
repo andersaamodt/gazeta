@@ -204,20 +204,6 @@
     };
   }
 
-  function renderNavbarTitleRow(renderState) {
-    return window.__wizardryRenderManagedNavbarTitleState(Object.assign(
-      managedNavbarTitleResolveOptions(renderState, state.navTitle),
-      {
-      isAdmin: isAdmin(),
-      editMode: state.editMode,
-      titleNode: els.title || null,
-      editing: !!state.navTitleEditing,
-      inputValue: state.navTitleInput,
-      saveDisabled: state.navTitleBusy
-      }
-    ));
-  }
-
   var apiPost = window.__wizardryPostFormJson;
 
   async function apiPostFirstAvailable(urls, payload) {
@@ -357,9 +343,19 @@
         activeField: state.activeHeadField,
         titleInputId: 'public-ranking-head-title-input',
         descriptionInputId: 'public-ranking-head-description-input'
-      } : null
+      } : null,
+      navbarTitleOptions: Object.assign(
+        managedNavbarTitleResolveOptions(s, state.navTitle),
+        {
+          isAdmin: isAdmin(),
+          editMode: state.editMode,
+          titleNode: els.title || null,
+          editing: !!state.navTitleEditing,
+          inputValue: state.navTitleInput,
+          saveDisabled: state.navTitleBusy
+        }
+      )
     });
-    renderNavbarTitleRow(s);
   }
 
   function renderAdmin() {

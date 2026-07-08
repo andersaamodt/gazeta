@@ -1436,20 +1436,6 @@
     };
   }
 
-  function renderNavbarTitleRow(renderState) {
-    return window.__wizardryRenderManagedNavbarTitleState(Object.assign(
-      managedNavbarTitleResolveOptions(renderState, state.navTitle),
-      {
-      isAdmin: isAdmin(),
-      editMode: state.editMode,
-      titleNode: els.title || null,
-      editing: !!state.navTitleEditing,
-      inputValue: state.navTitleInput,
-      saveDisabled: state.navTitleBusy
-      }
-    ));
-  }
-
   function findElementIndex(uid) {
     var elements = Array.isArray(state.draft && state.draft.elements) ? state.draft.elements : [];
     for (var i = 0; i < elements.length; i += 1) {
@@ -2835,9 +2821,19 @@
         activeField: state.activeHeadField,
         titleInputId: 'list-head-title-input',
         descriptionInputId: 'list-head-description-input'
-      } : null
+      } : null,
+      navbarTitleOptions: Object.assign(
+        managedNavbarTitleResolveOptions(s, state.navTitle),
+        {
+          isAdmin: isAdmin(),
+          editMode: state.editMode,
+          titleNode: els.title || null,
+          editing: !!state.navTitleEditing,
+          inputValue: state.navTitleInput,
+          saveDisabled: state.navTitleBusy
+        }
+      )
     });
-    renderNavbarTitleRow(s);
   }
 
   function datePillForEntryInSection(entry, groupBy, sectionLabel) {

@@ -2638,24 +2638,6 @@
     };
   }
 
-  function renderNavbarTitleRow(renderState) {
-    return window.__wizardryRenderManagedNavbarTitleState(Object.assign(
-      managedNavbarTitleResolveOptions(renderState, state.navTitle),
-      {
-      isAdmin: isAdmin(),
-      editMode: state.editMode,
-      titleNode: els.title || null,
-      editing: !!state.navTitleEditing,
-      inputValue: state.navTitleInput,
-      labelText: 'Link:',
-      inputAriaLabel: 'Link title',
-      editButtonClassName: 'list-inline-edit-link list-page-nav-title-edit-link',
-      saveButtonClassName: 'list-inline-edit-link list-page-nav-title-edit-link',
-      saveDisabled: state.navTitleBusy
-      }
-    ));
-  }
-
   function qualifierLabel(qualifier) {
     var q = String(qualifier || '').trim().toLowerCase();
     if (!q) {
@@ -3289,9 +3271,23 @@
         afterFocus: function () {
           state.headFocusPending = false;
         }
-      } : null
+      } : null,
+      navbarTitleOptions: Object.assign(
+        managedNavbarTitleResolveOptions(s, state.navTitle),
+        {
+          isAdmin: isAdmin(),
+          editMode: state.editMode,
+          titleNode: els.title || null,
+          editing: !!state.navTitleEditing,
+          inputValue: state.navTitleInput,
+          labelText: 'Link:',
+          inputAriaLabel: 'Link title',
+          editButtonClassName: 'list-inline-edit-link list-page-nav-title-edit-link',
+          saveButtonClassName: 'list-inline-edit-link list-page-nav-title-edit-link',
+          saveDisabled: state.navTitleBusy
+        }
+      )
     });
-    renderNavbarTitleRow(s);
   }
 
   function renderAdmin() {

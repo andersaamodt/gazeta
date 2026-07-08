@@ -443,17 +443,17 @@
       descriptionFallback: {
         html: '',
         hidden: true
+      },
+      navbarTitleOptions: {
+        configuredText: state.payload && state.payload.nav_title,
+        renderState: page,
+        rootNode: root,
+        fallbackAttributeNames: ['data-page-title'],
+        fallbackText: titleizeSlug(slug),
+        isAdmin: false,
+        editMode: false,
+        titleNode: els.title || null
       }
-    });
-    window.__wizardryRenderManagedNavbarTitleState({
-      configuredText: state.payload && state.payload.nav_title,
-      renderState: page,
-      rootNode: root,
-      fallbackAttributeNames: ['data-page-title'],
-      fallbackText: titleizeSlug(slug),
-      isAdmin: false,
-      editMode: false,
-      titleNode: els.title || null
     });
   }
 
