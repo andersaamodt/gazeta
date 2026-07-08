@@ -2615,7 +2615,6 @@
 
   window.__wizardryNotifyInitialContentPainted = notifyInitialContentPainted;
   window.__wizardryNotifyCurrentManagedPageReady = notifyCurrentManagedPageReady;
-  window.__wizardryRenderLoadFallback = renderLoadFallback;
   window.__wizardryLoadPublicPageFragment = loadPublicPageFragment;
   window.__wizardryRenderManagedNostrPageBootstrapPayload = renderManagedNostrPageBootstrapPayload;
   window.__wizardryRemoveLegacyTitleBlock = removeLegacyTitleBlock;
@@ -2631,7 +2630,6 @@
   window.__wizardryResetManagedNavbarTitleState = resetManagedNavbarTitleState;
   window.__wizardryRenderResolvedReadOnlyContent = renderResolvedReadOnlyContent;
   window.__wizardryRenderManagedBlogFilterPanel = renderManagedBlogFilterPanel;
-  window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
   window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;
   window.__wizardryAuthPayload = authPayload;
   window.__wizardrySessionAuthSignature = sessionAuthSignature;
@@ -2645,14 +2643,12 @@
   window.__wizardryCanUseVisitorPrerenderReadOnly = canUseVisitorPrerenderReadOnly;
   window.__wizardryCanUsePayloadPrerenderReadOnly = canUsePayloadPrerenderReadOnly;
   window.__wizardryEnsureNostrPublishDialog = ensureNostrPublishDialog;
-  window.__wizardryScheduleMarkedUpgrade = scheduleMarkedUpgrade;
   window.__wizardryRenderManagedMarkdownInline = renderManagedMarkdownInline;
   window.__wizardryRenderManagedMarkdownInlineLinkFallback = renderManagedMarkdownInlineLinkFallback;
   window.__wizardryRenderManagedMarkdownBlock = renderManagedMarkdownBlock;
   window.__wizardryNormalizeManagedSlug = normalizeSlug;
   window.__wizardryManagedSlugFromPath = slugFromPath;
   window.__wizardryManagedSlugsEquivalent = slugsEquivalent;
-  window.__wizardryClearManagedRouteParams = clearManagedRouteParams;
   window.__wizardryRequestManagedRouteRepair = requestManagedRouteRepair;
   window.__wizardryRenderManagedNostrBootstrapSources = renderManagedNostrBootstrapSources;
   window.__wizardryRefreshManagedNostrPage = refreshManagedNostrPage;
