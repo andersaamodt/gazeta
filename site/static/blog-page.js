@@ -57,8 +57,6 @@
     staticPrerenderListAdopted: false,
     adoptedPostListSignature: '',
     initialContentPainted: false,
-    initialPageStateLoaded: false,
-    initialPostsLoaded: false,
     renderSignature: '',
     defaultFiltersApplied: false,
     pageSettingsOpen: false,
@@ -169,7 +167,7 @@
     }
     state.authSignature = nextSig;
     applyOptimisticAdminFromAuthEvent(event);
-    loadPageState({ deferRender: false, deferInitialFlags: true });
+    loadPageState({ deferRender: false });
   }
 
   function ensureComposeStateShape() {
@@ -300,12 +298,6 @@
       state: state,
       markPageReady: true
     });
-  }
-
-  function maybeMarkInitialContentPainted() {
-    if (state.initialPageStateLoaded && state.initialPostsLoaded) {
-      markInitialContentPainted();
-    }
   }
 
   function escapeHtml(value) {
@@ -4298,6 +4290,13 @@
     syncRenderedPostCardMenus();
   }
 
+  function renderPreservedPostListShell() {
+    renderHead();
+    renderAdminChromeUi();
+    renderFilters();
+    syncRenderedListInlineFilterState();
+  }
+
   function renderAll() {
     renderHead();
     renderAdminChromeUi();
@@ -4500,14 +4499,7 @@
         state.postsLoading = !hasWarmPosts;
         state.staticPrerenderListAdopted = true;
         state.adoptedPostListSignature = postListSignature();
-        syncRenderedListDecorations();
-        renderHead();
-        renderAdmin();
-        renderDraftNotice();
-        renderValidation();
-        renderExtrasAfter();
-        renderFilters();
-        renderComposeUi();
+        renderPreservedPostListShell();
       },
       renderAll: function () {
         state.postsLoading = !hasWarmPosts;
@@ -4637,12 +4629,6 @@
         }
         loadDraftNoticeData();
       },
-      onFinally: function () {
-        if (!opts.deferInitialFlags) {
-          state.initialPageStateLoaded = true;
-          maybeMarkInitialContentPainted();
-        }
-      }
     });
   }
 
@@ -5252,27 +5238,18 @@
         return renderBootstrapPayload(payload, primeBootstrapPosts(payload));
       }
     });
-    state.initialPageStateLoaded = true;
-    state.initialPostsLoaded = true;
     waitForInitialDraftNotice().finally(function () {
       markInitialContentPainted();
     });
 
-    loadPageState({ deferRender: true, deferInitialFlags: true }).finally(function () {
+    loadPageState({ deferRender: true }).finally(function () {
       state.postsLoading = false;
       loadDraftNoticeData();
       var nextSignature = renderSignature();
       var hasChanges = state.renderSignature !== nextSignature;
       var canPreserve = shouldPreserveAdoptedStaticPrerender();
       if (!hasChanges || canPreserve) {
-        syncRenderedListDecorations();
-        renderHead();
-        renderAdmin();
-        renderDraftNotice();
-        renderValidation();
-        renderExtrasAfter();
-        renderFilters();
-        renderComposeUi();
+        renderPreservedPostListShell();
       } else {
         renderAll();
       }
