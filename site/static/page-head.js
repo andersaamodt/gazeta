@@ -621,6 +621,38 @@
     );
   }
 
+  function managedNavbarTitlePageOptions(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    return Object.assign(
+      managedNavbarTitleOptions({
+        configuredText: opts.configuredText,
+        renderState: opts.renderState,
+        rootNode: opts.rootNode,
+        fallbackAttributeNames: opts.fallbackAttributeNames,
+        fallbackText: opts.fallbackText,
+        isAdmin: opts.isAdmin,
+        editMode: opts.editMode,
+        titleNode: opts.titleNode,
+        editing: opts.editing,
+        inputValue: opts.inputValue,
+        labelText: opts.labelText,
+        inputAriaLabel: opts.inputAriaLabel,
+        editButtonClassName: opts.editButtonClassName,
+        saveButtonClassName: opts.saveButtonClassName,
+        saveDisabled: opts.saveDisabled,
+        selectOnFocus: opts.selectOnFocus
+      }),
+      {
+        state: opts.state,
+        payload: opts.payload,
+        rootNode: opts.rootNode || null,
+        slug: opts.slug,
+        isAdmin: opts.isAdmin,
+        renderHead: opts.renderHead
+      }
+    );
+  }
+
   function renderManagedValidationSummary(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var containerNode = opts.containerNode || null;
@@ -2043,6 +2075,7 @@
   window.__wizardryRenderManagedNavbarTitleState = renderManagedNavbarTitleState;
   window.__wizardryManagedNavbarTitleOptions = managedNavbarTitleOptions;
   window.__wizardryManagedNavbarTitlePageActionOptions = managedNavbarTitlePageActionOptions;
+  window.__wizardryManagedNavbarTitlePageOptions = managedNavbarTitlePageOptions;
   window.__wizardryRenderManagedValidationSummary = renderManagedValidationSummary;
   window.__wizardryRenderManagedPayloadValidationSummary = renderManagedPayloadValidationSummary;
   window.__wizardryRenderManagedSaveStatus = renderManagedSaveStatus;

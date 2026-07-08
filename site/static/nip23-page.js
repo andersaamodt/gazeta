@@ -303,6 +303,23 @@
 
   function renderHead() {
     var s = getRenderState();
+    var navbarTitle = window.__wizardryManagedNavbarTitlePageOptions({
+      configuredText: state.navTitle,
+      renderState: s,
+      rootNode: root,
+      fallbackAttributeNames: ['data-page-title'],
+      fallbackText: 'Untitled',
+      state: state,
+      payload: state.payload,
+      slug: slug,
+      isAdmin: isAdmin,
+      editMode: state.editMode,
+      titleNode: els.title || null,
+      editing: !!state.navTitleEditing,
+      inputValue: state.navTitleInput,
+      saveDisabled: state.navTitleBusy,
+      renderHead: renderHead
+    });
     window.__wizardryRenderManagedPageHead({
       isAdmin: false,
       pageTitle: s && s.title ? String(s.title) : null,
@@ -312,19 +329,7 @@
         messageVariant: 'local_source'
       },
       syncStatus: state.payload && state.payload.sync_status,
-      navbarTitleOptions: window.__wizardryManagedNavbarTitleOptions({
-          configuredText: state.navTitle,
-          renderState: s,
-          rootNode: root,
-          fallbackAttributeNames: ['data-page-title'],
-          fallbackText: 'Untitled',
-          isAdmin: isAdmin(),
-          editMode: state.editMode,
-          titleNode: els.title || null,
-          editing: !!state.navTitleEditing,
-          inputValue: state.navTitleInput,
-          saveDisabled: state.navTitleBusy
-        })
+      navbarTitleOptions: navbarTitle
     });
   }
 
@@ -524,7 +529,9 @@
   }
 
   function saveNavbarTitle() {
-    return window.__wizardrySaveManagedNavbarTitleForPage({
+    return window.__wizardrySaveManagedNavbarTitleForPage(window.__wizardryManagedNavbarTitlePageOptions({
+      configuredText: state.navTitle,
+      renderState: getRenderState(),
       state: state,
       payload: state.payload,
       rootNode: root,
@@ -533,11 +540,11 @@
       slug: slug,
       isAdmin: isAdmin,
       renderHead: renderHead
-    });
+    }));
   }
 
   function beginNavbarTitleEdit() {
-    return window.__wizardryStartManagedNavbarTitleEditForPage({
+    return window.__wizardryStartManagedNavbarTitleEditForPage(window.__wizardryManagedNavbarTitlePageOptions({
       configuredText: state.navTitle,
       renderState: getRenderState(),
       rootNode: root,
@@ -545,7 +552,7 @@
       fallbackText: 'Untitled',
       state: state,
       renderHead: renderHead
-    });
+    }));
   }
 
   function persistDraft(opts) {

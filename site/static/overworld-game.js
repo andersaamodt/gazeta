@@ -50,6 +50,16 @@
     const payload = bootstrapPayload();
     const currentTitle = String(payload && payload.nav_title || '').trim() || 'Overworld';
     const titleNode = document.getElementById('overworld-page-title');
+    const navbarTitle = window.__wizardryManagedNavbarTitlePageOptions({
+      configuredText: currentTitle,
+      rootNode: overworldRoot(),
+      fallbackAttributeNames: ['data-page-title'],
+      fallbackText: 'Overworld',
+      payload: payload,
+      isAdmin: false,
+      editMode: false,
+      titleNode: titleNode
+    });
     window.__wizardryRenderManagedPageHead({
       isAdmin: false,
       pageTitle: 'Overworld',
@@ -59,15 +69,7 @@
         messageVariant: 'local_source'
       },
       syncStatus: payload && payload.sync_status,
-      navbarTitleOptions: window.__wizardryManagedNavbarTitleOptions({
-        configuredText: currentTitle,
-        rootNode: overworldRoot(),
-        fallbackAttributeNames: ['data-page-title'],
-        fallbackText: 'Overworld',
-        isAdmin: false,
-        editMode: false,
-        titleNode: titleNode
-      })
+      navbarTitleOptions: navbarTitle
     });
   }
 

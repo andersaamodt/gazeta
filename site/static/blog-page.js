@@ -385,6 +385,17 @@
   function renderHead() {
     var page = getRenderState();
     var title = String(page.title || '').trim() || titleizeSlug(slug);
+    var navbarTitle = window.__wizardryManagedNavbarTitlePageOptions({
+      configuredText: state.payload && state.payload.nav_title,
+      renderState: page,
+      rootNode: root,
+      fallbackAttributeNames: ['data-page-title'],
+      fallbackText: titleizeSlug(slug),
+      payload: state.payload,
+      isAdmin: false,
+      editMode: false,
+      titleNode: els.title || null
+    });
     window.__wizardryRenderManagedPageHead({
       isAdmin: false,
       pageTitle: title,
@@ -397,16 +408,7 @@
         html: '',
         hidden: true
       },
-      navbarTitleOptions: window.__wizardryManagedNavbarTitleOptions({
-        configuredText: state.payload && state.payload.nav_title,
-        renderState: page,
-        rootNode: root,
-        fallbackAttributeNames: ['data-page-title'],
-        fallbackText: titleizeSlug(slug),
-        isAdmin: false,
-        editMode: false,
-        titleNode: els.title || null
-      })
+      navbarTitleOptions: navbarTitle
     });
   }
 

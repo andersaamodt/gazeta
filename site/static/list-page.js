@@ -2789,6 +2789,23 @@
       descriptionHideWhenEmpty: hasMainContent,
       enableFocus: true
     });
+    var navbarTitle = window.__wizardryManagedNavbarTitlePageOptions({
+      configuredText: state.navTitle,
+      renderState: s,
+      rootNode: root,
+      fallbackAttributeNames: ['data-list-title', 'data-page-title'],
+      fallbackText: 'List',
+      state: state,
+      payload: state.payload,
+      slug: slug,
+      isAdmin: isAdmin,
+      editMode: state.editMode,
+      titleNode: els.title || null,
+      editing: !!state.navTitleEditing,
+      inputValue: state.navTitleInput,
+      saveDisabled: state.navTitleBusy,
+      renderHead: renderHead
+    });
     window.__wizardryRenderManagedPageHead({
       isAdmin: isAdmin(),
       pageTitle: headFields.pageTitle,
@@ -2805,19 +2822,7 @@
       titleEditOptions: headFields.titleEditOptions,
       descriptionEditOptions: headFields.descriptionEditOptions,
       focusOptions: headFields.focusOptions,
-      navbarTitleOptions: window.__wizardryManagedNavbarTitleOptions({
-          configuredText: state.navTitle,
-          renderState: s,
-          rootNode: root,
-          fallbackAttributeNames: ['data-list-title', 'data-page-title'],
-          fallbackText: 'List',
-          isAdmin: isAdmin(),
-          editMode: state.editMode,
-          titleNode: els.title || null,
-          editing: !!state.navTitleEditing,
-          inputValue: state.navTitleInput,
-          saveDisabled: state.navTitleBusy
-        })
+      navbarTitleOptions: navbarTitle
     });
   }
 
@@ -3662,7 +3667,9 @@
   }
 
   function saveNavbarTitle() {
-    return window.__wizardrySaveManagedNavbarTitleForPage({
+    return window.__wizardrySaveManagedNavbarTitleForPage(window.__wizardryManagedNavbarTitlePageOptions({
+      configuredText: state.navTitle,
+      renderState: getRenderState(),
       state: state,
       payload: state.payload,
       rootNode: root,
@@ -3671,11 +3678,11 @@
       slug: slug,
       isAdmin: isAdmin,
       renderHead: renderHead
-    });
+    }));
   }
 
   function beginNavbarTitleEdit() {
-    return window.__wizardryStartManagedNavbarTitleEditForPage({
+    return window.__wizardryStartManagedNavbarTitleEditForPage(window.__wizardryManagedNavbarTitlePageOptions({
       configuredText: state.navTitle,
       renderState: getRenderState(),
       rootNode: root,
@@ -3683,7 +3690,7 @@
       fallbackText: 'List',
       state: state,
       renderHead: renderHead
-    });
+    }));
   }
 
   function focusInlineField(uid, field) {
