@@ -267,16 +267,34 @@ grep -Fq 'id="archive-page-root"' "$canonical_root/pages/archive.md" || {
   printf '%s\n' "archive page missing generated Lodestone shell" >&2
   exit 1
 }
+if ! grep -Fq '<div class="archive-list">' "$canonical_root/pages/archive.md" &&
+   ! grep -Fq 'No published posts yet.' "$canonical_root/pages/archive.md"; then
+  printf '%s\n' "archive page missing prerendered archive content or route-owned empty state" >&2
+  exit 1
+fi
+if grep -Fq 'Archive entries are still loading.' "$canonical_root/pages/archive.md"; then
+  printf '%s\n' "archive page still ships the loading placeholder instead of prerendered route content" >&2
+  exit 1
+fi
 grep -Fq '/static/archive-page.js' "$canonical_root/pages/archive.md" || {
-  printf '%s\n' "archive page missing runtime loader script" >&2
+  printf '%s\n' "archive page missing archive fallback readiness script" >&2
   exit 1
 }
 grep -Fq 'id="tags-page-root"' "$canonical_root/pages/tags.md" || {
   printf '%s\n' "tags page missing generated Lodestone shell" >&2
   exit 1
 }
+if ! grep -Fq '<div class="tag-cloud">' "$canonical_root/pages/tags.md" &&
+   ! grep -Fq 'No tags found yet.' "$canonical_root/pages/tags.md"; then
+  printf '%s\n' "tags page missing prerendered tag content or route-owned empty state" >&2
+  exit 1
+fi
+if grep -Fq 'Tags are still loading.' "$canonical_root/pages/tags.md"; then
+  printf '%s\n' "tags page still ships the loading placeholder instead of prerendered route content" >&2
+  exit 1
+fi
 grep -Fq '/static/tags-page.js' "$canonical_root/pages/tags.md" || {
-  printf '%s\n' "tags page missing runtime loader script" >&2
+  printf '%s\n' "tags page missing tags behavior script" >&2
   exit 1
 }
 grep -Fq '<h1 id="blog-page-title"><span class="list-page-title-text">Blog</span><span id="blog-page-title-static-actions" class="list-page-title-static-actions"><button id="blog-filter-toggle"' "$canonical_root/pages/blog.md" &&

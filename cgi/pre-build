@@ -389,6 +389,71 @@ esac
 
 sync_site_static_overlay "overworld-godot"
 
+strip_cgi_headers() {
+  awk '
+    BEGIN { body = 0 }
+    {
+      sub(/\r$/, "")
+      if (body) {
+        print
+        next
+      }
+      if ($0 == "") {
+        body = 1
+      }
+    }
+  '
+}
+
+public_read_route_fragment_html() {
+  route_script=$1
+  query_string=${2-}
+
+  public_read_route_fragment_try() {
+    allow_cargo=${1-0}
+    if [ "$allow_cargo" = "1" ]; then
+      route_output=$(
+        REQUEST_METHOD=GET \
+        QUERY_STRING="$query_string" \
+        GAZETA_THEURGY_ALLOW_CARGO=1 \
+        /bin/sh "$SCRIPT_DIR/$route_script" 2>/dev/null || true
+      )
+    else
+      route_output=$(
+        REQUEST_METHOD=GET \
+        QUERY_STRING="$query_string" \
+        /bin/sh "$SCRIPT_DIR/$route_script" 2>/dev/null || true
+      )
+    fi
+    content_type=$(
+      printf '%s\n' "$route_output" | awk '
+        BEGIN { IGNORECASE = 1 }
+        {
+          sub(/\r$/, "")
+        }
+        /^Content-Type:/ {
+          sub(/^Content-Type:[[:space:]]*/, "", $0)
+          print
+          exit
+        }
+      '
+    )
+    case "$content_type" in
+      text/html*)
+        route_body=$(printf '%s\n' "$route_output" | strip_cgi_headers)
+        [ -n "$route_body" ] || return 1
+        printf '%s' "$route_body"
+        return 0
+        ;;
+    esac
+    return 1
+  }
+
+  public_read_route_fragment_try 0 && return 0
+  command -v cargo >/dev/null 2>&1 || return 1
+  public_read_route_fragment_try 1
+}
+
 sync_lodestone_pages() {
   lodestone_pages_dir="$blog_source_lodestone_pages_dir"
   [ -d "$lodestone_pages_dir" ] || return 0
@@ -456,6 +521,24 @@ sync_lodestone_pages() {
           --html-file "filter_types_html=$filter_types_tmp" \
           --set "blog_page_js_version=$blog_page_js_version" > "$page_tmp"
         rm -f "$empty_html_tmp" "$posts_json_tmp" "$filter_tags_tmp" "$filter_years_tmp" "$filter_types_tmp"
+        ;;
+      archive)
+        archive_html_tmp=$(mktemp "${TMPDIR:-/tmp}/gazeta-lodestone-archive.XXXXXX")
+        if ! public_read_route_fragment_html blog-archive > "$archive_html_tmp"; then
+          printf '%s\n' '<p class="placeholder">Archive entries are still loading.</p>' > "$archive_html_tmp"
+        fi
+        "$SCRIPT_DIR/gazeta-lodestone" render-md "$stone_source" \
+          --html-file "content_html=$archive_html_tmp" > "$page_tmp"
+        rm -f "$archive_html_tmp"
+        ;;
+      tags)
+        tags_html_tmp=$(mktemp "${TMPDIR:-/tmp}/gazeta-lodestone-tags.XXXXXX")
+        if ! public_read_route_fragment_html blog-tags > "$tags_html_tmp"; then
+          printf '%s\n' '<p class="placeholder">Tags are still loading.</p>' > "$tags_html_tmp"
+        fi
+        "$SCRIPT_DIR/gazeta-lodestone" render-md "$stone_source" \
+          --html-file "content_html=$tags_html_tmp" > "$page_tmp"
+        rm -f "$tags_html_tmp"
         ;;
       *)
         "$SCRIPT_DIR/gazeta-lodestone" render-md "$stone_source" > "$page_tmp"

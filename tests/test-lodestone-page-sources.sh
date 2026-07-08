@@ -118,6 +118,21 @@ for page in archive blog contact tags values projects overworld reading-list sof
   }
 done
 
+grep -Fq '<div class="archive-list">' "$site_root/site/pages/archive.md" || {
+  printf '%s\n' "archive page missing prerendered archive content from the public read route" >&2
+  exit 1
+}
+
+grep -Fq '<div class="tag-cloud">' "$site_root/site/pages/tags.md" || {
+  printf '%s\n' "tags page missing prerendered tag cloud from the public read route" >&2
+  exit 1
+}
+
+grep -Fq 'class="tag-result-item"' "$site_root/site/pages/tags.md" || {
+  printf '%s\n' "tags page missing prerendered tag results from the public read route" >&2
+  exit 1
+}
+
 grep -Fq 'data-prerender-painted="true"' "$site_root/site/pages/blog.md" || {
   printf '%s\n' "blog page missing prerender data from lodestone render" >&2
   exit 1

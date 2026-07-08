@@ -11,6 +11,13 @@
     return;
   }
 
+  if (content.querySelector('.archive-list') || /No published posts yet\./.test(String(content.textContent || ''))) {
+    window.__wizardryNotifyInitialContentPainted('archive', {
+      markPageReady: true
+    });
+    return;
+  }
+
   window.__wizardryLoadPublicPageFragment({
     endpoint: '/cgi/blog-archive',
     contentNode: content,

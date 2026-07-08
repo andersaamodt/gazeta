@@ -132,6 +132,18 @@
 
   window.addEventListener('hashchange', applyTagSelection);
 
+  if (
+    content.querySelector('.tag-cloud') ||
+    content.querySelector('.tag-results-list') ||
+    /No tags found yet\./.test(String(content.textContent || ''))
+  ) {
+    applyTagSelection();
+    window.__wizardryNotifyInitialContentPainted('tags', {
+      markPageReady: true
+    });
+    return;
+  }
+
   window.__wizardryLoadPublicPageFragment({
     endpoint: '/cgi/blog-tags',
     contentNode: content,
