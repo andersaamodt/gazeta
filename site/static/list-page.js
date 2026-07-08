@@ -93,17 +93,6 @@
     return !!(state.payload && state.payload.is_admin && state.draft);
   }
 
-  function authSignature() {
-    var auth = window.__wizardryAuthPayload();
-    var adminHint = '';
-    try {
-      adminHint = String(localStorage.getItem('last_auth_is_admin') || '');
-    } catch (_err) {
-      adminHint = '';
-    }
-    return String(auth.session_token || '') + '|' + String(auth.csrf_token || '') + '|' + adminHint;
-  }
-
   function compact(text) {
     return String(text || '').replace(/\s+/g, ' ').trim();
   }
@@ -297,7 +286,7 @@
   }
 
   function maybeReloadForAuthChange(event) {
-    var nextSig = authSignature();
+    var nextSig = window.__wizardryViewerAuthSignature();
     if (nextSig === state.authSignature) {
       return;
     }
@@ -1658,7 +1647,7 @@
     try {
       var latest = await window.__wizardryRefreshManagedNostrPage({
         slug: slug,
-        authSignature: authSignature,
+        authSignature: window.__wizardryViewerAuthSignature,
         isExpectedPayload: isExpectedPayload,
         allowWrite: function () {
           return false;
@@ -1751,7 +1740,7 @@
         draftExists: true,
         draftDiffers: localChangedDuringSave,
         slug: slug,
-        authSignature: authSignature,
+        authSignature: window.__wizardryViewerAuthSignature,
         persistMode: 'authenticated_admin'
       });
       if (!localChangedDuringSave) {
@@ -1926,7 +1915,7 @@
     }
     window.__wizardryCommitManagedPagePayload(state.payload, data, {
       slug: slug,
-      authSignature: authSignature,
+      authSignature: window.__wizardryViewerAuthSignature,
       persistMode: 'authenticated_admin'
     });
     state.draft = readEditableStateFromPayload();
@@ -2002,7 +1991,7 @@
     if (changed && state.payload) {
       window.__wizardryCommitManagedPagePayload(state.payload, null, {
         slug: slug,
-        authSignature: authSignature,
+        authSignature: window.__wizardryViewerAuthSignature,
         persistMode: 'authenticated_admin'
       });
     }
@@ -2044,7 +2033,7 @@
       state.draft = readEditableStateFromPayload();
       window.__wizardryCommitManagedPagePayload(state.payload, null, {
         slug: slug,
-        authSignature: authSignature,
+        authSignature: window.__wizardryViewerAuthSignature,
         persistMode: 'authenticated_admin'
       });
     }
@@ -5195,7 +5184,7 @@
     var maxAttempts = 3;
     var lastErr = null;
     try {
-      state.authSignature = authSignature();
+      state.authSignature = window.__wizardryViewerAuthSignature();
       function applyFetchedPayload(payload) {
         var nextRenderSignature = JSON.stringify({
           slug: String(payload && payload.slug || ''),
@@ -5252,7 +5241,7 @@
       for (var attempt = 1; attempt <= maxAttempts; attempt += 1) {
         var payload = await window.__wizardryRefreshManagedNostrPage({
           slug: slug,
-          authSignature: authSignature,
+          authSignature: window.__wizardryViewerAuthSignature,
           isExpectedPayload: isExpectedPayload,
           allowWrite: function (nextPayload) {
             return !!(nextPayload && nextPayload.is_admin && window.__wizardryHasLikelyAuthenticatedSession());
@@ -5386,7 +5375,7 @@
   window.__wizardryRenderManagedNostrBootstrapSources({
     slug: slug,
     maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
-    authSignature: authSignature,
+    authSignature: window.__wizardryViewerAuthSignature,
     isExpectedPayload: isExpectedPayload,
     allowRead: window.__wizardryHasLikelyAuthenticatedSession,
     allowWrite: function (nextPayload) {

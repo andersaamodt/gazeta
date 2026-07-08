@@ -848,6 +848,10 @@
     }
   }
 
+  function viewerAuthSignature() {
+    return sessionAuthSignature() + '|' + (hasLikelyAdminSession() ? 'admin' : 'visitor');
+  }
+
   function eventHasVerifiedAdminState(event) {
     return !!(event && event.detail && event.detail.authenticated === true && typeof event.detail.is_admin !== 'undefined');
   }
@@ -1461,6 +1465,7 @@
   window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;
   window.__wizardryAuthPayload = authPayload;
   window.__wizardrySessionAuthSignature = sessionAuthSignature;
+  window.__wizardryViewerAuthSignature = viewerAuthSignature;
   window.__wizardryBindSessionAuthRefresh = bindSessionAuthRefresh;
   window.__wizardryHasLikelyAuthenticatedSession = hasLikelyAuthenticatedSession;
   window.__wizardryHasLikelyAdminSession = hasLikelyAdminSession;

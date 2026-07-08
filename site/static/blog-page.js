@@ -161,13 +161,8 @@
     }
   }
 
-  function authSignature() {
-    var auth = window.__wizardryAuthPayload();
-    return String(auth.session_token || '') + '|' + String(auth.csrf_token || '') + '|' + (window.__wizardryHasLikelyAdminSession() ? 'admin' : 'visitor');
-  }
-
   function maybeReloadForAuthChange(event) {
-    var nextSig = authSignature();
+    var nextSig = window.__wizardryViewerAuthSignature();
     var lastSig = String(state.authSignature || '');
     if (nextSig === lastSig) {
       return;
@@ -4594,7 +4589,7 @@
       maybeRepairRoute('blog-root-slug-mismatch');
       return Promise.resolve();
     }
-    state.authSignature = authSignature();
+    state.authSignature = window.__wizardryViewerAuthSignature();
     function hasExpectedSlug(payload) {
       if (!payload || typeof payload !== 'object') {
         return false;
@@ -4625,7 +4620,7 @@
     return window.__wizardryRefreshManagedNostrPage({
       slug: slug,
       pageSlug: requestedSlug,
-      authSignature: authSignature,
+      authSignature: window.__wizardryViewerAuthSignature,
       isExpectedPayload: hasExpectedSlug,
       allowWrite: isExpectedPayload,
       unexpectedPayloadMessage: 'Unexpected page payload for blog page',
@@ -5311,7 +5306,7 @@
     window.__wizardryRenderManagedNostrBootstrapSources({
       slug: slug,
       maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
-      authSignature: authSignature,
+      authSignature: window.__wizardryViewerAuthSignature,
       isExpectedPayload: isExpectedPayload,
       renderPayload: function (payload) {
         return renderBootstrapPayload(payload, primeBootstrapPosts(payload));
