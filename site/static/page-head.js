@@ -2405,6 +2405,32 @@
     }, 2200);
   }
 
+  function clearManagedRouteParams(url, options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    if (!url || typeof url !== 'object' || !url.searchParams) {
+      return false;
+    }
+    if (opts.removeRefresh !== false) {
+      url.searchParams.delete(ROUTE_REFRESH_PARAM);
+    }
+    if (opts.removeRepair !== false) {
+      url.searchParams.delete(ROUTE_REPAIR_PARAM);
+    }
+    if (!window.history || typeof window.history.replaceState !== 'function') {
+      return false;
+    }
+    var next = url.pathname;
+    var query = url.searchParams.toString();
+    if (query) {
+      next += '?' + query;
+    }
+    if (url.hash) {
+      next += url.hash;
+    }
+    window.history.replaceState(null, '', next);
+    return true;
+  }
+
   function requestManagedRouteRepair(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var url;
@@ -2421,6 +2447,7 @@
       return false;
     }
     if (url.searchParams.get(ROUTE_REPAIR_PARAM) === '1') {
+      clearManagedRouteParams(url, { removeRefresh: false });
       return false;
     }
     url.searchParams.set(ROUTE_REPAIR_PARAM, '1');
@@ -2547,6 +2574,7 @@
   window.__wizardryNormalizeManagedSlug = normalizeSlug;
   window.__wizardryManagedSlugFromPath = slugFromPath;
   window.__wizardryManagedSlugsEquivalent = slugsEquivalent;
+  window.__wizardryClearManagedRouteParams = clearManagedRouteParams;
   window.__wizardryRequestManagedRouteRepair = requestManagedRouteRepair;
   window.__wizardryRenderManagedNostrBootstrapSources = renderManagedNostrBootstrapSources;
   window.__wizardryRefreshManagedNostrPage = refreshManagedNostrPage;
@@ -2618,17 +2646,7 @@
         return;
       }
       if ((hasRefreshParam || hasRepairParam) && window.history && typeof window.history.replaceState === 'function') {
-        currentUrl.searchParams.delete(ROUTE_REFRESH_PARAM);
-        currentUrl.searchParams.delete(ROUTE_REPAIR_PARAM);
-        var next = currentUrl.pathname;
-        var query = currentUrl.searchParams.toString();
-        if (query) {
-          next += '?' + query;
-        }
-        if (currentUrl.hash) {
-          next += currentUrl.hash;
-        }
-        window.history.replaceState(null, '', next);
+        clearManagedRouteParams(currentUrl);
       }
     } catch (_routeErr) {
       // Ignore URL parsing/runtime failures.
