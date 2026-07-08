@@ -72,8 +72,8 @@
       contentNode: els.content,
       isExpectedPayload: isExpectedPayload,
       applyState: applyBootstrapState,
-      canAdoptStaticPrerender: function (_optimisticPayload, _rawPayload, authenticated) {
-        return !authenticated;
+      canAdoptStaticPrerender: function (optimisticPayload) {
+        return canAdoptManagedPrerenderPayload(optimisticPayload);
       },
       renderHead: renderHead,
       renderAdmin: renderAdmin,
@@ -92,13 +92,15 @@
     return !!(state.payload && state.payload.is_admin && state.draft);
   }
 
-  function canUsePrerenderReadOnlyView(renderState) {
-    var canAdoptManagedPrerender = false;
-    if (state.payload && state.payload.viewer_can_submit === true) {
-      canAdoptManagedPrerender = true;
-    } else if (!canSubmitByMode((renderState && renderState.submission_mode) || 'owner_only')) {
-      canAdoptManagedPrerender = true;
+  function canAdoptManagedPrerenderPayload(payload, renderState) {
+    if (payload && payload.viewer_can_submit === true) {
+      return true;
     }
+    return !canSubmitByMode((renderState && renderState.submission_mode) || 'owner_only');
+  }
+
+  function canUsePrerenderReadOnlyView(renderState) {
+    var canAdoptManagedPrerender = canAdoptManagedPrerenderPayload(state.payload, renderState);
     return window.__wizardryCanUseVisitorPrerenderReadOnly({
       isAdmin: isAdmin(),
       allowAuthenticated: canAdoptManagedPrerender,
