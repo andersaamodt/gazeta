@@ -5365,7 +5365,12 @@
         root.classList.remove('is-loading');
       }
     } finally {
-      window.__wizardryMarkHydrationPageReady();
+      window.__wizardryNotifyInitialContentPainted(slug, {
+        state: state,
+        rootNode: root,
+        loadingClass: 'is-loading',
+        markPageReady: true
+      });
     }
   }
 

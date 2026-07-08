@@ -976,7 +976,10 @@
         });
       },
       onFinally: function () {
-        window.__wizardryMarkHydrationPageReady();
+        window.__wizardryNotifyInitialContentPainted(slug, {
+          state: state,
+          markPageReady: true
+        });
       }
     });
   }

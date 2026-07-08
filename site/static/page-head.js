@@ -1357,7 +1357,6 @@
     return applyPageTitle(baseTitle);
   };
 
-  window.__wizardryMarkHydrationPageReady = markHydrationPageReady;
   window.__wizardryNotifyInitialContentPainted = notifyInitialContentPainted;
   window.__wizardryRenderLoadFallback = renderLoadFallback;
   window.__wizardryRenderManagedNostrPageBootstrapPayload = renderManagedNostrPageBootstrapPayload;
