@@ -2920,13 +2920,16 @@
     var hasMainContent = elements.length > 0 || String(s.extras_after || '').trim().length > 0;
     if (els.title) {
       if (isAdmin()) {
-        if (state.activeHeadField === 'title') {
-          els.title.innerHTML = '<span class="list-page-title-edit-wrap"><input id="list-head-title-input" class="list-head-inline-input" type="text" value="' + escapeHtml(s.title || 'List') + '" data-head-input="title"></span><span id="list-page-title-actions" class="list-page-title-actions"></span>';
-        } else if (state.editMode) {
-          els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'List') + '</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="title">Edit...</button><span id="list-page-title-actions" class="list-page-title-actions"></span>';
-        } else {
-          els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'List') + '</span><span id="list-page-title-actions" class="list-page-title-actions"></span>';
-        }
+        window.__wizardryRenderEditablePageHeadTitle(els.title, {
+          activeField: state.activeHeadField,
+          editMode: state.editMode,
+          value: String(s.title || 'List'),
+          fallbackText: 'List',
+          inputId: 'list-head-title-input',
+          inputAttrName: 'data-head-input',
+          editAttrName: 'data-list-head-edit',
+          actionsHtml: '<span id="list-page-title-actions" class="list-page-title-actions"></span>'
+        });
       } else {
         window.__wizardryRenderReadOnlyPageHead({
           pageTitle: s && s.title ? String(s.title) : null,
@@ -2955,40 +2958,25 @@
     }
     var suppressEmptyDescription = !descText.trim() && !hasMainContent && state.activeHeadField !== 'description';
     if (isAdmin()) {
-      els.description.hidden = suppressEmptyDescription;
-      if (suppressEmptyDescription) {
-        els.description.innerHTML = '';
-      } else
-      if (state.activeHeadField === 'description') {
-        els.description.innerHTML = '<span class="list-page-description-edit-wrap"><textarea id="list-head-description-input" class="list-head-description-input" rows="4" data-head-input="description">' + escapeHtml(descText) + '</textarea></span> <button type="button" class="list-inline-edit-link" data-list-head-save="description">Save</button>';
-      } else if (state.editMode) {
-        if (descText.trim()) {
-          els.description.innerHTML = '<span class="list-page-description-text">' + markdownInline(descText) + '</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="description">Edit...</button>';
-        } else {
-          els.description.innerHTML = '<span class="list-page-description-empty">No description.</span> <button type="button" class="list-inline-edit-link" data-list-head-edit="description">Edit...</button>';
-        }
-      } else {
-        if (descText.trim()) {
-          els.description.innerHTML = '<span class="list-page-description-text">' + markdownInline(descText) + '</span>';
-        } else if (hasMainContent) {
-          els.description.innerHTML = '';
-          els.description.hidden = true;
-        } else {
-          els.description.innerHTML = '<span class="list-page-description-empty">No description.</span>';
-        }
-      }
+      window.__wizardryRenderEditablePageHeadDescription(els.description, {
+        activeField: state.activeHeadField,
+        editMode: state.editMode,
+        text: descText,
+        textHtml: markdownInline(descText),
+        suppressEmpty: suppressEmptyDescription,
+        hideWhenEmpty: hasMainContent,
+        inputId: 'list-head-description-input',
+        inputAttrName: 'data-head-input',
+        editAttrName: 'data-list-head-edit',
+        saveAttrName: 'data-list-head-save'
+      });
     }
 
     if (isAdmin() && state.activeHeadField) {
-      requestAnimationFrame(function () {
-        var id = state.activeHeadField === 'title' ? 'list-head-title-input' : 'list-head-description-input';
-        var input = document.getElementById(id);
-        if (input && typeof input.focus === 'function') {
-          input.focus();
-          if (typeof input.select === 'function') {
-            input.select();
-          }
-        }
+      window.__wizardryFocusEditablePageHeadField({
+        activeField: state.activeHeadField,
+        titleInputId: 'list-head-title-input',
+        descriptionInputId: 'list-head-description-input'
       });
     }
   }

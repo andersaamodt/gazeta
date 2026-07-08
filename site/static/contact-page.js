@@ -3683,13 +3683,18 @@
     var hasMainContent = hasVisibleMainContent(s.rows || [], s.extras_after || '');
     if (els.title) {
       if (isAdmin()) {
-        if (state.activeHeadField === 'title') {
-          els.title.innerHTML = '<span class="list-page-title-edit-wrap"><input id="contact-head-title-input" class="list-head-inline-input" type="text" value="' + escapeHtml(s.title || 'Profile') + '" data-contact-head-input="title"></span> <button type="button" class="list-inline-edit-link" data-contact-head-save="title">Save</button><span id="contact-page-title-actions" class="list-page-title-actions"></span>';
-        } else if (state.editMode) {
-          els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Profile') + '</span> <button type="button" class="list-inline-edit-link" data-contact-head-edit="title">Edit...</button><span id="contact-page-title-actions" class="list-page-title-actions"></span>';
-        } else {
-          els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Profile') + '</span><span id="contact-page-title-actions" class="list-page-title-actions"></span>';
-        }
+        window.__wizardryRenderEditablePageHeadTitle(els.title, {
+          activeField: state.activeHeadField,
+          editMode: state.editMode,
+          value: String(s.title || 'Profile'),
+          fallbackText: 'Profile',
+          inputId: 'contact-head-title-input',
+          inputAttrName: 'data-contact-head-input',
+          editAttrName: 'data-contact-head-edit',
+          saveAttrName: 'data-contact-head-save',
+          showSaveButton: true,
+          actionsHtml: '<span id="contact-page-title-actions" class="list-page-title-actions"></span>'
+        });
       } else {
         window.__wizardryRenderReadOnlyPageHead({
           pageTitle: s && s.title ? String(s.title) : null,
@@ -3721,34 +3726,30 @@
     if (els.description) {
       if (isAdmin()) {
         var suppressEmptyDescription = !text && !hasMainContent && state.activeHeadField !== 'description';
-        els.description.hidden = suppressEmptyDescription;
-        if (suppressEmptyDescription) {
-          els.description.innerHTML = '';
-        } else if (state.activeHeadField === 'description') {
-          els.description.innerHTML = '<span class="list-page-description-edit-wrap"><textarea id="contact-head-description-input" class="list-head-description-input" rows="4" data-contact-head-input="description">' + escapeHtml(text) + '</textarea></span> <button type="button" class="list-inline-edit-link" data-contact-head-save="description">Save</button> <label class="checkbox-control contact-description-publish-toggle"><input type="checkbox" data-contact-intro-publish="true"' + (s.publish_intro_to_nostr ? ' checked' : '') + '> <span>Nostr</span></label>';
-        } else if (state.editMode) {
-          if (text) {
-            els.description.innerHTML = '<span class="list-page-description-text">' + markdownInline(text) + '</span> <button type="button" class="list-inline-edit-link" data-contact-head-edit="description">Edit...</button>';
-          } else {
-            els.description.innerHTML = '<span class="list-page-description-empty">No description.</span> <button type="button" class="list-inline-edit-link" data-contact-head-edit="description">Edit...</button>';
-          }
-        } else if (text) {
-          els.description.innerHTML = '<span class="list-page-description-text">' + markdownInline(text) + '</span>';
-          els.description.hidden = false;
-        } else {
-          els.description.hidden = true;
-          els.description.innerHTML = '';
-        }
+        window.__wizardryRenderEditablePageHeadDescription(els.description, {
+          activeField: state.activeHeadField,
+          editMode: state.editMode,
+          text: text,
+          textHtml: markdownInline(text),
+          suppressEmpty: suppressEmptyDescription,
+          hideWhenEmpty: true,
+          inputId: 'contact-head-description-input',
+          inputAttrName: 'data-contact-head-input',
+          editAttrName: 'data-contact-head-edit',
+          saveAttrName: 'data-contact-head-save',
+          editingExtraHtml: ' <label class="checkbox-control contact-description-publish-toggle"><input type="checkbox" data-contact-intro-publish="true"' + (s.publish_intro_to_nostr ? ' checked' : '') + '> <span>Nostr</span></label>'
+        });
       }
     }
     if (isAdmin() && state.activeHeadField && state.headFocusPending) {
-      requestAnimationFrame(function () {
-        var id = state.activeHeadField === 'title' ? 'contact-head-title-input' : 'contact-head-description-input';
-        var input = document.getElementById(id);
-        if (input && typeof input.focus === 'function') {
-          input.focus();
+      window.__wizardryFocusEditablePageHeadField({
+        activeField: state.activeHeadField,
+        titleInputId: 'contact-head-title-input',
+        descriptionInputId: 'contact-head-description-input',
+        selectOnFocus: false,
+        afterFocus: function () {
+          state.headFocusPending = false;
         }
-        state.headFocusPending = false;
       });
     }
   }

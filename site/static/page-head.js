@@ -238,6 +238,109 @@
     }
   }
 
+  function htmlAttr(name, value) {
+    var attrName = String(name || '').trim();
+    if (!attrName) {
+      return '';
+    }
+    return ' ' + attrName + '="' + escapeHtml(value) + '"';
+  }
+
+  function renderEditablePageHeadTitle(targetNode, options) {
+    if (!targetNode) {
+      return false;
+    }
+    var opts = options && typeof options === 'object' ? options : {};
+    var activeField = String(opts.activeField || '').trim().toLowerCase();
+    var value = String(opts.value || opts.fallbackText || '');
+    var actionsHtml = String(opts.actionsHtml || '');
+    var editLabel = String(opts.editLabel || 'Edit...');
+    var inputId = String(opts.inputId || '').trim();
+    var inputAttrName = String(opts.inputAttrName || '').trim();
+    var editAttrName = String(opts.editAttrName || '').trim();
+    var saveAttrName = String(opts.saveAttrName || '').trim();
+    var showSaveButton = opts.showSaveButton === true;
+    if (activeField === 'title') {
+      targetNode.innerHTML = '<span class="list-page-title-edit-wrap"><input id="' + escapeHtml(inputId) + '" class="list-head-inline-input" type="text" value="' + escapeHtml(value) + '"' + htmlAttr(inputAttrName, 'title') + '></span>' +
+        (showSaveButton ? ' <button type="button" class="list-inline-edit-link"' + htmlAttr(saveAttrName, 'title') + '>Save</button>' : '') +
+        actionsHtml;
+      return true;
+    }
+    targetNode.innerHTML = '<span class="list-page-title-text">' + escapeHtml(value) + '</span>' +
+      (opts.editMode ? ' <button type="button" class="list-inline-edit-link"' + htmlAttr(editAttrName, 'title') + '>' + escapeHtml(editLabel) + '</button>' : '') +
+      actionsHtml;
+    return true;
+  }
+
+  function renderEditablePageHeadDescription(targetNode, options) {
+    if (!targetNode) {
+      return false;
+    }
+    var opts = options && typeof options === 'object' ? options : {};
+    var activeField = String(opts.activeField || '').trim().toLowerCase();
+    var text = String(opts.text || '');
+    var textHtml = String(opts.textHtml || '');
+    var editLabel = String(opts.editLabel || 'Edit...');
+    var emptyHtml = String(opts.emptyHtml || '<span class="list-page-description-empty">No description.</span>');
+    var inputId = String(opts.inputId || '').trim();
+    var inputAttrName = String(opts.inputAttrName || '').trim();
+    var editAttrName = String(opts.editAttrName || '').trim();
+    var saveAttrName = String(opts.saveAttrName || '').trim();
+    var editingExtraHtml = String(opts.editingExtraHtml || '');
+    if (opts.suppressEmpty === true) {
+      targetNode.hidden = true;
+      targetNode.innerHTML = '';
+      return true;
+    }
+    targetNode.hidden = false;
+    if (activeField === 'description') {
+      targetNode.innerHTML = '<span class="list-page-description-edit-wrap"><textarea id="' + escapeHtml(inputId) + '" class="list-head-description-input" rows="4"' + htmlAttr(inputAttrName, 'description') + '>' + escapeHtml(text) + '</textarea></span> <button type="button" class="list-inline-edit-link"' + htmlAttr(saveAttrName, 'description') + '>Save</button>' + editingExtraHtml;
+      return true;
+    }
+    if (opts.editMode) {
+      targetNode.innerHTML = (text.trim()
+        ? '<span class="list-page-description-text">' + textHtml + '</span>'
+        : emptyHtml) +
+        ' <button type="button" class="list-inline-edit-link"' + htmlAttr(editAttrName, 'description') + '>' + escapeHtml(editLabel) + '</button>';
+      return true;
+    }
+    if (text.trim()) {
+      targetNode.innerHTML = '<span class="list-page-description-text">' + textHtml + '</span>';
+      return true;
+    }
+    if (opts.hideWhenEmpty === true) {
+      targetNode.hidden = true;
+      targetNode.innerHTML = '';
+      return true;
+    }
+    targetNode.innerHTML = emptyHtml;
+    return true;
+  }
+
+  function focusEditablePageHeadField(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var activeField = String(opts.activeField || '').trim().toLowerCase();
+    if (!activeField) {
+      return false;
+    }
+    requestAnimationFrame(function () {
+      var inputId = activeField === 'title'
+        ? String(opts.titleInputId || '').trim()
+        : String(opts.descriptionInputId || '').trim();
+      var input = inputId ? document.getElementById(inputId) : null;
+      if (input && typeof input.focus === 'function') {
+        input.focus();
+        if (opts.selectOnFocus !== false && typeof input.select === 'function') {
+          input.select();
+        }
+      }
+      if (typeof opts.afterFocus === 'function') {
+        opts.afterFocus(input || null);
+      }
+    });
+    return true;
+  }
+
   function resolveReadOnlyContentFromPrerender(options) {
     var opts = options && typeof options === 'object' ? options : {};
     if (opts.allowPrerender !== false) {
@@ -1132,6 +1235,9 @@
   window.__wizardryRenderReadOnlyPrerenderDescriptionShell = renderReadOnlyPrerenderDescriptionShell;
   window.__wizardryRenderReadOnlyDescriptionShellFromPrerender = renderReadOnlyDescriptionShellFromPrerender;
   window.__wizardryRenderReadOnlyPageHead = renderReadOnlyPageHead;
+  window.__wizardryRenderEditablePageHeadTitle = renderEditablePageHeadTitle;
+  window.__wizardryRenderEditablePageHeadDescription = renderEditablePageHeadDescription;
+  window.__wizardryFocusEditablePageHeadField = focusEditablePageHeadField;
   window.__wizardryResolveReadOnlyContentFromPrerender = resolveReadOnlyContentFromPrerender;
   window.__wizardryEnsureMatchingStaticShell = ensureMatchingStaticShell;
   window.__wizardryReconcileAdoptedPrerenderRefresh = reconcileAdoptedPrerenderRefresh;

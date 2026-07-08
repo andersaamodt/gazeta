@@ -434,13 +434,16 @@
     var hasMainContent = hasVisibleMainContent(s);
     if (els.title) {
       if (isAdmin()) {
-        if (state.activeHeadField === 'title') {
-          els.title.innerHTML = '<span class="list-page-title-edit-wrap"><input id="public-ranking-head-title-input" class="list-head-inline-input" type="text" value="' + escapeHtml(s.title || 'Public Ranking') + '" data-ranking-head-input="title"></span>' + titleActionsHtml(false);
-        } else if (state.editMode) {
-          els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Public Ranking') + '</span> <button type="button" class="list-inline-edit-link" data-ranking-head-edit="title">Edit...</button>' + titleActionsHtml(false);
-        } else {
-          els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Public Ranking') + '</span>' + titleActionsHtml(false);
-        }
+        window.__wizardryRenderEditablePageHeadTitle(els.title, {
+          activeField: state.activeHeadField,
+          editMode: state.editMode,
+          value: String(s.title || 'Public Ranking'),
+          fallbackText: 'Public Ranking',
+          inputId: 'public-ranking-head-title-input',
+          inputAttrName: 'data-ranking-head-input',
+          editAttrName: 'data-ranking-head-edit',
+          actionsHtml: titleActionsHtml(false)
+        });
       } else {
         window.__wizardryRenderReadOnlyPageHead({
           pageTitle: s && s.title ? String(s.title) : null,
@@ -473,37 +476,25 @@
     if (els.description) {
       var suppressEmptyDescription = !desc && !hasMainContent && state.activeHeadField !== 'description';
       if (isAdmin()) {
-        els.description.hidden = suppressEmptyDescription;
-        if (suppressEmptyDescription) {
-          els.description.innerHTML = '';
-        } else if (state.activeHeadField === 'description') {
-          els.description.innerHTML = '<span class="list-page-description-edit-wrap"><textarea id="public-ranking-head-description-input" class="list-head-description-input" rows="4" data-ranking-head-input="description">' + escapeHtml(desc) + '</textarea></span> <button type="button" class="list-inline-edit-link" data-ranking-head-save="description">Save</button>';
-        } else if (state.editMode) {
-          if (desc) {
-            els.description.innerHTML = '<span class="list-page-description-text">' + markdownInline(desc) + '</span> <button type="button" class="list-inline-edit-link" data-ranking-head-edit="description">Edit...</button>';
-          } else {
-            els.description.innerHTML = '<span class="list-page-description-empty">No description.</span> <button type="button" class="list-inline-edit-link" data-ranking-head-edit="description">Edit...</button>';
-          }
-        } else if (desc) {
-          els.description.innerHTML = '<span class="list-page-description-text">' + markdownInline(desc) + '</span>';
-        } else if (hasMainContent) {
-          els.description.innerHTML = '';
-          els.description.hidden = true;
-        } else {
-          els.description.innerHTML = '<span class="list-page-description-empty">No description.</span>';
-        }
+        window.__wizardryRenderEditablePageHeadDescription(els.description, {
+          activeField: state.activeHeadField,
+          editMode: state.editMode,
+          text: desc,
+          textHtml: markdownInline(desc),
+          suppressEmpty: suppressEmptyDescription,
+          hideWhenEmpty: hasMainContent,
+          inputId: 'public-ranking-head-description-input',
+          inputAttrName: 'data-ranking-head-input',
+          editAttrName: 'data-ranking-head-edit',
+          saveAttrName: 'data-ranking-head-save'
+        });
       }
     }
     if (isAdmin() && state.activeHeadField) {
-      requestAnimationFrame(function () {
-        var id = state.activeHeadField === 'title' ? 'public-ranking-head-title-input' : 'public-ranking-head-description-input';
-        var input = document.getElementById(id);
-        if (input && typeof input.focus === 'function') {
-          input.focus();
-          if (typeof input.select === 'function') {
-            input.select();
-          }
-        }
+      window.__wizardryFocusEditablePageHeadField({
+        activeField: state.activeHeadField,
+        titleInputId: 'public-ranking-head-title-input',
+        descriptionInputId: 'public-ranking-head-description-input'
       });
     }
   }
