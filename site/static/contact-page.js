@@ -3601,12 +3601,11 @@
       pageTitle: s && s.title ? String(s.title) : null,
       titleNode: els.title,
       titleText: String(s.title || 'Profile'),
-      syncStatus: state.payload && state.payload.sync_status,
-      readOnlyTitleOptions: {
-        syncOptions: {
-          messageVariant: 'local_source'
-        }
+      titleFallbackText: 'Profile',
+      titleSyncOptions: {
+        messageVariant: 'local_source'
       },
+      syncStatus: state.payload && state.payload.sync_status,
       descriptionNode: els.description,
       descriptionPayload: state.payload,
       allowPrerenderDescription: canUsePrerenderReadOnlyView(),

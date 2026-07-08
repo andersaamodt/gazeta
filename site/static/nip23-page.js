@@ -388,12 +388,11 @@
       pageTitle: s && s.title ? String(s.title) : null,
       titleNode: els.title,
       titleText: String(s.title || 'Untitled'),
-      syncStatus: state.payload && state.payload.sync_status,
-      titleOptions: {
-        syncOptions: {
-          messageVariant: 'local_source'
-        }
-      }
+      titleFallbackText: 'Untitled',
+      titleSyncOptions: {
+        messageVariant: 'local_source'
+      },
+      syncStatus: state.payload && state.payload.sync_status
     });
     renderNavbarTitleRow(s);
   }

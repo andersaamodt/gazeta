@@ -72,6 +72,7 @@
       pageTitle: 'Overworld',
       titleNode: document.getElementById('overworld-page-title'),
       titleText: 'Overworld',
+      titleFallbackText: 'Overworld',
       syncStatus: payload && payload.sync_status
     });
   }

@@ -94,15 +94,14 @@
     }
   }
 
-  function ensureReadOnlyTitleShell(titleNode, options) {
+  function ensureReadOnlyTitleShell(titleNode, fallbackText) {
     if (!titleNode) {
       return { text: null, actions: null };
     }
-    var opts = options && typeof options === 'object' ? options : {};
     var existingActions = titleNode.querySelector('.list-page-title-actions');
     var actionsId = String(existingActions && existingActions.id || '').trim();
     var actionsClassName = String(existingActions && existingActions.className || 'list-page-title-actions').trim() || 'list-page-title-actions';
-    var fallbackText = String(opts.fallbackText || '').trim();
+    var fallback = String(fallbackText || '').trim();
     var text = titleNode.querySelector('.list-page-title-text');
     var actions = actionsId ? document.getElementById(actionsId) : existingActions;
     if (!text) {
@@ -116,8 +115,8 @@
         }
         child = next;
       }
-      if (!text.textContent && fallbackText) {
-        text.textContent = fallbackText;
+      if (!text.textContent && fallback) {
+        text.textContent = fallback;
       }
       if (actions && actions.parentNode === titleNode) {
         titleNode.insertBefore(text, actions);
@@ -173,23 +172,22 @@
     return text;
   }
 
-  function renderReadOnlyTitleShell(titleNode, textValue, options) {
-    var shell = ensureReadOnlyTitleShell(titleNode, options);
+  function renderReadOnlyTitleShell(titleNode, textValue, fallbackText) {
+    var shell = ensureReadOnlyTitleShell(titleNode, fallbackText);
     if (shell && shell.text) {
       shell.text.textContent = String(textValue || '');
     }
     return shell;
   }
 
-  function renderReadOnlyTitleShellWithSync(titleNode, textValue, syncStatus, options) {
-    var opts = options && typeof options === 'object' ? options : {};
-    var shell = renderReadOnlyTitleShell(titleNode, textValue, opts);
-    if (titleNode && opts.unhide !== false) {
+  function renderReadOnlyTitleShellWithSync(titleNode, textValue, syncStatus, fallbackText, syncOptions) {
+    var shell = renderReadOnlyTitleShell(titleNode, textValue, fallbackText);
+    if (titleNode) {
       titleNode.hidden = false;
     }
-    var syncTarget = opts.syncTarget || (shell && shell.actions ? shell.actions : null);
+    var syncTarget = shell && shell.actions ? shell.actions : null;
     if (syncTarget) {
-      renderSyncStatusPill(syncTarget, syncStatus, opts.syncOptions);
+      renderSyncStatusPill(syncTarget, syncStatus, syncOptions);
     }
     return shell;
   }
@@ -241,7 +239,13 @@
       }
     }
     if (opts.titleNode) {
-      renderReadOnlyTitleShellWithSync(opts.titleNode, opts.titleText, opts.syncStatus, opts.titleOptions);
+      renderReadOnlyTitleShellWithSync(
+        opts.titleNode,
+        opts.titleText,
+        opts.syncStatus,
+        opts.titleFallbackText,
+        opts.titleSyncOptions
+      );
     }
     if (opts.descriptionNode && Object.prototype.hasOwnProperty.call(opts, 'descriptionFallback')) {
       renderReadOnlyDescriptionShellFromPrerender(opts.descriptionNode, opts.descriptionPayload, String(opts.descriptionName || 'description'), {
@@ -350,7 +354,8 @@
       titleNode: opts.titleNode,
       titleText: opts.titleText,
       syncStatus: opts.syncStatus,
-      titleOptions: opts.readOnlyTitleOptions,
+      titleFallbackText: opts.titleFallbackText,
+      titleSyncOptions: opts.titleSyncOptions,
       descriptionNode: opts.descriptionNode,
       descriptionPayload: opts.descriptionPayload,
       allowPrerenderDescription: opts.allowPrerenderDescription,
