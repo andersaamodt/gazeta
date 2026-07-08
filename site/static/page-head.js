@@ -1093,6 +1093,7 @@
     var opts = options && typeof options === 'object' ? options : {};
     var targetNode = opts.targetNode || null;
     var resolved = null;
+    var matchedStaticPrerender = false;
     if (opts.allowPrerender !== false) {
       var fragment = readPrerenderHtmlFragment(opts.payload, 'content');
       if (fragment) {
@@ -1101,6 +1102,7 @@
           html: fragment.html,
           hidden: fragment.hidden
         };
+        matchedStaticPrerender = hasMatchingStaticPrerender(targetNode, targetNode, opts.payload);
       }
     }
     if (!resolved && typeof opts.renderFallback === 'function') {
@@ -1115,7 +1117,11 @@
       return resolved;
     }
     if (resolved.adopted) {
-      mountPrerenderHtmlFragment(targetNode, opts.payload, 'content', opts.mountOptions);
+      if (!matchedStaticPrerender) {
+        mountPrerenderHtmlFragment(targetNode, opts.payload, 'content', opts.mountOptions);
+      } else {
+        targetNode.hidden = !!resolved.hidden;
+      }
       if (typeof opts.afterAdopt === 'function') {
         opts.afterAdopt(resolved);
       }
