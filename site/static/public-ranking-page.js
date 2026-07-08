@@ -807,6 +807,25 @@
     return html;
   }
 
+  function renderInteractiveContentHtml(renderState, graph, nodes) {
+    var html = '';
+    html += renderEditor(renderState);
+    if (isAdmin() && state.editMode) {
+      html += renderPrefixEditor(renderState);
+    } else {
+      html += renderExtraContent(renderState.content, 'before');
+    }
+    html += renderPendingToast(nodes);
+    html += renderTree(graph, renderState);
+    html += renderSubmitForm(renderState, graph);
+    if (isAdmin() && state.editMode) {
+      html += renderPostfixEditor(renderState);
+    } else {
+      html += renderExtraContent(renderState.extras_after, 'after');
+    }
+    return html;
+  }
+
   function renderContent() {
     if (!els.content) {
       return;
@@ -814,27 +833,23 @@
     var renderState = getRenderState();
     var graph = buildGraph();
     var nodes = graph.nodes || [];
+    if (canUsePrerenderReadOnlyView(renderState)) {
+      window.__wizardryRenderResolvedReadOnlyContent({
+        targetNode: els.content,
+        payload: state.payload,
+        allowPrerender: true,
+        renderFallback: function () {
+          return '<p class="placeholder">Page content is still loading. The latest page data was not available yet.</p>';
+        }
+      });
+      return;
+    }
     window.__wizardryRenderResolvedReadOnlyContent({
       targetNode: els.content,
       payload: state.payload,
-      allowPrerender: canUsePrerenderReadOnlyView(renderState),
+      allowPrerender: false,
       renderFallback: function () {
-        var html = '';
-        html += renderEditor(renderState);
-        if (isAdmin() && state.editMode) {
-          html += renderPrefixEditor(renderState);
-        } else {
-          html += renderExtraContent(renderState.content, 'before');
-        }
-        html += renderPendingToast(nodes);
-        html += renderTree(graph, renderState);
-        html += renderSubmitForm(renderState, graph);
-        if (isAdmin() && state.editMode) {
-          html += renderPostfixEditor(renderState);
-        } else {
-          html += renderExtraContent(renderState.extras_after, 'after');
-        }
-        return html;
+        return renderInteractiveContentHtml(renderState, graph, nodes);
       }
     });
   }
