@@ -72,8 +72,8 @@
       contentNode: els.content,
       isExpectedPayload: isExpectedPayload,
       applyState: applyBootstrapState,
-      canAdoptStaticPrerender: function (optimisticPayload) {
-        return canAdoptManagedPrerenderPayload(optimisticPayload);
+      canAdoptStaticPrerender: function (optimisticPayload, _rawPayload, authenticated) {
+        return canAdoptManagedPrerenderPayload(optimisticPayload, authenticated);
       },
       renderHead: renderHead,
       renderAdmin: renderAdmin,
@@ -92,15 +92,18 @@
     return !!(state.payload && state.payload.is_admin && state.draft);
   }
 
-  function canAdoptManagedPrerenderPayload(payload, renderState) {
-    if (payload && payload.viewer_can_submit === true) {
+  function canAdoptManagedPrerenderPayload(payload, authenticated) {
+    if (!payload || typeof payload !== 'object') {
+      return false;
+    }
+    if (authenticated !== true && payload.is_admin !== true) {
       return true;
     }
-    return !canSubmitByMode((renderState && renderState.submission_mode) || 'owner_only');
+    return payload.viewer_can_submit === true;
   }
 
   function canUsePrerenderReadOnlyView(renderState) {
-    var canAdoptManagedPrerender = canAdoptManagedPrerenderPayload(state.payload, renderState);
+    var canAdoptManagedPrerender = !!(state.payload && state.payload.viewer_can_submit === true);
     return window.__wizardryCanUseVisitorPrerenderReadOnly({
       isAdmin: isAdmin(),
       allowAuthenticated: canAdoptManagedPrerender,
@@ -111,7 +114,7 @@
         }
         var payloadState = (state.payload && state.payload.state) ? state.payload.state : {};
         var defaultMetric = normalizeMetric(payloadState.metric || payloadState.default_metric || (renderState && renderState.default_metric) || 'momentum');
-        return canAdoptManagedPrerender && normalizeMetric(state.currentMetric || defaultMetric) === defaultMetric;
+        return normalizeMetric(state.currentMetric || defaultMetric) === defaultMetric;
       }
     });
   }

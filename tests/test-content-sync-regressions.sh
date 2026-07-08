@@ -480,8 +480,8 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/page-head.js" 'window.__wizardryR
 assert_file_contains "$SITE_SOURCE_ROOT/static/nip23-page.js" '__wizardryRenderManagedNostrPageBootstrapPayload' 'NIP-23 hydration delegates bootstrap payload adoption to the shared managed-page helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" '__wizardryRenderManagedNostrPageBootstrapPayload' 'contact hydration delegates bootstrap payload adoption to the shared managed-page helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" '__wizardryRenderManagedNostrPageBootstrapPayload' 'public ranking hydration delegates bootstrap payload adoption to the shared managed-page helper'
-assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'canAdoptStaticPrerender: function (optimisticPayload) {' 'public ranking bootstrap preservation flows through an explicit shared visitor-prerender eligibility gate'
-assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'return canAdoptManagedPrerenderPayload(optimisticPayload);' 'public ranking bootstrap preservation can keep viewer-aware server prerender for authenticated submit-capable readers'
+assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'canAdoptStaticPrerender: function (optimisticPayload, _rawPayload, authenticated) {' 'public ranking bootstrap preservation flows through an explicit shared visitor-prerender eligibility gate'
+assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'return canAdoptManagedPrerenderPayload(optimisticPayload, authenticated);' 'public ranking bootstrap preservation can keep anonymous visitor shells and authenticated submit-capable shells on one shared eligibility rule'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function normalizedPayloadForRenderSignature() {' 'blog hydration compares fetched state against the currently rendered page state'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'renderFetchedPostsIfChanged(previousSignature);' 'blog hydration skips post-list repaints when fetched posts match the prerendered list'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" '__wizardryRenderManagedPageHead({' 'blog view-mode hydration delegates visitor page-head rendering to the shared managed page-head helper'
@@ -2554,10 +2554,11 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'extraPar
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'sort_metric: sortMetric' 'public ranking refresh asks the server for the selected metric view'
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'await refreshCurrentMetricView();' 'public ranking mutations now refresh the canonical server-rendered metric view after writes'
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'if (canRefreshMetricFromServer()) {' 'public ranking metric changes prefer server-prerendered refreshes when visitor view can stay read-only'
-assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'function canAdoptManagedPrerenderPayload(payload, renderState) {' 'public ranking runtime centralizes viewer-aware prerender eligibility in one semantic helper'
+assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'function canAdoptManagedPrerenderPayload(payload, authenticated) {' 'public ranking runtime centralizes viewer-aware prerender eligibility in one semantic helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'allowAuthenticated: canAdoptManagedPrerender' 'public ranking explicitly opts authenticated viewers into server-owned prerender when the fetched payload already carries the correct interaction shell'
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'allowAdmin: canAdoptManagedPrerender' 'public ranking explicitly opts admin read-only mode into server-owned prerender when the fetched payload already carries the correct interaction shell'
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'payload.viewer_can_submit === true' 'public ranking prerender adoption keys off the fetched payload submit capability instead of raw session presence'
+assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'if (authenticated !== true && payload.is_admin !== true) {' 'public ranking bootstrap prerender adoption keeps anonymous visitor shells adoptable without requiring authenticated submit capability'
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'allowWrite: function () {' 'public ranking metric refresh only persists cache entries through an explicit shared allowWrite gate'
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'return sortMetric === defaultMetricForCache();' 'public ranking metric refresh does not poison the slug-scoped bootstrap cache with non-default metric views'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'function applyLiveRankingUpdate(' 'public ranking runtime no longer maintains a separate local live-ranking patch path for visitor metric views'
@@ -2580,6 +2581,7 @@ else
 fi
 
 ranking_submit_payload=$(jq -cn '{
+  viewer_authenticated: true,
   viewer_can_submit: true,
   state: {
     root_coord: "root",
@@ -2601,6 +2603,7 @@ ranking_submit_payload=$(jq -cn '{
 ranking_submit_html=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/gazeta-nostr-page-content-renderer.sh"; blog_nostr_prerender_public_ranking_html "$2"' sh "$ROOT_DIR" "$ranking_submit_payload")
 assert_contains "$ranking_submit_html" 'data-ranking-action="toggle-submit"' 'public ranking prerender includes the closed submit-composer shell when the payload says the viewer can submit'
 assert_contains "$ranking_submit_html" 'public-ranking-submit-toggle-icon' 'public ranking prerender includes the closed submit toggle icon when viewer submission is enabled'
+assert_contains "$ranking_submit_html" 'data-ranking-action="vote" data-node-coord="entry-1" title="Upvote">' 'public ranking prerender enables vote controls for authenticated viewers when their fetched vote window allows voting'
 ranking_readonly_payload=$(jq -cn '{
   viewer_can_submit: false,
   state: {
@@ -2622,6 +2625,38 @@ ranking_readonly_payload=$(jq -cn '{
 }')
 ranking_readonly_html=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/gazeta-nostr-page-content-renderer.sh"; blog_nostr_prerender_public_ranking_html "$2"' sh "$ROOT_DIR" "$ranking_readonly_payload")
 assert_not_contains "$ranking_readonly_html" 'data-ranking-action="toggle-submit"' 'public ranking prerender omits the submit-composer shell when the payload is read-only'
+assert_contains "$ranking_readonly_html" 'data-ranking-action="vote" data-node-coord="entry-1" title="Upvote" disabled aria-disabled="true"' 'public ranking prerender keeps vote controls disabled for anonymous/read-only viewers'
+
+ranking_vote_cooldown_payload=$(jq -cn '{
+  viewer_authenticated: true,
+  viewer_can_submit: true,
+  state: {
+    root_coord: "root",
+    content: "",
+    extras_after: "",
+    default_metric: "momentum",
+    viewer_vote_window: {
+      "entry-1": {
+        last_vote_at: 123,
+        next_vote_at: 456,
+        can_vote_now: false
+      }
+    },
+    nodes: [
+      {
+        coordinate: "entry-1",
+        parent: "root",
+        title: "Project Alpha",
+        status: "approved",
+        metrics: {momentum: 1.2, support: 3, enthusiasm: 3, intensity: 1.0}
+      }
+    ],
+    edges: []
+  }
+}')
+ranking_vote_cooldown_html=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/gazeta-nostr-page-content-renderer.sh"; blog_nostr_prerender_public_ranking_html "$2"' sh "$ROOT_DIR" "$ranking_vote_cooldown_payload")
+assert_contains "$ranking_vote_cooldown_html" 'data-ranking-action="vote" data-node-coord="entry-1" title="Upvote" disabled aria-disabled="true"' 'public ranking prerender disables authenticated vote controls when the fetched cooldown window blocks voting'
+assert_contains "$ranking_vote_cooldown_html" 'Next vote after epoch: <code>456</code>' 'public ranking prerender emits the authenticated cooldown note from fetched viewer vote-window state'
 
 list_authenticated_payload=$(jq -cn '{
   viewer_authenticated: true,

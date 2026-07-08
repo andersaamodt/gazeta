@@ -1184,6 +1184,8 @@ if not isinstance(edges, list):
 root_coord = text(state.get("root_coord")).strip()
 metric = metric_name(state.get("metric") or state.get("default_metric") or "momentum")
 viewer_can_submit = bool(payload.get("viewer_can_submit"))
+viewer_authenticated = bool(payload.get("viewer_authenticated"))
+viewer_vote_window = state.get("viewer_vote_window") if isinstance(state.get("viewer_vote_window"), dict) else {}
 
 visible_nodes = []
 for node in nodes:
@@ -1240,6 +1242,9 @@ def render_node(coord, depth, path):
     node = node_map[coord]
     kids = [node_map[child] for child in children.get(coord, []) if child in node_map]
     kids.sort(key=lambda child: compare_key(child, metric))
+    vote_window = viewer_vote_window.get(coord) if isinstance(viewer_vote_window.get(coord), dict) else {}
+    can_vote_now = vote_window.get("can_vote_now") is not False
+    vote_disabled = "" if viewer_authenticated and can_vote_now else ' disabled aria-disabled="true"'
     parts = []
     parts.append('<li class="public-ranking-item depth-%d">' % depth)
     parts.append('<article class="public-ranking-node" data-node-coord="%s">' % esc(coord))
@@ -1248,7 +1253,7 @@ def render_node(coord, depth, path):
     parts.append('<h4 class="public-ranking-node-title">%s</h4>' % esc(node.get("title") or node.get("coordinate") or "Untitled"))
     parts.append('</div>')
     parts.append('<div class="public-ranking-node-actions">')
-    parts.append('<button type="button" data-ranking-action="vote" data-node-coord="%s" title="Upvote" disabled aria-disabled="true">+</button>' % esc(coord))
+    parts.append('<button type="button" data-ranking-action="vote" data-node-coord="%s" title="Upvote"%s>+</button>' % (esc(coord), vote_disabled))
     parts.append('</div>')
     parts.append('</header>')
     metrics = node.get("metrics") if isinstance(node.get("metrics"), dict) else {}
@@ -1265,6 +1270,8 @@ def render_node(coord, depth, path):
     if content:
         parts.append('<div class="public-ranking-node-content">%s</div>' % md_block(content))
     parts.append(render_links(node))
+    if viewer_authenticated and vote_window and vote_window.get("can_vote_now") is False:
+        parts.append('<p class="public-ranking-vote-note">Next vote after epoch: <code>%s</code></p>' % esc(vote_window.get("next_vote_at") or 0))
     parts.append('</article>')
     if kids:
         parts.append('<ol class="public-ranking-level">')
