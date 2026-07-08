@@ -334,6 +334,18 @@ if [ "$draft_exists" = "true" ]; then
   fi
 fi
 
+viewer_can_submit=false
+if [ "$page_type" = "public-ranking" ]; then
+  submission_mode=$(printf '%s\n' "$view_state_json" | jq -r '(.submission_mode // "owner_only") | tostring' 2>/dev/null || printf 'owner_only')
+  if [ "$is_admin" = "true" ]; then
+    viewer_can_submit=true
+  elif [ -n "$req_token" ] && [ -n "$req_csrf" ] && blog_load_session "$req_token" 2>/dev/null; then
+    if [ "$req_csrf" = "$BLOG_SESSION_CSRF" ] && [ "$(printf '%s' "$submission_mode" | tr '[:upper:]' '[:lower:]')" != "owner_only" ]; then
+      viewer_can_submit=true
+    fi
+  fi
+fi
+
 case "$page_type" in
   contact)
     validation_json=$(blog_contact_validate_and_enrich_state_json "$view_state_json" false)
@@ -409,6 +421,7 @@ jq -cn \
   --arg nav_title "$nav_title" \
   --argjson kind "$kind" \
   --argjson is_admin "$( [ "$is_admin" = "true" ] && printf true || printf false )" \
+  --argjson viewer_can_submit "$( [ "$viewer_can_submit" = "true" ] && printf true || printf false )" \
   --arg view_mode "$view_mode" \
   --argjson canonical_exists "$( [ "$canonical_exists" = "true" ] && printf true || printf false )" \
   --argjson draft_exists "$( [ "$draft_exists" = "true" ] && printf true || printf false )" \
@@ -426,6 +439,7 @@ jq -cn \
     nav_title: $nav_title,
     kind: $kind,
     is_admin: $is_admin,
+    viewer_can_submit: $viewer_can_submit,
     view_mode: $view_mode,
     canonical_exists: $canonical_exists,
     draft_exists: $draft_exists,

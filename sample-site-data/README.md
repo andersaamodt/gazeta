@@ -10,8 +10,8 @@ It is intentionally outside `site/pages/` so template code stays reusable and fr
 site_name=myblog
 sites_root=${WIZARDRY_SITES_DIR:-$HOME/sites}
 site_data_root="$sites_root/.sitedata/$site_name"
-mkdir -p "$site_data_root/blog/content/posts"
-cp -R sample-site-data/blog/content/posts/. "$site_data_root/blog/content/posts/"
+mkdir -p "$site_data_root/content/posts"
+cp -R sample-site-data/content/posts/. "$site_data_root/content/posts/"
 ```
 
 After copying, rebuild the site.

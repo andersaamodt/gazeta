@@ -1097,6 +1097,18 @@ def compare_key(node, metric):
         text(node.get("coordinate")),
     )
 
+def render_submit_shell():
+    html_bits = []
+    html_bits.append('<section class="public-ranking-submit">')
+    html_bits.append('<div class="public-ranking-submit-inline">')
+    html_bits.append('<div class="public-ranking-submit-reveal" aria-hidden="true">')
+    html_bits.append('<div class="public-ranking-submit-fields"></div>')
+    html_bits.append('</div>')
+    html_bits.append('<button type="button" class="public-ranking-submit-toggle" data-ranking-action="toggle-submit" aria-label="Add entry" title="Add entry" aria-expanded="false"><span class="public-ranking-submit-toggle-icon" aria-hidden="true">+</span></button>')
+    html_bits.append('</div>')
+    html_bits.append('</section>')
+    return "".join(html_bits)
+
 nodes = state.get("nodes")
 if not isinstance(nodes, list):
     nodes = []
@@ -1105,6 +1117,7 @@ if not isinstance(edges, list):
     edges = []
 root_coord = text(state.get("root_coord")).strip()
 metric = metric_name(state.get("metric") or state.get("default_metric") or "momentum")
+viewer_can_submit = bool(payload.get("viewer_can_submit"))
 
 visible_nodes = []
 for node in nodes:
@@ -1210,6 +1223,8 @@ else:
     for node in root_children:
         parts.append(render_node(text(node.get("coordinate")).strip(), 0, []))
     parts.append('</ol>')
+if viewer_can_submit:
+    parts.append(render_submit_shell())
 if outro:
     parts.append('<section class="nostr-page-extra nostr-page-extra-after">%s</section>' % md_block(outro))
 

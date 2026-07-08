@@ -93,15 +93,23 @@
   }
 
   function canUsePrerenderReadOnlyView(renderState) {
+    var canAdoptManagedPrerender = false;
+    if (state.payload && state.payload.viewer_can_submit === true) {
+      canAdoptManagedPrerender = true;
+    } else if (!canSubmitByMode((renderState && renderState.submission_mode) || 'owner_only')) {
+      canAdoptManagedPrerender = true;
+    }
     return window.__wizardryCanUseVisitorPrerenderReadOnly({
       isAdmin: isAdmin(),
+      allowAuthenticated: canAdoptManagedPrerender,
+      allowAdmin: canAdoptManagedPrerender,
       extraCheck: function () {
         if (state.submitComposerOpen || state.submitAdvancedOpen) {
           return false;
         }
         var payloadState = (state.payload && state.payload.state) ? state.payload.state : {};
         var defaultMetric = normalizeMetric(payloadState.metric || payloadState.default_metric || (renderState && renderState.default_metric) || 'momentum');
-        return normalizeMetric(state.currentMetric || defaultMetric) === defaultMetric;
+        return canAdoptManagedPrerender && normalizeMetric(state.currentMetric || defaultMetric) === defaultMetric;
       }
     });
   }

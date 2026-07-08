@@ -839,7 +839,7 @@
 
   function canUseVisitorPrerenderReadOnly(options) {
     var opts = options && typeof options === 'object' ? options : {};
-    if (opts.isAdmin === true) {
+    if (opts.isAdmin === true && opts.allowAdmin !== true) {
       return false;
     }
     if (opts.allowAuthenticated !== true && hasLikelyAuthenticatedSession()) {

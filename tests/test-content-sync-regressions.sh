@@ -396,6 +396,7 @@ assert_file_contains "$ROOT_DIR/cgi/pre-build" 'page_dest=$(blog_managed_page_pa
 assert_file_not_contains "$ROOT_DIR/cgi/pre-build" 'page_dest="$blog_site_root/site/pages/$page_rel"' 'pre-build does not force Lodestone projections into repo pages'
 assert_file_not_contains "$ROOT_DIR/README.md" '.sitedata/<site>/blog/content/' 'README no longer documents the pre-simplification blog/content storage path'
 assert_file_contains "$ROOT_DIR/README.md" '.sitedata/<site>/content/' 'README documents the canonical simplified content storage root'
+assert_file_contains "$ROOT_DIR/README.md" 'sample-site-data/content/posts/' 'README copies sample posts from the simplified sample-site-data content root'
 assert_file_contains "$ROOT_DIR/README.md" 'template-owned build inputs such as `cgi/`, `site/static/`, `site/includes/`, and Lodestone page/template sources should come from that Gazeta checkout' 'README documents local-template as the canonical source root for template-owned build inputs'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'BLOG_SUPPRESS_ASYNC_BUILD:-${WIZARDRY_BUILD_IN_PROGRESS:-}' 'async rebuild helper honors build-in-progress suppression'
 assert_file_contains "$ROOT_DIR/cgi/blog-lib.sh" 'BLOG_SUPPRESS_ASYNC_BUILD=1 WIZARDRY_BUILD_IN_PROGRESS=1' 'async rebuild helper marks spawned builds as in progress'
@@ -437,6 +438,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'blog_nostr_page_draft_
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'elif [ "$local_has_source" = "true" ]; then' 'public Nostr-backed pages prefer the server copy whenever local source exists'
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'Visitors see the server copy.' 'sync status explains that the server copy remains the rendered authority for visitors'
 assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'blog_nostr_page_finalize_prerender_payload "$response_json" "$page_type"' 'runtime Nostr page payloads finalize shared prerender fragments and signature together'
+assert_file_contains "$ROOT_DIR/cgi/blog-get-nostr-page" 'viewer_can_submit=false' 'runtime Nostr page payloads track whether the fetched viewer can submit interactive ranking content'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_pages_load_json_fast() {' 'fast normalized nostr pages loader exists for read-only paths'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_pages_source_sync_signature "$cfg_json"' 'Nostr source page sync has a deterministic input signature'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_pages_expected_source_pages_exist "$cfg_json"' 'Nostr source page sync verifies expected canonical sources before skipping'
@@ -445,6 +447,7 @@ assert_file_not_contains "$ROOT_DIR/cgi/blog-list-navbar-pages" '. "$SCRIPT_DIR/
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_page_write_prerendered_source() {' 'managed Nostr pages have a shared static HTML prerender writer'
 assert_file_contains "$ROOT_DIR/cgi/gazeta-nostr-page-content-renderer.sh" 'blog_nostr_prerender_signature() {' 'managed Nostr prerender keeps a shared prerender signature helper'
 assert_file_contains "$ROOT_DIR/cgi/gazeta-nostr-page-content-renderer.sh" 'blog_nostr_page_finalize_prerender_payload() {' 'managed Nostr prerender has one shared payload finalizer for fragments and signature'
+assert_file_contains "$ROOT_DIR/cgi/gazeta-nostr-page-content-renderer.sh" 'def render_submit_shell():' 'public-ranking prerender owns the closed submit-composer shell when the payload allows submission'
 assert_file_contains "$ROOT_DIR/cgi/blog-nostr-pages-common.sh" 'blog_nostr_pages_prune_clean_url_build_dirs() {' 'managed Nostr pages prune stale clean-url build copies before rebuild'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'blog_nostr_pages_prune_clean_url_build_dirs "$pages_json"' 'pre-build removes stale clean-url build copies for managed pages'
 assert_file_contains "$ROOT_DIR/cgi/pre-build" 'copy_tree_overlay "$legacy_assets_src" "$site_bootstrap_dir/legacy-assets"' 'pre-build mirrors site-data-backed legacy assets into generated static files'
@@ -2526,6 +2529,9 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'extraPar
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'sort_metric: sortMetric' 'public ranking refresh asks the server for the selected metric view'
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'await refreshCurrentMetricView();' 'public ranking mutations now refresh the canonical server-rendered metric view after writes'
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'if (canRefreshMetricFromServer()) {' 'public ranking metric changes prefer server-prerendered refreshes when visitor view can stay read-only'
+assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'allowAuthenticated: canAdoptManagedPrerender' 'public ranking explicitly opts authenticated viewers into server-owned prerender when the fetched payload already carries the correct interaction shell'
+assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'allowAdmin: canAdoptManagedPrerender' 'public ranking explicitly opts admin read-only mode into server-owned prerender when the fetched payload already carries the correct interaction shell'
+assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'state.payload && state.payload.viewer_can_submit === true' 'public ranking prerender adoption keys off the fetched payload submit capability instead of raw session presence'
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'allowWrite: function () {' 'public ranking metric refresh only persists cache entries through an explicit shared allowWrite gate'
 assert_file_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'return sortMetric === defaultMetricForCache();' 'public ranking metric refresh does not poison the slug-scoped bootstrap cache with non-default metric views'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/public-ranking-page.js" 'function applyLiveRankingUpdate(' 'public ranking runtime no longer maintains a separate local live-ranking patch path for visitor metric views'
@@ -2546,6 +2552,50 @@ if [ "${tree_line:-0}" -gt 0 ] && [ "${submit_line:-0}" -gt "${tree_line:-0}" ];
 else
   fail 'public ranking add-entry composer renders after ranking list content'
 fi
+
+ranking_submit_payload=$(jq -cn '{
+  viewer_can_submit: true,
+  state: {
+    root_coord: "root",
+    content: "",
+    extras_after: "",
+    default_metric: "momentum",
+    nodes: [
+      {
+        coordinate: "entry-1",
+        parent: "root",
+        title: "Project Alpha",
+        status: "approved",
+        metrics: {momentum: 1.2, support: 3, enthusiasm: 3, intensity: 1.0}
+      }
+    ],
+    edges: []
+  }
+}')
+ranking_submit_html=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/gazeta-nostr-page-content-renderer.sh"; blog_nostr_prerender_public_ranking_html "$2"' sh "$ROOT_DIR" "$ranking_submit_payload")
+assert_contains "$ranking_submit_html" 'data-ranking-action="toggle-submit"' 'public ranking prerender includes the closed submit-composer shell when the payload says the viewer can submit'
+assert_contains "$ranking_submit_html" 'public-ranking-submit-toggle-icon' 'public ranking prerender includes the closed submit toggle icon when viewer submission is enabled'
+ranking_readonly_payload=$(jq -cn '{
+  viewer_can_submit: false,
+  state: {
+    root_coord: "root",
+    content: "",
+    extras_after: "",
+    default_metric: "momentum",
+    nodes: [
+      {
+        coordinate: "entry-1",
+        parent: "root",
+        title: "Project Alpha",
+        status: "approved",
+        metrics: {momentum: 1.2, support: 3, enthusiasm: 3, intensity: 1.0}
+      }
+    ],
+    edges: []
+  }
+}')
+ranking_readonly_html=$(SCRIPT_DIR="$ROOT_DIR/cgi" sh -c '. "$1/cgi/gazeta-nostr-page-content-renderer.sh"; blog_nostr_prerender_public_ranking_html "$2"' sh "$ROOT_DIR" "$ranking_readonly_payload")
+assert_not_contains "$ranking_readonly_html" 'data-ranking-action="toggle-submit"' 'public ranking prerender omits the submit-composer shell when the payload is read-only'
 
 managed_home="$TMP_ROOT/managed-site"
 managed_release_root="$managed_home/releases/20260416000000"

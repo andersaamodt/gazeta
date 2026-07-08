@@ -155,7 +155,7 @@ site_name=myblog
 sites_root=${WIZARDRY_SITES_DIR:-$HOME/sites}
 site_data_root="$sites_root/.sitedata/$site_name"
 mkdir -p "$site_data_root/content/posts"
-cp -R sample-site-data/blog/content/posts/. "$site_data_root/content/posts/"
+cp -R sample-site-data/content/posts/. "$site_data_root/content/posts/"
 ```
 
 ## Interaction Model
