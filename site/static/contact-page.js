@@ -2963,37 +2963,14 @@
     return defaultNavbarTitle(renderState);
   }
 
-  function navbarTitleHost() {
-    if (!els.title) {
-      return null;
-    }
-    var host = els.title.querySelector('[data-page-nav-title-host="true"]');
-    if (host instanceof HTMLElement) {
-      return host;
-    }
-    host = document.createElement('span');
-    host.setAttribute('data-page-nav-title-host', 'true');
-    host.className = 'list-page-nav-title-row-wrap';
-    var actionsHost = document.getElementById('contact-page-title-actions');
-    if (actionsHost instanceof HTMLElement && actionsHost.parentNode === els.title) {
-      actionsHost.insertAdjacentElement('afterend', host);
-    } else {
-      els.title.appendChild(host);
-    }
-    return host;
-  }
-
   function renderNavbarTitleRow(renderState) {
-    var host = navbarTitleHost();
-    if (!host) {
-      return;
-    }
     var current = currentNavbarTitle(renderState);
-    window.__wizardryRenderManagedNavbarTitleRow(host, {
+    window.__wizardryRenderManagedNavbarTitleRow({
       isAdmin: isAdmin(),
       editMode: state.editMode,
       titleNode: els.title || null,
       titleActiveClassName: 'has-nav-title-row',
+      insertAfterSelector: '.list-page-title-actions',
       currentText: current,
       editing: !!state.navTitleEditing,
       inputValue: state.navTitleInput || current,

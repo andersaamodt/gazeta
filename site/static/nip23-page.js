@@ -301,35 +301,16 @@
     return defaultNavbarTitle(renderState);
   }
 
-  function navbarTitleHost() {
-    var head = root.querySelector('.list-page-head');
-    if (!head || !els.title) {
-      return null;
-    }
-    var host = head.querySelector('[data-page-nav-title-host="true"]');
-    if (host instanceof HTMLElement) {
-      return host;
-    }
-    host = document.createElement('div');
-    host.setAttribute('data-page-nav-title-host', 'true');
-    host.className = 'list-page-nav-title-row-wrap';
-    if (els.title.nextSibling) {
-      head.insertBefore(host, els.title.nextSibling);
-    } else {
-      head.appendChild(host);
-    }
-    return host;
-  }
-
   function renderNavbarTitleRow(renderState) {
-    var host = navbarTitleHost();
-    if (!host) {
-      return;
-    }
+    var head = root.querySelector('.list-page-head');
     var current = currentNavbarTitle(renderState);
-    window.__wizardryRenderManagedNavbarTitleRow(host, {
+    window.__wizardryRenderManagedNavbarTitleRow({
       isAdmin: isAdmin(),
       editMode: state.editMode,
+      titleNode: els.title || null,
+      headNode: head,
+      hostContainerNode: head,
+      insertAfterNode: els.title || null,
       currentText: current,
       editing: !!state.navTitleEditing,
       inputValue: state.navTitleInput || current,
