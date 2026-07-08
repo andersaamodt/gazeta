@@ -4,6 +4,7 @@
   var SITE_TITLE_CACHE_KEY = 'wizardry_blog_site_title_v1';
   var APPEND_SITE_TITLE_CACHE_KEY = 'wizardry_blog_append_site_title_to_page_title_v1';
   var routeFailureTimer = 0;
+  var pageInitialContentReady = false;
   var cachedBasePageTitle = '';
   var nostrPublishDialogPromise = null;
 
@@ -983,8 +984,8 @@
     if (rootNode && rootNode.classList && loadingClass) {
       rootNode.classList.remove(loadingClass);
     }
+    pageInitialContentReady = true;
     try {
-      window.__wizardryPageInitialContentReady = true;
       window.dispatchEvent(new CustomEvent('blog-page-initial-content-ready', {
         detail: { slug: String(slug || '') }
       }));
@@ -1290,7 +1291,7 @@
     cancelRouteLoadFailure();
     routeFailureTimer = window.setTimeout(function () {
       routeFailureTimer = 0;
-      if (!window.__wizardryPageInitialContentReady) {
+      if (!pageInitialContentReady) {
         showRouteLoadFailure();
       }
     }, 2200);
@@ -1371,7 +1372,6 @@
   window.__wizardryReconcileAdoptedPrerenderRefresh = reconcileAdoptedPrerenderRefresh;
   window.__wizardryRenderResolvedReadOnlyContent = renderResolvedReadOnlyContent;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
-  window.__wizardryRenderSyncStatusPill = renderSyncStatusPill;
   window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;
   window.__wizardryWritePageBootstrapCache = writePageBootstrapCache;
   window.__wizardryAuthPayload = authPayload;

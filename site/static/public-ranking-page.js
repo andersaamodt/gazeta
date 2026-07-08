@@ -449,9 +449,9 @@
       }
       var nonAdminActionsHost = document.getElementById('public-ranking-page-title-actions');
       if (nonAdminActionsHost) {
-        window.__wizardryRenderSyncStatusPill(nonAdminActionsHost, state.payload && state.payload.sync_status, {
-          messageVariant: 'local_source',
-          hostClassName: 'public-ranking-sync-actions'
+        nonAdminActionsHost.classList.add('public-ranking-sync-actions');
+        nonAdminActionsHost.innerHTML = window.__wizardrySyncStatusPillHtml(state.payload && state.payload.sync_status, {
+          messageVariant: 'local_source'
         });
       }
       els.admin.hidden = true;
