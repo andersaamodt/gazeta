@@ -439,24 +439,6 @@
     return null;
   }
 
-  function ensureMatchingStaticShell(rootNode, hostNode, payload, options) {
-    var opts = options && typeof options === 'object' ? options : {};
-    if (!hostNode) {
-      return null;
-    }
-    var selector = String(opts.selector || '').trim();
-    var fallbackHtml = String(opts.fallbackHtml || '');
-    if (!hasMatchingStaticPrerender(rootNode || null, hostNode, payload) && fallbackHtml) {
-      hostNode.innerHTML = fallbackHtml;
-    }
-    var shell = selector ? hostNode.querySelector(selector) : hostNode.firstElementChild;
-    if (!shell && fallbackHtml) {
-      hostNode.innerHTML = fallbackHtml;
-      shell = selector ? hostNode.querySelector(selector) : hostNode.firstElementChild;
-    }
-    return shell instanceof HTMLElement ? shell : null;
-  }
-
   function reconcileAdoptedPrerenderRefresh(options) {
     var opts = options && typeof options === 'object' ? options : {};
     if (!opts.hasChanges) {
@@ -1354,10 +1336,6 @@
     link.setAttribute('data-theme-href', href);
   }
 
-  window.__wizardryApplyPageTitle = function (baseTitle) {
-    return applyPageTitle(baseTitle);
-  };
-
   window.__wizardryNotifyInitialContentPainted = notifyInitialContentPainted;
   window.__wizardryRenderLoadFallback = renderLoadFallback;
   window.__wizardryRenderManagedNostrPageBootstrapPayload = renderManagedNostrPageBootstrapPayload;
@@ -1368,7 +1346,6 @@
   window.__wizardryFocusEditablePageHeadField = focusEditablePageHeadField;
   window.__wizardryRenderEditableNavbarTitleRow = renderEditableNavbarTitleRow;
   window.__wizardryFocusEditableNavbarTitleInput = focusEditableNavbarTitleInput;
-  window.__wizardryEnsureMatchingStaticShell = ensureMatchingStaticShell;
   window.__wizardryReconcileAdoptedPrerenderRefresh = reconcileAdoptedPrerenderRefresh;
   window.__wizardryRenderResolvedReadOnlyContent = renderResolvedReadOnlyContent;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
@@ -1385,16 +1362,31 @@
   window.__wizardryRefreshManagedNostrPage = refreshManagedNostrPage;
   window.__wizardryPostFormJson = postFormJson;
 
-  window.__wizardrySetPageTitleConfig = function (siteTitle, appendSiteTitle) {
-    var normalizedSiteTitle = normalizeSiteTitle(siteTitle);
-    var enabled = normalizeAppendSiteTitleEnabled(appendSiteTitle);
-    try {
-      localStorage.setItem(SITE_TITLE_CACHE_KEY, normalizedSiteTitle);
-      localStorage.setItem(APPEND_SITE_TITLE_CACHE_KEY, enabled ? '1' : '0');
-    } catch (_err) {
-      // Ignore storage failures.
+  window.__wizardrySetPageTitleConfig = function (options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var overrides = {};
+    if (Object.prototype.hasOwnProperty.call(opts, 'siteTitle')) {
+      var normalizedSiteTitle = normalizeSiteTitle(opts.siteTitle);
+      overrides.siteTitle = normalizedSiteTitle;
+      try {
+        localStorage.setItem(SITE_TITLE_CACHE_KEY, normalizedSiteTitle);
+      } catch (_err) {
+        // Ignore storage failures.
+      }
     }
-    return applyPageTitle(undefined, { siteTitle: normalizedSiteTitle, appendSiteTitle: enabled });
+    if (Object.prototype.hasOwnProperty.call(opts, 'appendSiteTitle')) {
+      var enabled = normalizeAppendSiteTitleEnabled(opts.appendSiteTitle);
+      overrides.appendSiteTitle = enabled;
+      try {
+        localStorage.setItem(APPEND_SITE_TITLE_CACHE_KEY, enabled ? '1' : '0');
+      } catch (_err) {
+        // Ignore storage failures.
+      }
+    }
+    return applyPageTitle(
+      Object.prototype.hasOwnProperty.call(opts, 'baseTitle') ? opts.baseTitle : undefined,
+      overrides
+    );
   };
 
   reconcileThemeLink();

@@ -367,7 +367,10 @@
     updateNavSiteSignature(next.site_title || '');
     cacheSiteTitle(next.site_title || '');
     cacheAppendSiteTitleEnabled(appendSiteTitle);
-    window.__wizardrySetPageTitleConfig(next.site_title || '', appendSiteTitle);
+    window.__wizardrySetPageTitleConfig({
+      siteTitle: next.site_title || '',
+      appendSiteTitle: appendSiteTitle
+    });
     if (Object.prototype.hasOwnProperty.call(next, 'theme')) {
       state.currentTheme = normalizeThemeName(next.theme);
       cacheTheme(state.currentTheme);

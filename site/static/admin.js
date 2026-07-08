@@ -1003,7 +1003,7 @@
   function syncAdminDocumentTitle(sectionName) {
     const sectionTitle = adminSectionDisplayTitle(sectionName);
     const pageTitle = sectionTitle === 'Admin' ? 'Admin' : (sectionTitle + ' · Admin');
-    window.__wizardryApplyPageTitle(pageTitle);
+    window.__wizardrySetPageTitleConfig({ baseTitle: pageTitle });
   }
 
   function adminSectionHasLazyLoader(sectionName) {
@@ -1824,7 +1824,10 @@
   function applyPageTitleConfig(siteTitle, appendSiteTitle) {
     const normalizedSiteTitle = normalizeSiteTitle(siteTitle);
     const enabled = normalizeAppendSiteTitleEnabled(appendSiteTitle);
-    window.__wizardrySetPageTitleConfig(normalizedSiteTitle, enabled);
+    window.__wizardrySetPageTitleConfig({
+      siteTitle: normalizedSiteTitle,
+      appendSiteTitle: enabled
+    });
   }
 
   function parsePossiblyWrappedJson(text) {

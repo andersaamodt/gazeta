@@ -131,11 +131,15 @@
     if (!(host instanceof HTMLElement)) {
       return null;
     }
-    const root = host.closest ? host.closest('#overworld-page-root') : null;
-    return window.__wizardryEnsureMatchingStaticShell(root, host, payload, {
-      selector: '.overworld-godot-shell',
-      fallbackHtml: OVERWORLD_STATIC_SHELL_HTML
+    window.__wizardryRenderResolvedReadOnlyContent({
+      targetNode: host,
+      payload: payload,
+      name: 'content',
+      renderFallback: function () {
+        return OVERWORLD_STATIC_SHELL_HTML;
+      }
     });
+    return host.querySelector('.overworld-godot-shell');
   }
 
   function resolveShellParts(host, payload) {
