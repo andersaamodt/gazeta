@@ -477,20 +477,20 @@
 
   function renderHead() {
     var page = getRenderState();
-	    var title = String(page.title || '').trim() || titleizeSlug(slug);
-	    window.__wizardryApplyPageTitle(title);
-	    if (els.title) {
-	      window.__wizardryRenderReadOnlyTitleShellWithSync(els.title, title, state.payload && state.payload.sync_status, {
-	        actionsId: 'blog-page-title-actions',
-	        actionsClassName: 'list-page-title-actions',
-	        fallbackText: 'Blog'
-	      });
-	    }
-    if (!els.description) {
-      return;
-    }
-    window.__wizardryRenderReadOnlyDescriptionShellFromPrerender(els.description, state.payload, 'description', {
-      fallback: {
+    var title = String(page.title || '').trim() || titleizeSlug(slug);
+    window.__wizardryRenderReadOnlyPageHead({
+      pageTitle: title,
+      titleNode: els.title,
+      titleText: title,
+      syncStatus: state.payload && state.payload.sync_status,
+      titleOptions: {
+        actionsId: 'blog-page-title-actions',
+        actionsClassName: 'list-page-title-actions',
+        fallbackText: 'Blog'
+      },
+      descriptionNode: els.description,
+      descriptionPayload: state.payload,
+      descriptionFallback: {
         html: '',
         hidden: true
       }

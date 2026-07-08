@@ -219,6 +219,25 @@
     return false;
   }
 
+  function renderReadOnlyPageHead(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    if (Object.prototype.hasOwnProperty.call(opts, 'pageTitle') && opts.pageTitle !== null && typeof opts.pageTitle !== 'undefined') {
+      var pageTitle = String(opts.pageTitle || '').trim();
+      if (pageTitle) {
+        applyPageTitle(pageTitle);
+      }
+    }
+    if (opts.titleNode) {
+      renderReadOnlyTitleShellWithSync(opts.titleNode, opts.titleText, opts.syncStatus, opts.titleOptions);
+    }
+    if (opts.descriptionNode && Object.prototype.hasOwnProperty.call(opts, 'descriptionFallback')) {
+      renderReadOnlyDescriptionShellFromPrerender(opts.descriptionNode, opts.descriptionPayload, String(opts.descriptionName || 'description'), {
+        allowPrerender: opts.allowPrerenderDescription,
+        fallback: opts.descriptionFallback
+      });
+    }
+  }
+
   function escapeHtml(value) {
     return String(value || '')
       .replace(/&/g, '&amp;')
@@ -965,6 +984,7 @@
   window.__wizardryRenderReadOnlyDescriptionShell = renderReadOnlyDescriptionShell;
   window.__wizardryRenderReadOnlyPrerenderDescriptionShell = renderReadOnlyPrerenderDescriptionShell;
   window.__wizardryRenderReadOnlyDescriptionShellFromPrerender = renderReadOnlyDescriptionShellFromPrerender;
+  window.__wizardryRenderReadOnlyPageHead = renderReadOnlyPageHead;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
   window.__wizardryRenderSyncStatusPill = renderSyncStatusPill;
   window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;

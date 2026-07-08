@@ -465,19 +465,20 @@
 
   function renderHead() {
     var s = getRenderState();
-	    if (s && s.title) {
-	      window.__wizardryApplyPageTitle(String(s.title));
-	    }
-	    if (els.title) {
-	      window.__wizardryRenderReadOnlyTitleShellWithSync(els.title, String(s.title || 'Untitled'), state.payload && state.payload.sync_status, {
-	        actionsId: 'nip23-page-title-actions',
-	        actionsClassName: 'list-page-title-actions',
-	        fallbackText: 'Untitled',
-	        syncOptions: {
-	          messageVariant: 'local_source'
-	        }
-	      });
-	    }
+    window.__wizardryRenderReadOnlyPageHead({
+      pageTitle: s && s.title ? String(s.title) : null,
+      titleNode: els.title,
+      titleText: String(s.title || 'Untitled'),
+      syncStatus: state.payload && state.payload.sync_status,
+      titleOptions: {
+        actionsId: 'nip23-page-title-actions',
+        actionsClassName: 'list-page-title-actions',
+        fallbackText: 'Untitled',
+        syncOptions: {
+          messageVariant: 'local_source'
+        }
+      }
+    });
     renderNavbarTitleRow(s);
   }
 

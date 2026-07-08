@@ -425,9 +425,8 @@
 
   function renderHead() {
     var s = getRenderState();
-    if (s && s.title) {
-      window.__wizardryApplyPageTitle(String(s.title));
-    }
+    var desc = String(s.description || '').trim();
+    var hasMainContent = hasVisibleMainContent(s);
     if (els.title) {
       if (isAdmin()) {
         if (state.activeHeadField === 'title') {
@@ -437,22 +436,36 @@
         } else {
           els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'Public Ranking') + '</span>' + titleActionsHtml(false);
         }
-	      } else {
-	        window.__wizardryRenderReadOnlyTitleShellWithSync(els.title, String(s.title || 'Public Ranking'), state.payload && state.payload.sync_status, {
-	          actionsId: 'public-ranking-page-title-actions',
-	          actionsClassName: 'list-page-title-actions public-ranking-sync-actions',
-	          fallbackText: 'Public Ranking',
-	          syncOptions: {
-	            messageVariant: 'local_source',
-	            hostClassName: 'public-ranking-sync-actions'
-	          }
-	        });
-	      }
-	    }
+      } else {
+        window.__wizardryRenderReadOnlyPageHead({
+          pageTitle: s && s.title ? String(s.title) : null,
+          titleNode: els.title,
+          titleText: String(s.title || 'Public Ranking'),
+          syncStatus: state.payload && state.payload.sync_status,
+          titleOptions: {
+            actionsId: 'public-ranking-page-title-actions',
+            actionsClassName: 'list-page-title-actions public-ranking-sync-actions',
+            fallbackText: 'Public Ranking',
+            syncOptions: {
+              messageVariant: 'local_source',
+              hostClassName: 'public-ranking-sync-actions'
+            }
+          },
+          descriptionNode: els.description,
+          descriptionPayload: state.payload,
+          allowPrerenderDescription: canUsePrerenderReadOnlyView(s),
+          descriptionFallback: desc ? {
+            html: markdownInline(desc),
+            hidden: false
+          } : {
+            html: '',
+            hidden: true
+          }
+        });
+      }
+    }
     renderNavbarTitleRow(s);
     if (els.description) {
-      var desc = String(s.description || '').trim();
-      var hasMainContent = hasVisibleMainContent(s);
       var suppressEmptyDescription = !desc && !hasMainContent && state.activeHeadField !== 'description';
       if (isAdmin()) {
         els.description.hidden = suppressEmptyDescription;
@@ -474,17 +487,6 @@
         } else {
           els.description.innerHTML = '<span class="list-page-description-empty">No description.</span>';
         }
-      } else {
-        window.__wizardryRenderReadOnlyDescriptionShellFromPrerender(els.description, state.payload, 'description', {
-          allowPrerender: canUsePrerenderReadOnlyView(s),
-          fallback: desc ? {
-            html: markdownInline(desc),
-            hidden: false
-          } : {
-            html: '',
-            hidden: true
-          }
-        });
       }
     }
     if (isAdmin() && state.activeHeadField) {

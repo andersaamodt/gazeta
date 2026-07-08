@@ -2908,9 +2908,9 @@
 
   function renderHead() {
     var s = getRenderState();
-    if (s && s.title) {
-      window.__wizardryApplyPageTitle(String(s.title));
-    }
+    var descText = String(s.description || '');
+    var elements = Array.isArray(s.elements) ? s.elements : [];
+    var hasMainContent = elements.length > 0 || String(s.extras_after || '').trim().length > 0;
     if (els.title) {
       if (isAdmin()) {
         if (state.activeHeadField === 'title') {
@@ -2920,22 +2920,32 @@
         } else {
           els.title.innerHTML = '<span class="list-page-title-text">' + escapeHtml(s.title || 'List') + '</span><span id="list-page-title-actions" class="list-page-title-actions"></span>';
         }
-	      } else {
-	        window.__wizardryRenderReadOnlyTitleShellWithSync(els.title, String(s.title || 'List'), state.payload && state.payload.sync_status, {
-	          actionsId: 'list-page-title-actions',
-	          actionsClassName: 'list-page-title-actions',
-	          fallbackText: 'List'
-	        });
-	      }
-	    }
+      } else {
+        window.__wizardryRenderReadOnlyPageHead({
+          pageTitle: s && s.title ? String(s.title) : null,
+          titleNode: els.title,
+          titleText: String(s.title || 'List'),
+          syncStatus: state.payload && state.payload.sync_status,
+          titleOptions: {
+            actionsId: 'list-page-title-actions',
+            actionsClassName: 'list-page-title-actions',
+            fallbackText: 'List'
+          },
+          descriptionNode: els.description,
+          descriptionPayload: state.payload,
+          allowPrerenderDescription: canUsePrerenderReadOnlyView(s),
+          descriptionFallback: {
+            text: descText,
+            hidden: !descText && !hasMainContent
+          }
+        });
+      }
+    }
     renderNavbarTitleRow(s);
 
     if (!els.description) {
       return;
     }
-    var descText = String(s.description || '');
-    var elements = Array.isArray(s.elements) ? s.elements : [];
-    var hasMainContent = elements.length > 0 || String(s.extras_after || '').trim().length > 0;
     var suppressEmptyDescription = !descText.trim() && !hasMainContent && state.activeHeadField !== 'description';
     if (isAdmin()) {
       els.description.hidden = suppressEmptyDescription;
@@ -2960,14 +2970,6 @@
           els.description.innerHTML = '<span class="list-page-description-empty">No description.</span>';
         }
       }
-    } else {
-      window.__wizardryRenderReadOnlyDescriptionShellFromPrerender(els.description, state.payload, 'description', {
-        allowPrerender: canUsePrerenderReadOnlyView(s),
-        fallback: {
-          text: descText,
-          hidden: !descText && !hasMainContent
-        }
-      });
     }
 
     if (isAdmin() && state.activeHeadField) {
