@@ -129,7 +129,6 @@ JSON
 search_fixture="$SCRIPT_DIR/fixtures/theurgy-cgi/blog-search"
 search_payload=$(GAZETA_THEURGY_ALLOW_CARGO=1 "$THEURGY_REPLAY" "$search_fixture" -- /bin/sh "$ROOT_DIR/cgi/blog-search")
 
-printf '%s\n' "$search_payload" | grep '<div class="search-form">' >/dev/null
 printf '%s\n' "$search_payload" | grep 'Found 1 result(s) for <strong>fixture</strong>' >/dev/null
 printf '%s\n' "$search_payload" | grep '<article class="post-item blog-post-item">' >/dev/null
 printf '%s\n' "$search_payload" | grep '>Read more...</a>' >/dev/null

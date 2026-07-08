@@ -10,9 +10,8 @@ use std::path::Path;
 
 pub(crate) fn blog_search() -> Result<CgiResponse> {
     let query = query_param_value("q").unwrap_or_default();
-    let mut html = render_form(&query);
     if query.is_empty() {
-        return Ok(CgiResponse::html(html));
+        return Ok(CgiResponse::html(render_empty_state()));
     }
 
     let entries = search_index_entries()?;
@@ -59,8 +58,7 @@ pub(crate) fn blog_search() -> Result<CgiResponse> {
             None
         })
         .collect();
-    html.push_str(&render_results(&query, &matches));
-    Ok(CgiResponse::html(html))
+    Ok(CgiResponse::html(render_results(&query, &matches)))
 }
 
 fn search_index_entries() -> Result<Vec<SearchIndexEntry>> {
@@ -125,17 +123,8 @@ impl SearchIndexEntry {
     }
 }
 
-fn render_form(query: &str) -> String {
-    let mut html = String::new();
-    html.push_str("<div class=\"search-form\">\n");
-    html.push_str("  <form method=\"get\" action=\"/search\">\n");
-    html.push_str("    <input type=\"text\" name=\"q\" value=\"");
-    html.push_str(&html_escape(query));
-    html.push_str("\" placeholder=\"Search posts...\" autofocus />\n");
-    html.push_str("    <button type=\"submit\">Search</button>\n");
-    html.push_str("  </form>\n");
-    html.push_str("</div>\n");
-    html
+fn render_empty_state() -> String {
+    "<p class=\"placeholder\">Enter a search term to find posts.</p>\n".to_string()
 }
 
 fn render_results(query: &str, matches: &[&PublicPost]) -> String {

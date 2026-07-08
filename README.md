@@ -104,11 +104,12 @@ blog/
 
 ## Search
 
-Full-text search via CGI:
+Full-text search via the public `/search` page:
 - Search across post titles, tags, summaries, and content
 - Case-insensitive matching
 - Excludes draft posts from results
-- Accessible via `/cgi/blog-search?q=query`
+- Lodestone owns the visitor-facing page shell and search form
+- `blog-search` renders only the search result fragment mounted into that shell
 
 ## Pagination
 
@@ -160,6 +161,7 @@ visibility: "public"  # Change from "draft"
 - For blog pages specifically, the managed-page payload contract also carries `bootstrap_posts` from the shared public-posts catalog helper, so prerender, runtime refresh, and client adoption all speak the same post-card shape instead of splitting page-state and post-list first paint across separate contracts; the browser runtime should not need an independent first-paint fetch of the public-posts catalog.
 - The public `blog-index` read route should also treat that catalog as the render authority for post cards by adopting each row's shared `rendered_html`, leaving pagination and route concerns in Rust without re-owning blog card markup there.
 - The public `blog-search` read route should likewise treat that catalog as the render authority for matching post cards, leaving search-specific concerns such as query matching and result counts in Rust without authoring a second visitor-facing card shape there.
+- The public `/search` page should likewise stay Lodestone-owned at the shell/form level, with `site/static/search-page.js` only loading a result fragment from `blog-search` instead of fetching a second mini-page and trimming duplicate form markup afterward.
 - Blog-page hydration should likewise treat the filtered sequence of shared `rendered_html` cards as the canonical list shell for prerender-preservation signatures, instead of rebuilding a second shadow card-field shape in page-local JavaScript.
 - List-page hydration should likewise treat the shared managed-page `prerender_signature` as the canonical read-only shell identity for preserve/reconcile decisions, instead of keying that decision off a second page-local snapshot of payload state.
 - Derived read artifacts such as `search-index.json` should likewise start from those canonical public-post rows and only add route-specific fields like stable row identity plus `search_text`, rather than re-deriving the same public metadata in parallel.

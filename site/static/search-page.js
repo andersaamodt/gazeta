@@ -11,6 +11,9 @@
     return;
   }
 
+  var form = document.getElementById('search-page-form');
+  var pageInput = document.getElementById('search-page-input');
+
   function escapeHtml(text) {
     return String(text || '')
       .replace(/&/g, '&amp;')
@@ -26,13 +29,16 @@
     });
   }
 
-  function rewriteEmbeddedSearchForms() {
-    var forms = content.querySelectorAll('form[action="/cgi/blog-search"]');
-    forms.forEach(function (form) {
-      if (form && form.parentNode) {
-        form.parentNode.removeChild(form);
-      }
-    });
+  function setInputValue(input, value) {
+    if (!(input instanceof HTMLInputElement)) {
+      return;
+    }
+    input.value = value;
+  }
+
+  function syncSearchInputs(query) {
+    setInputValue(pageInput, query);
+    setInputValue(document.querySelector('.nav-search input[name="q"]'), query);
   }
 
   function renderSearchLoadFallback(err) {
@@ -55,15 +61,29 @@
     input.select();
   }
 
+  function focusPageSearchInput() {
+    if (!(pageInput instanceof HTMLInputElement)) {
+      focusNavbarSearchInput();
+      return;
+    }
+    try {
+      pageInput.focus({ preventScroll: true });
+    } catch (_err) {
+      pageInput.focus();
+    }
+    pageInput.select();
+  }
+
   function renderEmptyState() {
     content.innerHTML = '<p class="placeholder">Enter a search term to find posts.</p>';
-    focusNavbarSearchInput();
+    focusPageSearchInput();
     markInitialContentPainted();
   }
 
   function load() {
     var params = new URLSearchParams(window.location.search || '');
     var query = String(params.get('q') || '').trim();
+    syncSearchInputs(query);
     if (!query) {
       renderEmptyState();
       return;
@@ -80,15 +100,20 @@
           throw new Error('Search returned no content.');
         }
         content.innerHTML = html;
-        rewriteEmbeddedSearchForms();
       })
       .catch(function (err) {
         renderSearchLoadFallback(err);
       })
       .finally(function () {
-        focusNavbarSearchInput();
+        focusPageSearchInput();
         markInitialContentPainted();
       });
+  }
+
+  if (form instanceof HTMLFormElement && pageInput instanceof HTMLInputElement) {
+    form.addEventListener('submit', function () {
+      syncSearchInputs(String(pageInput.value || '').trim());
+    });
   }
 
   load();
