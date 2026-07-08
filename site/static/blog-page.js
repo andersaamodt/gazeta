@@ -225,6 +225,36 @@
     });
   }
 
+  function prerenderFragment(payload, key) {
+    return String(payload && payload.prerender && payload.prerender[key] || '');
+  }
+
+  function readPrerenderHtmlFragment(payload, name, options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var fragmentName = String(name || '').trim();
+    if (!fragmentName) {
+      return null;
+    }
+    var html = prerenderFragment(payload, fragmentName + '_html');
+    if (!html && opts.allowEmpty !== true) {
+      return null;
+    }
+    return {
+      html: html,
+      hidden: /\bhidden\b/i.test(prerenderFragment(payload, fragmentName + '_attrs'))
+    };
+  }
+
+  function mountPrerenderHtmlFragment(targetNode, payload, name, options) {
+    var fragment = readPrerenderHtmlFragment(payload, name, options);
+    if (!targetNode || !fragment) {
+      return false;
+    }
+    targetNode.innerHTML = fragment.html;
+    targetNode.hidden = fragment.hidden;
+    return true;
+  }
+
   function titleizeSlug(value) {
     var text = String(value || '').trim().replace(/-/g, ' ');
     if (!text || text === 'index') {
@@ -286,11 +316,23 @@
     return normalizePageState({ title: fallbackPageTitle() });
   }
 
+  function hasLikelyAdminSession() {
+    var auth = window.__wizardryAuthPayload();
+    if (!auth || !auth.session_token || !auth.csrf_token) {
+      return false;
+    }
+    try {
+      return String(localStorage.getItem('last_auth_is_admin') || '') === '1';
+    } catch (_err) {
+      return false;
+    }
+  }
+
   function isAdmin() {
     if (state.payload && state.payload.is_admin) {
       return true;
     }
-    return window.__wizardryHasLikelyAdminSession();
+    return hasLikelyAdminSession();
   }
 
   var apiPost = window.__wizardryPostFormJson;
@@ -3771,19 +3813,74 @@
     return JSON.stringify(filteredPosts().map(renderedPostCardHtml).filter(Boolean));
   }
 
+  function managedBlogFilterCatalogSignature(posts) {
+    return JSON.stringify((Array.isArray(posts) ? posts : []).map(function (post) {
+      var tags = Array.isArray(post && post.tags)
+        ? post.tags.map(function (tag) {
+            return String(tag || '').trim();
+          }).filter(Boolean)
+        : (typeof (post && post.tags) === 'string'
+            ? String(post.tags).split(',').map(function (tag) {
+                return String(tag || '').trim();
+              }).filter(Boolean)
+            : []);
+      return {
+        tags: tags,
+        year: String(post && post.year || ''),
+        type: String(post && post.type || 'post')
+      };
+    }).sort(function (a, b) {
+      var left = JSON.stringify(a);
+      var right = JSON.stringify(b);
+      return left.localeCompare(right);
+    }));
+  }
+
+  function renderManagedBlogFilterFragments(payload) {
+    if (!payload || !els.tags || !els.years || !els.types) {
+      return false;
+    }
+    return mountPrerenderHtmlFragment(els.tags, payload, 'filter_tags', { allowEmpty: true }) &&
+      mountPrerenderHtmlFragment(els.years, payload, 'filter_years', { allowEmpty: true }) &&
+      mountPrerenderHtmlFragment(els.types, payload, 'filter_types', { allowEmpty: true });
+  }
+
+  function syncManagedBlogFilterPanelState() {
+    [els.tags || null, els.years || null, els.types || null].forEach(function (host) {
+      if (!host) {
+        return;
+      }
+      host.querySelectorAll('[data-filter-group][data-filter-value]').forEach(function (button) {
+        var group = String(button.getAttribute('data-filter-group') || '');
+        var value = String(button.getAttribute('data-filter-value') || '');
+        var filterSet = state.filters[group];
+        var active = !!(filterSet && filterSet.has && filterSet.has(value));
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+    });
+  }
+
+  function renderManagedBlogFilterPanel() {
+    if (!els.tags || !els.years || !els.types) {
+      return false;
+    }
+    var prerenderedPosts = readPrerenderPostsBootstrap(state.payload);
+    if (state.payload && prerenderedPosts &&
+        managedBlogFilterCatalogSignature(state.posts) === managedBlogFilterCatalogSignature(prerenderedPosts) &&
+        renderManagedBlogFilterFragments(state.payload)) {
+      syncManagedBlogFilterPanelState();
+      return true;
+    }
+    syncManagedBlogFilterPanelState();
+    return false;
+  }
+
   function renderFilters() {
     if (!els.tags || !els.years || !els.types) {
       return;
     }
-    window.__wizardryRenderManagedBlogFilterPanel({
-      payload: state.payload,
-      posts: state.posts,
-      tagsNode: els.tags,
-      yearsNode: els.years,
-      typesNode: els.types,
-      activeFilters: state.filters,
-      readPayloadPosts: readPrerenderPostsBootstrap
-    });
+    renderManagedBlogFilterPanel();
   }
 
   function renderList() {

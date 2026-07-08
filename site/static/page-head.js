@@ -1265,100 +1265,6 @@
     return true;
   }
 
-  function renderManagedBlogFilterFragments(options) {
-    var opts = options && typeof options === 'object' ? options : {};
-    var payload = opts.payload && typeof opts.payload === 'object' ? opts.payload : null;
-    var tagsNode = opts.tagsNode || null;
-    var yearsNode = opts.yearsNode || null;
-    var typesNode = opts.typesNode || null;
-    if (!payload || !tagsNode || !yearsNode || !typesNode) {
-      return false;
-    }
-    return mountPrerenderHtmlFragment(tagsNode, payload, 'filter_tags', { allowEmpty: true }) &&
-      mountPrerenderHtmlFragment(yearsNode, payload, 'filter_years', { allowEmpty: true }) &&
-      mountPrerenderHtmlFragment(typesNode, payload, 'filter_types', { allowEmpty: true });
-  }
-
-  function managedBlogFilterCatalogSignature(posts) {
-    return JSON.stringify((Array.isArray(posts) ? posts : []).map(function (post) {
-      var tags = Array.isArray(post && post.tags)
-        ? post.tags.map(function (tag) {
-            return String(tag || '').trim();
-          }).filter(Boolean)
-        : (typeof (post && post.tags) === 'string'
-            ? String(post.tags).split(',').map(function (tag) {
-                return String(tag || '').trim();
-              }).filter(Boolean)
-            : []);
-      return {
-        tags: tags,
-        year: String(post && post.year || ''),
-        type: String(post && post.type || 'post')
-      };
-    }).sort(function (a, b) {
-      var left = JSON.stringify(a);
-      var right = JSON.stringify(b);
-      return left.localeCompare(right);
-    }));
-  }
-
-  function syncManagedBlogFilterPanelState(options) {
-    var opts = options && typeof options === 'object' ? options : {};
-    var activeFilters = opts.activeFilters && typeof opts.activeFilters === 'object' ? opts.activeFilters : {};
-    [opts.tagsNode || null, opts.yearsNode || null, opts.typesNode || null].forEach(function (host) {
-      if (!host) {
-        return;
-      }
-      host.querySelectorAll('[data-filter-group][data-filter-value]').forEach(function (button) {
-        var group = String(button.getAttribute('data-filter-group') || '');
-        var value = String(button.getAttribute('data-filter-value') || '');
-        var filterSet = activeFilters[group];
-        var active = !!(filterSet && filterSet.has && filterSet.has(value));
-        button.classList.toggle('is-active', active);
-        button.setAttribute('aria-pressed', active ? 'true' : 'false');
-      });
-    });
-  }
-
-  function renderManagedBlogFilterPanel(options) {
-    var opts = options && typeof options === 'object' ? options : {};
-    var tagsNode = opts.tagsNode || null;
-    var yearsNode = opts.yearsNode || null;
-    var typesNode = opts.typesNode || null;
-    if (!tagsNode || !yearsNode || !typesNode) {
-      return false;
-    }
-    var activeFilters = opts.activeFilters && typeof opts.activeFilters === 'object' ? opts.activeFilters : {};
-    var payload = opts.payload && typeof opts.payload === 'object' ? opts.payload : null;
-    var posts = Array.isArray(opts.posts) ? opts.posts : [];
-    var prerenderedPosts = typeof opts.readPayloadPosts === 'function'
-      ? opts.readPayloadPosts(payload)
-      : null;
-    if (payload && prerenderedPosts &&
-        managedBlogFilterCatalogSignature(posts) === managedBlogFilterCatalogSignature(prerenderedPosts) &&
-        renderManagedBlogFilterFragments({
-          payload: payload,
-          tagsNode: tagsNode,
-          yearsNode: yearsNode,
-          typesNode: typesNode
-        })) {
-      syncManagedBlogFilterPanelState({
-        tagsNode: tagsNode,
-        yearsNode: yearsNode,
-        typesNode: typesNode,
-        activeFilters: activeFilters
-      });
-      return true;
-    }
-    syncManagedBlogFilterPanelState({
-      tagsNode: tagsNode,
-      yearsNode: yearsNode,
-      typesNode: typesNode,
-      activeFilters: activeFilters
-    });
-    return false;
-  }
-
   function resolveManagedPagePreviewHtml(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var payload = opts.payload && typeof opts.payload === 'object' ? opts.payload : null;
@@ -2672,15 +2578,12 @@
   window.__wizardryResolveRootAttributeFallbackText = resolveRootAttributeFallbackText;
   window.__wizardryResetManagedNavbarTitleState = resetManagedNavbarTitleState;
   window.__wizardryRenderResolvedReadOnlyContent = renderResolvedReadOnlyContent;
-  window.__wizardryRenderManagedBlogFilterPanel = renderManagedBlogFilterPanel;
   window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;
   window.__wizardryAuthPayload = authPayload;
   window.__wizardrySessionAuthSignature = sessionAuthSignature;
   window.__wizardryViewerAuthSignature = viewerAuthSignature;
-  window.__wizardryHasPaintedPrerenderShell = hasPaintedPrerenderShell;
   window.__wizardryBindSessionAuthRefresh = bindSessionAuthRefresh;
   window.__wizardryHasLikelyAuthenticatedSession = hasLikelyAuthenticatedSession;
-  window.__wizardryHasLikelyAdminSession = hasLikelyAdminSession;
   window.__wizardryEventHasVerifiedAdminState = eventHasVerifiedAdminState;
   window.__wizardryAuthEventIsLikelyAdmin = authEventIsLikelyAdmin;
   window.__wizardryCanUseVisitorPrerenderReadOnly = canUseVisitorPrerenderReadOnly;

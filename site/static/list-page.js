@@ -1,13 +1,23 @@
 (function () {
   'use strict';
 
+  function hasPaintedPrerenderShell(rootNode, contentNode) {
+    if (String(rootNode && rootNode.getAttribute('data-prerender-painted') || '') !== 'true') {
+      return false;
+    }
+    if (!contentNode) {
+      return true;
+    }
+    return String(contentNode.getAttribute('data-prerender-painted') || '') === 'true';
+  }
+
   var root = document.querySelector('[data-page-type="list"], [data-page-type="icon-gallery"], [data-page-type="software-gallery"]') ||
     document.getElementById('list-page-root') ||
     document.getElementById('icon-gallery-root');
   if (!root) {
     return;
   }
-  if (!window.__wizardryHasPaintedPrerenderShell(root)) {
+  if (!hasPaintedPrerenderShell(root)) {
     root.classList.add('is-loading');
   }
 
@@ -177,7 +187,7 @@
     return state.staticPrerenderListAdopted &&
       canPreserveStaticPrerender(state.payload) &&
       !hasMarkerFilterHashOverride() &&
-      window.__wizardryHasPaintedPrerenderShell(root, els.content);
+      hasPaintedPrerenderShell(root, els.content);
   }
 
   function applyBootstrapState(optimisticPayload, payload) {
