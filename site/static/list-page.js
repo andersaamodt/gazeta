@@ -1479,7 +1479,6 @@
       isAdmin: isAdmin(),
       editMode: state.editMode,
       titleNode: els.title || null,
-      titleActiveClassName: 'has-nav-title-row',
       currentText: current,
       editing: !!state.navTitleEditing,
       inputValue: state.navTitleInput || current,

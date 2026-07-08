@@ -403,10 +403,9 @@
     if (!resolvedTarget) {
       return false;
     }
-    var titleActiveClassName = String(opts.titleActiveClassName || '').trim();
     var shouldShow = opts.isAdmin === true && opts.editMode === true;
-    if (titleNode && titleNode.classList && titleActiveClassName) {
-      titleNode.classList.toggle(titleActiveClassName, shouldShow);
+    if (titleNode && titleNode.classList) {
+      titleNode.classList.toggle('has-nav-title-row', shouldShow);
     }
     if (!shouldShow) {
       return renderEditableNavbarTitleRow(resolvedTarget, { hidden: true });
