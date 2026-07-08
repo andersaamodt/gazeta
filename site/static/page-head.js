@@ -317,6 +317,44 @@
     return true;
   }
 
+  function renderEditableNavbarTitleRow(targetNode, options) {
+    if (!targetNode) {
+      return false;
+    }
+    var opts = options && typeof options === 'object' ? options : {};
+    if (opts.hidden === true) {
+      targetNode.hidden = true;
+      targetNode.innerHTML = '';
+      return true;
+    }
+    var currentText = String(opts.currentText || '');
+    var editing = opts.editing === true;
+    var labelText = String(opts.labelText || 'Navbar title');
+    var inputValue = String(opts.inputValue || currentText);
+    var inputAriaLabel = String(opts.inputAriaLabel || labelText);
+    var inputAttrName = String(opts.inputAttrName || 'data-page-nav-title-input').trim();
+    var actionAttrName = String(opts.actionAttrName || 'data-page-nav-title-action').trim();
+    var editLabel = String(opts.editLabel || 'Edit...');
+    var editButtonClassName = String(opts.editButtonClassName || 'list-inline-edit-link').trim() || 'list-inline-edit-link';
+    var saveButtonClassName = String(opts.saveButtonClassName || editButtonClassName).trim() || editButtonClassName;
+    var saveDisabled = opts.saveDisabled === true;
+    var html = '<div class="list-page-nav-title-row">';
+    html += '<span class="list-page-nav-title-label">' + escapeHtml(labelText) + '</span>';
+    if (editing) {
+      html += '<span class="list-page-nav-title-edit-wrap">';
+      html += '<input type="text" class="list-page-nav-title-input" value="' + escapeHtml(inputValue) + '"' + htmlAttr(inputAttrName, 'true') + ' aria-label="' + escapeHtml(inputAriaLabel) + '">';
+      html += '<button type="button" class="' + escapeHtml(saveButtonClassName) + '"' + htmlAttr(actionAttrName, 'save') + (saveDisabled ? ' disabled aria-disabled="true"' : '') + '>OK</button>';
+      html += '</span>';
+    } else {
+      html += '<span class="list-page-nav-title-value">' + escapeHtml(currentText) + '</span>';
+      html += '<button type="button" class="' + escapeHtml(editButtonClassName) + '"' + htmlAttr(actionAttrName, 'edit') + '>' + escapeHtml(editLabel) + '</button>';
+    }
+    html += '</div>';
+    targetNode.hidden = false;
+    targetNode.innerHTML = html;
+    return true;
+  }
+
   function focusEditablePageHeadField(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var activeField = String(opts.activeField || '').trim().toLowerCase();
@@ -336,6 +374,28 @@
       }
       if (typeof opts.afterFocus === 'function') {
         opts.afterFocus(input || null);
+      }
+    });
+    return true;
+  }
+
+  function focusEditableNavbarTitleInput(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var targetNode = opts.targetNode || null;
+    if (!targetNode || !targetNode.querySelector) {
+      return false;
+    }
+    var inputAttrName = String(opts.inputAttrName || 'data-page-nav-title-input').trim();
+    if (!inputAttrName) {
+      return false;
+    }
+    requestAnimationFrame(function () {
+      var input = targetNode.querySelector('[' + inputAttrName + '="true"]');
+      if (input && typeof input.focus === 'function') {
+        input.focus();
+        if (opts.selectOnFocus !== false && typeof input.select === 'function') {
+          input.select();
+        }
       }
     });
     return true;
@@ -1238,6 +1298,8 @@
   window.__wizardryRenderEditablePageHeadTitle = renderEditablePageHeadTitle;
   window.__wizardryRenderEditablePageHeadDescription = renderEditablePageHeadDescription;
   window.__wizardryFocusEditablePageHeadField = focusEditablePageHeadField;
+  window.__wizardryRenderEditableNavbarTitleRow = renderEditableNavbarTitleRow;
+  window.__wizardryFocusEditableNavbarTitleInput = focusEditableNavbarTitleInput;
   window.__wizardryResolveReadOnlyContentFromPrerender = resolveReadOnlyContentFromPrerender;
   window.__wizardryEnsureMatchingStaticShell = ensureMatchingStaticShell;
   window.__wizardryReconcileAdoptedPrerenderRefresh = reconcileAdoptedPrerenderRefresh;

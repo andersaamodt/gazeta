@@ -1526,8 +1526,7 @@
       if (els.title) {
         els.title.classList.remove('has-nav-title-row');
       }
-      host.hidden = true;
-      host.innerHTML = '';
+      window.__wizardryRenderEditableNavbarTitleRow(host, { hidden: true });
       return;
     }
     if (els.title) {
@@ -1535,31 +1534,14 @@
     }
     var current = currentNavbarTitle(renderState);
     var editing = !!state.navTitleEditing;
-    var html = '<div class="list-page-nav-title-row">';
-    html += '<span class="list-page-nav-title-label">Navbar title</span>';
+    window.__wizardryRenderEditableNavbarTitleRow(host, {
+      currentText: current,
+      editing: editing,
+      inputValue: state.navTitleInput || current,
+      saveDisabled: state.navTitleBusy
+    });
     if (editing) {
-      var value = state.navTitleInput || current;
-      html += '<span class="list-page-nav-title-edit-wrap">';
-      html += '<input type="text" class="list-page-nav-title-input" data-page-nav-title-input="true" value="' + escapeHtml(value) + '" aria-label="Navbar title">';
-      html += '<button type="button" class="list-inline-edit-link" data-page-nav-title-action="save"' + (state.navTitleBusy ? ' disabled aria-disabled="true"' : '') + '>OK</button>';
-      html += '</span>';
-    } else {
-      html += '<span class="list-page-nav-title-value">' + escapeHtml(current) + '</span>';
-      html += '<button type="button" class="list-inline-edit-link" data-page-nav-title-action="edit">Edit...</button>';
-    }
-    html += '</div>';
-    host.hidden = false;
-    host.innerHTML = html;
-    if (editing) {
-      requestAnimationFrame(function () {
-        var input = host.querySelector('[data-page-nav-title-input="true"]');
-        if (input && typeof input.focus === 'function') {
-          input.focus();
-          if (typeof input.select === 'function') {
-            input.select();
-          }
-        }
-      });
+      window.__wizardryFocusEditableNavbarTitleInput({ targetNode: host });
     }
   }
 
