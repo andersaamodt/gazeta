@@ -149,6 +149,7 @@ visibility: "public"  # Change from "draft"
 - Shared first-paint bootstrap policy also lives in `site/static/page-head.js`: page scripts may define how a payload becomes local state/UI, but cache-vs-prerender startup flow, managed-page payload commit/caching, and the simple managed-page prerender-adoption decision should stay shared unless a page has materially different bootstrap behavior.
 - Shared managed-page refresh/caching policy should also stay at that layer: page scripts may choose canonical knobs such as `persistMode` or `persist: false`, and for common loads they may supply declarative fallback/paint-ready options, but should not need ad hoc low-level cache deny-write lambdas or repeated load-fallback/finally boilerplate for generic fetch/caching behavior.
 - For blog pages specifically, the managed-page payload contract also carries `bootstrap_posts` from the shared public-posts catalog helper, so prerender, runtime refresh, and client adoption all speak the same post-card shape instead of splitting page-state and post-list first paint across separate contracts; the browser runtime should not need an independent first-paint fetch of the public-posts catalog.
+- For blog pages, the shared `prerender` projection also carries the canonical filter-panel fragments (`filter_tags_html`, `filter_years_html`, and `filter_types_html`), so Lodestone/source rendering and hydration reuse one filter-chip render contract instead of recomputing that visitor shell ad hoc in page-local JavaScript.
 - When Lodestone/Gazeta already prerenders a stable read-only shell, the page script should preserve that shell and bind behavior onto it; static shell markup and CSS should not be re-owned in page-local JavaScript.
 
 ### Managed Page Payload Contract
@@ -156,6 +157,7 @@ visibility: "public"  # Change from "draft"
 - Common envelope fields from `cgi/blog-get-nostr-page`: `success`, `slug`, `page_type`, `nav_title`, `kind`, `is_admin`, `viewer_authenticated`, `viewer_can_submit`, `view_mode`, `canonical_exists`, `draft_exists`, `draft_differs`, `sync_status`, `state`, `canonical_state`, `canonical_event`, `zap_config`, `validation`, `prerender`, and `prerender_signature`.
 - `validation` is a shared object with `errors`, `warnings`, and `can_publish`.
 - `prerender` is the shared Lodestone/Gazeta projection envelope; page scripts should consume it through shared helpers instead of parsing fragment keys ad hoc.
+- For blog pages, `prerender` may additionally include `filter_tags_html`, `filter_years_html`, and `filter_types_html`, which are the canonical Lodestone/Gazeta filter-panel fragments derived from `bootstrap_posts`.
 - Page-specific payload data lives inside `state` and `canonical_state`.
 - Blog pages may additionally carry `bootstrap_posts`, which is the shared post-card list used for prerender parity and client adoption.
 

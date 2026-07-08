@@ -4014,6 +4014,20 @@
     return '<button type="button" class="blog-filter-chip' + (isActive ? ' is-active' : '') + '" data-filter-group="' + escapeHtml(group) + '" data-filter-value="' + escapeHtml(value) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '">' + escapeHtml(label) + '</button>';
   }
 
+  function filterCatalogSignature(posts) {
+    return JSON.stringify((Array.isArray(posts) ? posts : []).map(function (post) {
+      return {
+        tags: normalizePostTags(post && post.tags),
+        year: String(post && post.year || ''),
+        type: String(post && post.type || 'post')
+      };
+    }).sort(function (a, b) {
+      var left = JSON.stringify(a);
+      var right = JSON.stringify(b);
+      return left.localeCompare(right);
+    }));
+  }
+
   function uniqueSorted(items, compareFn) {
     var map = {};
     items.forEach(function (item) {
@@ -4028,9 +4042,48 @@
     return out;
   }
 
+  function syncFilterPanelState() {
+    [els.tags, els.years, els.types].forEach(function (host) {
+      if (!host) {
+        return;
+      }
+      host.querySelectorAll('[data-filter-group][data-filter-value]').forEach(function (button) {
+        var group = String(button.getAttribute('data-filter-group') || '');
+        var value = String(button.getAttribute('data-filter-value') || '');
+        var filterSet = state.filters[group];
+        var active = !!(filterSet && filterSet.has(value));
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+    });
+  }
+
+  function canMountPayloadFilterFragments(payload) {
+    if (!payload || !window.__wizardryRenderManagedBlogFilterFragments) {
+      return false;
+    }
+    var prerenderedPosts = readPrerenderPostsBootstrap(payload);
+    if (!prerenderedPosts) {
+      return false;
+    }
+    return filterCatalogSignature(state.posts) === filterCatalogSignature(prerenderedPosts);
+  }
+
   function renderFilters() {
     if (!els.tags || !els.years || !els.types) {
       return;
+    }
+
+    if (canMountPayloadFilterFragments(state.payload)) {
+      if (window.__wizardryRenderManagedBlogFilterFragments({
+        payload: state.payload,
+        tagsNode: els.tags,
+        yearsNode: els.years,
+        typesNode: els.types
+      })) {
+        syncFilterPanelState();
+        return;
+      }
     }
 
     var tags = uniqueSorted(state.posts.reduce(function (acc, post) {

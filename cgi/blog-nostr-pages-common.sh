@@ -609,10 +609,9 @@ blog_nostr_page_render_lodestone_source() {
   : > "$render_filter_types_tmp"
   if [ "$render_page_type" = "blog" ] && [ -n "${BLOG_NOSTR_PRERENDER_PAYLOAD_FILE:-}" ] && [ -f "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" ]; then
     jq -c '.bootstrap_posts // []' "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" > "$render_posts_tmp" 2>/dev/null || printf '[]\n' > "$render_posts_tmp"
-    render_default_tag=$(jq -r '.state.default_tag // ""' "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" 2>/dev/null || printf '')
-    blog_post_cards_render_tag_filter_html "$(cat "$render_posts_tmp")" "$render_default_tag" > "$render_filter_tags_tmp"
-    blog_post_cards_render_year_filter_html "$(cat "$render_posts_tmp")" > "$render_filter_years_tmp"
-    blog_post_cards_render_type_filter_html "$(cat "$render_posts_tmp")" > "$render_filter_types_tmp"
+    printf '%s\n' "$render_projection_json" | jq -r '.filter_tags_html // ""' > "$render_filter_tags_tmp" 2>/dev/null || :
+    printf '%s\n' "$render_projection_json" | jq -r '.filter_years_html // ""' > "$render_filter_years_tmp" 2>/dev/null || :
+    printf '%s\n' "$render_projection_json" | jq -r '.filter_types_html // ""' > "$render_filter_types_tmp" 2>/dev/null || :
   else
     printf '[]\n' > "$render_posts_tmp"
   fi

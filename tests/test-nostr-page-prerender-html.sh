@@ -217,6 +217,9 @@ assert_blog_shared_fragment_contract() {
   expected_description_attrs=$(printf '%s\n' "$payload_json" | jq -r '.prerender.description_attrs // ""')
   expected_content_html=$(printf '%s\n' "$payload_json" | jq -r '.prerender.content_html // ""')
   expected_content_attrs=$(printf '%s\n' "$payload_json" | jq -r '.prerender.content_attrs // ""')
+  payload_tags_html=$(printf '%s\n' "$payload_json" | jq -r '.prerender.filter_tags_html // ""')
+  payload_years_html=$(printf '%s\n' "$payload_json" | jq -r '.prerender.filter_years_html // ""')
+  payload_types_html=$(printf '%s\n' "$payload_json" | jq -r '.prerender.filter_types_html // ""')
 
   actual_list_html=$(extract_element_inner_html "$page_file" blog-post-list)
   actual_tags_html=$(extract_element_inner_html "$page_file" blog-filter-tags)
@@ -230,6 +233,9 @@ assert_blog_shared_fragment_contract() {
   actual_content_html=$(extract_element_inner_html "$page_file" blog-page-content)
 
   assert_text_equals "$actual_list_html" "$expected_list_html" "$label_prefix prerendered post list exactly matches the shared blog-card renderer"
+  assert_text_equals "$payload_tags_html" "$expected_tags_html" "$label_prefix payload tag-filter fragment exactly matches the shared blog filter renderer"
+  assert_text_equals "$payload_years_html" "$expected_years_html" "$label_prefix payload year-filter fragment exactly matches the shared blog filter renderer"
+  assert_text_equals "$payload_types_html" "$expected_types_html" "$label_prefix payload type-filter fragment exactly matches the shared blog filter renderer"
   assert_text_equals "$actual_tags_html" "$expected_tags_html" "$label_prefix prerendered tag filters exactly match the shared blog filter renderer"
   assert_text_equals "$actual_years_html" "$expected_years_html" "$label_prefix prerendered year filters exactly match the shared blog filter renderer"
   assert_text_equals "$actual_types_html" "$expected_types_html" "$label_prefix prerendered type filters exactly match the shared blog filter renderer"

@@ -8,6 +8,14 @@ elif [ -n "${blog_site_root:-}" ] && [ -f "$blog_site_root/cgi/blog-video-chat-s
   . "$blog_site_root/cgi/blog-video-chat-schedule-common.sh"
 fi
 
+if [ -n "${SCRIPT_DIR:-}" ] && [ -f "$SCRIPT_DIR/blog-post-cards-common.sh" ]; then
+  # shellcheck disable=SC1090
+  . "$SCRIPT_DIR/blog-post-cards-common.sh"
+elif [ -n "${blog_site_root:-}" ] && [ -f "$blog_site_root/cgi/blog-post-cards-common.sh" ]; then
+  # shellcheck disable=SC1090
+  . "$blog_site_root/cgi/blog-post-cards-common.sh"
+fi
+
 blog_nostr_prerender_payload_input() {
   payload_json=${1-}
   if [ -n "${BLOG_NOSTR_PRERENDER_PAYLOAD_FILE:-}" ] && [ -f "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" ]; then
@@ -926,22 +934,38 @@ blog_nostr_page_prerender_projection_json() {
   content_html=$(blog_nostr_page_render_component_html "gazeta-nostr-page-content" "$page_type" "$payload_json" "")
   description_attrs=''
   content_attrs=''
+  filter_tags_html=''
+  filter_years_html=''
+  filter_types_html=''
   if [ -z "$description_html" ]; then
     description_attrs=' hidden'
   fi
   if [ -z "$content_html" ]; then
     content_attrs=' hidden'
   fi
+  if [ "$page_type" = "blog" ]; then
+    bootstrap_posts_json=$(blog_nostr_prerender_payload_input "$payload_json" | jq -c '.bootstrap_posts // []' 2>/dev/null || printf '[]')
+    active_tag=$(blog_nostr_prerender_payload_input "$payload_json" | jq -r '.state.default_tag // ""' 2>/dev/null || printf '')
+    filter_tags_html=$(blog_post_cards_render_tag_filter_html "$bootstrap_posts_json" "$active_tag")
+    filter_years_html=$(blog_post_cards_render_year_filter_html "$bootstrap_posts_json")
+    filter_types_html=$(blog_post_cards_render_type_filter_html "$bootstrap_posts_json")
+  fi
   jq -cn \
     --arg description_html "$description_html" \
     --arg description_attrs "$description_attrs" \
     --arg content_html "$content_html" \
     --arg content_attrs "$content_attrs" \
+    --arg filter_tags_html "$filter_tags_html" \
+    --arg filter_years_html "$filter_years_html" \
+    --arg filter_types_html "$filter_types_html" \
     '{
       description_html: $description_html,
       description_attrs: $description_attrs,
       content_html: $content_html,
-      content_attrs: $content_attrs
+      content_attrs: $content_attrs,
+      filter_tags_html: $filter_tags_html,
+      filter_years_html: $filter_years_html,
+      filter_types_html: $filter_types_html
     }'
 }
 

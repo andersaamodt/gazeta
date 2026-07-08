@@ -976,6 +976,20 @@
     return true;
   }
 
+  function renderManagedBlogFilterFragments(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var payload = opts.payload && typeof opts.payload === 'object' ? opts.payload : null;
+    var tagsNode = opts.tagsNode || null;
+    var yearsNode = opts.yearsNode || null;
+    var typesNode = opts.typesNode || null;
+    if (!payload || !tagsNode || !yearsNode || !typesNode) {
+      return false;
+    }
+    return mountPrerenderHtmlFragment(tagsNode, payload, 'filter_tags') &&
+      mountPrerenderHtmlFragment(yearsNode, payload, 'filter_years') &&
+      mountPrerenderHtmlFragment(typesNode, payload, 'filter_types');
+  }
+
   function resolveManagedPagePreviewHtml(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var payload = opts.payload && typeof opts.payload === 'object' ? opts.payload : null;
@@ -1880,6 +1894,7 @@
   window.__wizardryStartManagedNavbarTitleEdit = startManagedNavbarTitleEdit;
   window.__wizardrySaveManagedNavbarTitle = saveManagedNavbarTitle;
   window.__wizardryRenderResolvedReadOnlyContent = renderResolvedReadOnlyContent;
+  window.__wizardryRenderManagedBlogFilterFragments = renderManagedBlogFilterFragments;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
   window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;
   window.__wizardryAuthPayload = authPayload;
