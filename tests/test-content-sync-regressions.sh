@@ -1069,6 +1069,8 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" "titleText
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" 'titleSyncOptions: {' 'Overworld runtime no longer hand-assembles title sync shell options locally'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" 'syncStatus: payload && payload.sync_status' 'Overworld runtime no longer hand-assembles sync-status shell state locally'
 assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" '__wizardryNotifyCurrentManagedPageReady({' 'Overworld runtime reuses the shared managed-page readiness notifier'
+assert_file_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" "document.getElementById('overworld-page-root')" 'Overworld runtime resolves its managed-page root from the explicit Overworld shell instead of a generic page-slug query'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" "document.querySelector('[data-page-slug]')" 'Overworld runtime no longer reaches for a generic page-slug shell outside its own managed-page boundary'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/overworld-game.js" '__wizardryRenderManagedNavbarTitleRow' 'Overworld runtime no longer calls a separate navbar-title renderer outside the shared page-head contract'
 assert_file_contains "$SITE_SOURCE_ROOT/static/list-page.js" '__wizardryRenderResolvedReadOnlyContent({' 'list view-mode hydration reuses one shared Lodestone render-or-fallback helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/contact-page.js" '__wizardryRenderResolvedReadOnlyContent({' 'contact view-mode hydration reuses the shared Lodestone render-or-fallback helper'

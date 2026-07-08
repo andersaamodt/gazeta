@@ -19,7 +19,9 @@
   };
 
   function overworldRoot() {
-    return document.querySelector('[data-page-slug]') || null;
+    return document.getElementById('overworld-page-root')
+      || document.querySelector('[data-page-type="overworld"]')
+      || null;
   }
 
   function bootstrapPayload() {
@@ -27,7 +29,7 @@
   }
 
   function overworldSlug() {
-    return String(document.querySelector('[data-page-slug]')?.getAttribute('data-page-slug') || 'overworld').trim() || 'overworld';
+    return String(overworldRoot()?.getAttribute('data-page-slug') || 'overworld').trim() || 'overworld';
   }
 
   function isExpectedPayload(payload) {
