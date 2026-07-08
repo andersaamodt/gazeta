@@ -445,50 +445,33 @@
     return rendered;
   }
 
-  function resolveReadOnlyContentFromPrerender(options) {
+  function renderResolvedReadOnlyContent(options) {
     var opts = options && typeof options === 'object' ? options : {};
+    var targetNode = opts.targetNode || null;
+    var resolved = null;
     if (opts.allowPrerender !== false) {
-      var fragment = readPrerenderHtmlFragment(opts.payload, String(opts.name || 'content'));
+      var fragment = readPrerenderHtmlFragment(opts.payload, 'content');
       if (fragment) {
-        return {
+        resolved = {
           adopted: true,
           html: fragment.html,
           hidden: fragment.hidden
         };
       }
     }
-    if (typeof opts.renderFallback === 'function') {
+    if (!resolved && typeof opts.renderFallback === 'function') {
       var fallback = opts.renderFallback();
-      if (typeof fallback === 'string') {
-        return {
-          adopted: false,
-          html: fallback,
-          hidden: false
-        };
-      }
-      return {
+      resolved = {
         adopted: false,
-        html: '',
+        html: typeof fallback === 'string' ? fallback : '',
         hidden: false
       };
     }
-    return null;
-  }
-
-  function renderResolvedReadOnlyContent(options) {
-    var opts = options && typeof options === 'object' ? options : {};
-    var targetNode = opts.targetNode || null;
-    var resolved = resolveReadOnlyContentFromPrerender({
-      payload: opts.payload,
-      name: opts.name,
-      allowPrerender: opts.allowPrerender,
-      renderFallback: opts.renderFallback
-    });
     if (!resolved || !targetNode) {
       return resolved;
     }
     if (resolved.adopted) {
-      mountPrerenderHtmlFragment(targetNode, opts.payload, String(opts.name || 'content'), opts.mountOptions);
+      mountPrerenderHtmlFragment(targetNode, opts.payload, 'content', opts.mountOptions);
       if (typeof opts.afterAdopt === 'function') {
         opts.afterAdopt(resolved);
       }

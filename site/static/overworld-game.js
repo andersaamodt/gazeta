@@ -130,7 +130,6 @@
     window.__wizardryRenderResolvedReadOnlyContent({
       targetNode: host,
       payload: payload,
-      name: 'content',
       renderFallback: function () {
         return OVERWORLD_STATIC_SHELL_HTML;
       }
