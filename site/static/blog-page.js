@@ -4437,13 +4437,13 @@
 
 	  function renderFetchedPageStateIfChanged(previousSignature) {
 	    var nextSignature = renderSignature();
-	    if (previousSignature === nextSignature) {
-	      state.renderSignature = nextSignature;
-	      return false;
-	    }
-	    renderAll();
-	    state.renderSignature = nextSignature;
-	    return true;
+	    return window.__wizardryReconcileManagedPageRefreshRender({
+	      state: state,
+	      previousSignature: previousSignature,
+	      nextRenderSignature: nextSignature,
+	      renderPreserved: renderPreservedPostListShell,
+	      renderAll: renderAll
+	    });
 	  }
 
   function loadPageState(options) {
@@ -5130,16 +5130,14 @@
     loadPageState({ deferRender: true }).finally(function () {
       state.postsLoading = false;
       var nextSignature = renderSignature();
-      var hasChanges = state.renderSignature !== nextSignature;
-      var canPreserve = shouldPreserveAdoptedStaticPrerender();
-      if (!hasChanges || canPreserve) {
-        renderPreservedPostListShell();
-      } else {
-        renderAll();
-      }
-      if (hasChanges) {
-        state.renderSignature = nextSignature;
-      }
+      window.__wizardryReconcileManagedPageRefreshRender({
+        state: state,
+        previousSignature: state.renderSignature,
+        nextRenderSignature: nextSignature,
+        shouldPreserveAdoptedPrerender: shouldPreserveAdoptedStaticPrerender,
+        renderPreserved: renderPreservedPostListShell,
+        renderAll: renderAll
+      });
     });
   })();
 })();

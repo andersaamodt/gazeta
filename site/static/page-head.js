@@ -1557,6 +1557,32 @@
     return target;
   }
 
+  function reconcileManagedPageRefreshRender(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var state = opts.state && typeof opts.state === 'object' ? opts.state : null;
+    if (!state) {
+      return false;
+    }
+    var previousSignature = String(opts.previousSignature || '');
+    var nextRenderSignature = String(opts.nextRenderSignature || '');
+    var shouldRepaint = !state.initialContentPainted || previousSignature !== nextRenderSignature;
+    if (!shouldRepaint || (typeof opts.shouldPreserveAdoptedPrerender === 'function' && opts.shouldPreserveAdoptedPrerender() === true)) {
+      if (typeof opts.renderPreserved === 'function') {
+        opts.renderPreserved();
+      }
+      state.renderSignature = nextRenderSignature;
+      return false;
+    }
+    if (typeof opts.beforeRenderAll === 'function') {
+      opts.beforeRenderAll();
+    }
+    if (typeof opts.renderAll === 'function') {
+      opts.renderAll();
+    }
+    state.renderSignature = nextRenderSignature;
+    return true;
+  }
+
   function bindSessionAuthRefresh(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var onChange = typeof opts.onChange === 'function' ? opts.onChange : null;
@@ -2384,6 +2410,7 @@
   window.__wizardryRefreshManagedNostrPage = refreshManagedNostrPage;
   window.__wizardryResolveManagedPagePreviewHtml = resolveManagedPagePreviewHtml;
   window.__wizardryCommitManagedPagePayload = commitManagedPagePayload;
+  window.__wizardryReconcileManagedPageRefreshRender = reconcileManagedPageRefreshRender;
   window.__wizardryPostFormJson = postFormJson;
 
   window.__wizardrySetPageTitleConfig = function (options) {

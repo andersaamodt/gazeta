@@ -5072,7 +5072,6 @@
         sync_status: payload && payload.sync_status ? payload.sync_status : null,
         state: (payload && payload.state) ? payload.state : null
       });
-      var shouldRepaint = !state.initialContentPainted || state.renderSignature !== nextRenderSignature;
       state.payload = payload;
       state.draft = readEditableStateFromPayload();
       state.navTitle = String(payload.nav_title || '').trim();
@@ -5092,21 +5091,27 @@
         state.activeEntryUid = state.draft.elements[0]._uid;
       }
       setSaveStatus('saved');
-      state.renderSignature = nextRenderSignature;
       function renderPreservedStaticPrerender() {
         initializePrerenderMarkerFiltersFromPayload();
         renderHead();
         renderAdmin();
         renderValidation();
       }
-      if (!shouldRepaint || shouldPreserveAdoptedStaticPrerender()) {
-        renderPreservedStaticPrerender();
-        return;
-      }
-      state.staticPrerenderListAdopted = false;
-      renderList();
-      renderAdmin();
-      renderValidation();
+      window.__wizardryReconcileManagedPageRefreshRender({
+        state: state,
+        previousSignature: state.renderSignature,
+        nextRenderSignature: nextRenderSignature,
+        shouldPreserveAdoptedPrerender: shouldPreserveAdoptedStaticPrerender,
+        renderPreserved: renderPreservedStaticPrerender,
+        beforeRenderAll: function () {
+          state.staticPrerenderListAdopted = false;
+        },
+        renderAll: function () {
+          renderList();
+          renderAdmin();
+          renderValidation();
+        }
+      });
     }
     return window.__wizardryRefreshManagedNostrPage({
       slug: slug,
