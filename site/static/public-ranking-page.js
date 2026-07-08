@@ -206,15 +206,11 @@
   }
 
   function renderNavbarTitleRow(renderState) {
-    var head = root.querySelector('.list-page-head');
     var current = currentNavbarTitle(renderState);
     window.__wizardryRenderManagedNavbarTitleRow({
       isAdmin: isAdmin(),
       editMode: state.editMode,
       titleNode: els.title || null,
-      headNode: head,
-      hostContainerNode: head,
-      insertBeforeNode: els.description || null,
       currentText: current,
       editing: !!state.navTitleEditing,
       inputValue: state.navTitleInput || current,

@@ -450,54 +450,18 @@
 
   function resolveManagedNavbarTitleHost(options) {
     var opts = options && typeof options === 'object' ? options : {};
-    var directHost = opts.hostNode || null;
-    if (directHost && directHost.querySelector) {
-      return directHost;
-    }
-    var selector = String(opts.hostSelector || '[data-page-nav-title-host="true"]').trim() || '[data-page-nav-title-host="true"]';
     var titleNode = opts.titleNode || null;
-    var headNode = opts.headNode || null;
-    var host = titleNode && titleNode.querySelector ? titleNode.querySelector(selector) : null;
+    var headNode = opts.headNode || (titleNode && titleNode.parentNode && titleNode.parentNode.querySelector ? titleNode.parentNode : null);
+    var host = titleNode && titleNode.querySelector ? titleNode.querySelector('[data-page-nav-title-host="true"]') : null;
     if (!(host instanceof HTMLElement) && headNode && headNode.querySelector) {
-      host = headNode.querySelector(selector);
+      host = headNode.querySelector('[data-page-nav-title-host="true"]');
     }
-    if (host instanceof HTMLElement) {
-      return host;
-    }
-    var containerNode = opts.hostContainerNode || titleNode || headNode || null;
-    if (!containerNode || !containerNode.appendChild) {
-      return null;
-    }
-    host = document.createElement(String(opts.hostTagName || '').trim().toLowerCase() || (containerNode === titleNode ? 'span' : 'div'));
-    host.setAttribute('data-page-nav-title-host', 'true');
-    host.className = String(opts.hostClassName || 'list-page-nav-title-row-wrap').trim() || 'list-page-nav-title-row-wrap';
-    var beforeNode = opts.insertBeforeNode || null;
-    if (!(beforeNode instanceof HTMLElement) && opts.insertBeforeSelector && containerNode.querySelector) {
-      beforeNode = containerNode.querySelector(String(opts.insertBeforeSelector));
-    }
-    if (beforeNode instanceof HTMLElement && beforeNode.parentNode === containerNode) {
-      containerNode.insertBefore(host, beforeNode);
-      return host;
-    }
-    var afterNode = opts.insertAfterNode || null;
-    if (!(afterNode instanceof HTMLElement) && opts.insertAfterSelector && containerNode.querySelector) {
-      afterNode = containerNode.querySelector(String(opts.insertAfterSelector));
-    }
-    if (afterNode instanceof HTMLElement && afterNode.parentNode === containerNode) {
-      afterNode.insertAdjacentElement('afterend', host);
-      return host;
-    }
-    containerNode.appendChild(host);
-    return host;
+    return host instanceof HTMLElement ? host : null;
   }
 
-  function renderManagedNavbarTitleRow(targetNode, options) {
-    var resolvedTarget = targetNode || null;
+  function renderManagedNavbarTitleRow(options) {
     var opts = options && typeof options === 'object' ? options : {};
-    if ((!resolvedTarget || !resolvedTarget.querySelector) && !options && targetNode && typeof targetNode === 'object') {
-      opts = targetNode;
-      resolvedTarget = resolveManagedNavbarTitleHost(opts);
-    }
+    var resolvedTarget = resolveManagedNavbarTitleHost(opts);
     if (!resolvedTarget) {
       return false;
     }

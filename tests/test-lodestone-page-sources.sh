@@ -161,7 +161,7 @@ grep -Fq '<section id="public-ranking-root"' "$site_root/site/pages/projects.md"
   exit 1
 }
 
-grep -Fq '<h1 id="public-ranking-title"><span class="list-page-title-text">Projects</span><span id="public-ranking-page-title-actions" class="list-page-title-actions public-ranking-sync-actions"></span></h1>' "$site_root/site/pages/projects.md" || {
+grep -Fq '<h1 id="public-ranking-title"><span class="list-page-title-text">Projects</span><span id="public-ranking-page-title-actions" class="list-page-title-actions public-ranking-sync-actions"></span></h1><div data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></div>' "$site_root/site/pages/projects.md" || {
   printf '%s\n' "projects page missing hydration-matching public-ranking title shell" >&2
   exit 1
 }
@@ -178,12 +178,12 @@ projects_root_count=$(grep -F '<section id="public-ranking-root"' "$site_root/si
 }
 
 grep -Fq '<h1 id="list-page-title"><span class="list-page-title-text">' "$site_root/site/pages/reading-list.md" &&
-  grep -Fq '<span id="list-page-title-actions" class="list-page-title-actions"></span></h1>' "$site_root/site/pages/reading-list.md" || {
+  grep -Fq '<span id="list-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' "$site_root/site/pages/reading-list.md" || {
   printf '%s\n' "reading-list page missing hydration-matching list title shell" >&2
   exit 1
 }
 
-grep -Fq '<h1 id="contact-page-title"><span class="list-page-title-text">Contact</span><span id="contact-page-title-actions" class="list-page-title-actions"></span></h1>' "$site_root/site/pages/contact.md" || {
+grep -Fq '<h1 id="contact-page-title"><span class="list-page-title-text">Contact</span><span id="contact-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' "$site_root/site/pages/contact.md" || {
   printf '%s\n' "contact page missing hydration-matching contact title shell" >&2
   exit 1
 }
