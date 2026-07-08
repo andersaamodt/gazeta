@@ -940,20 +940,15 @@
         }
         return false;
       },
-      handleError: function (err) {
-        window.__wizardryRenderLoadFallback(err, {
-          consoleLabel: 'Nostr page',
-          state: state,
-          contentNode: els.content,
-          fallbackText: 'Page content is still loading. The latest page data was not available yet.',
-          slug: slug
-        });
+      loadFallback: {
+        consoleLabel: 'Nostr page',
+        state: state,
+        contentNode: els.content,
+        fallbackText: 'Page content is still loading. The latest page data was not available yet.'
       },
-      onFinally: function () {
-        window.__wizardryNotifyInitialContentPainted(slug, {
-          state: state,
-          markPageReady: true
-        });
+      notifyInitialContentPainted: {
+        state: state,
+        markPageReady: true
       }
     });
   }

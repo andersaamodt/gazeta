@@ -1292,10 +1292,26 @@
         opts.handleError(err);
         return null;
       }
+      if (opts.loadFallback && typeof opts.loadFallback === 'object') {
+        var fallbackOptions = Object.assign({}, opts.loadFallback);
+        if (!Object.prototype.hasOwnProperty.call(fallbackOptions, 'slug')) {
+          fallbackOptions.slug = slug || requestSlug;
+        }
+        renderLoadFallback(err, fallbackOptions);
+        return null;
+      }
       throw err;
     }).finally(function () {
       if (typeof opts.onFinally === 'function') {
         opts.onFinally();
+        return;
+      }
+      if (opts.notifyInitialContentPainted && typeof opts.notifyInitialContentPainted === 'object') {
+        var notifyOptions = Object.assign({}, opts.notifyInitialContentPainted);
+        notifyInitialContentPainted(
+          Object.prototype.hasOwnProperty.call(notifyOptions, 'slug') ? notifyOptions.slug : (slug || requestSlug),
+          notifyOptions
+        );
       }
     });
   }
