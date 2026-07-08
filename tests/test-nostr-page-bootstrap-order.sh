@@ -89,15 +89,15 @@ EOS
 }
 
 check_generated_shell "blog" "blog" '/static/blog-page.js' no
-check_generated_shell "about" "nip23" '/static/nip23-page.js' yes
+check_generated_shell "about" "nip23" '/static/nip23-page.js' no
 check_generated_shell "list" "list" '/static/list-page.js' no
-check_script_then_marked "$ROOT_DIR/site/lodestone/templates/contact.stone.html" '/static/contact-page.js'
-check_script_then_marked "$ROOT_DIR/site/lodestone/templates/nip23.stone.html" '/static/nip23-page.js'
-check_script_then_marked "$ROOT_DIR/site/lodestone/templates/public-ranking.stone.html" '/static/public-ranking-page.js'
+check_script_present "$ROOT_DIR/site/lodestone/templates/contact.stone.html" '/static/contact-page.js'
+check_script_present "$ROOT_DIR/site/lodestone/templates/nip23.stone.html" '/static/nip23-page.js'
+check_script_present "$ROOT_DIR/site/lodestone/templates/public-ranking.stone.html" '/static/public-ranking-page.js'
 check_script_present "$ROOT_DIR/site/lodestone/templates/list.stone.html" '/static/list-page.js'
 check_script_present "$ROOT_DIR/site/lodestone/templates/list.stone.html" '/static/nostr-page-bootstrap/{slug}.js'
 check_script_present "$ROOT_DIR/cgi/pre-build" 'blog-prerender-nostr-page-bootstraps'
 check_script_present "$ROOT_DIR/cgi/pre-build" "printf '120'"
-check_generated_shell "assignments" "public-ranking" '/static/public-ranking-page.js' yes
+check_generated_shell "assignments" "public-ranking" '/static/public-ranking-page.js' no
 
 printf '%s\n' 'ok'

@@ -171,7 +171,10 @@
   function renderReadOnlyTitleShell(titleNode, textValue) {
     var shell = ensureReadOnlyTitleShell(titleNode);
     if (shell && shell.text) {
-      shell.text.textContent = String(textValue || '');
+      var nextText = String(textValue || '');
+      if (shell.text.textContent !== nextText) {
+        shell.text.textContent = nextText;
+      }
     }
     return shell;
   }
@@ -183,12 +186,21 @@
       return null;
     }
     if (Object.prototype.hasOwnProperty.call(opts, 'html')) {
-      text.innerHTML = String(opts.html || '');
+      var nextHtml = String(opts.html || '');
+      if (text.innerHTML !== nextHtml) {
+        text.innerHTML = nextHtml;
+      }
     } else if (Object.prototype.hasOwnProperty.call(opts, 'text')) {
-      text.textContent = String(opts.text || '');
+      var nextText = String(opts.text || '');
+      if (text.textContent !== nextText) {
+        text.textContent = nextText;
+      }
     }
     if (descriptionNode && Object.prototype.hasOwnProperty.call(opts, 'hidden')) {
-      descriptionNode.hidden = !!opts.hidden;
+      var nextHidden = !!opts.hidden;
+      if (descriptionNode.hidden !== nextHidden) {
+        descriptionNode.hidden = nextHidden;
+      }
     }
     return text;
   }
@@ -1209,7 +1221,10 @@
     if (!host) {
       return false;
     }
-    host.innerHTML = syncStatusPillHtml(syncStatus, options);
+    var html = syncStatusPillHtml(syncStatus, options);
+    if (host.innerHTML !== html) {
+      host.innerHTML = html;
+    }
     return true;
   }
 
