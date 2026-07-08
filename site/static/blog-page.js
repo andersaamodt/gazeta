@@ -315,7 +315,7 @@
 
   function postsHaveRenderedHtml(posts) {
     return Array.isArray(posts) && posts.every(function (post) {
-      return !!String(post && post.rendered_html || '').trim();
+      return !!renderedPostCardHtml(post);
     });
   }
 

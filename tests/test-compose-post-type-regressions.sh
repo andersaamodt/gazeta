@@ -201,7 +201,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "btn('link-share', 
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "btn('go-live', composePostTypeLabel('go-live'), true)" 'blog compose has disabled go-live pill'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function composePostTypeIconSvg(type) {' 'blog compose defines icon renderer for post type pills'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function postsHaveRenderedHtml(posts)' 'blog index requires server-rendered condensed preview cards before reusing catalog payloads'
-assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "return String(post && post.rendered_html || '').trim();" 'blog index reuses server-rendered condensed preview markup instead of rebuilding card summaries in the browser'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'return !!renderedPostCardHtml(post);' 'blog bootstrap and cache validation reuse the canonical rendered post-card HTML helper instead of re-reading raw card HTML strings'
 assert_file_contains "$ROOT_DIR/src/gazeta_read/blog_index.rs" 'let rendered = post.rendered_html.trim();' 'CGI blog index now adopts canonical rendered post-card HTML from the shared public-post catalog'
 assert_file_contains "$SITE_SOURCE_ROOT/static/post-context.js" 'function postDateHtml(current, className)' 'single post context renderer preserves the client date hover title helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/post-context.js" 'function postHeaderMetaHtml(current)' 'single post context renderer uses a shared post header metadata helper'

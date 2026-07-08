@@ -1166,7 +1166,7 @@ assert_file_contains "$SITE_SOURCE_ROOT/static/page-head.js" 'managedBlogFilterC
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/page-head.js" 'function managedBlogFilterButtonHtml(' 'shared page-head helper no longer authors blog filter chip HTML in the browser'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/page-head.js" 'function managedBlogFilterTypeLabel(' 'shared page-head helper no longer carries a parallel browser-side filter type label renderer'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function postsHaveRenderedHtml(posts)' 'blog hydration requires server-rendered post cards before reusing cached catalogs'
-assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "return String(post && post.rendered_html || '').trim();" 'blog list reuses server-rendered post card HTML instead of rebuilding card markup in the browser'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'return !!renderedPostCardHtml(post);' 'blog bootstrap and cache validation reuse the canonical rendered post-card HTML helper instead of re-reading raw card HTML strings'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function syncRenderedListInlineFilterState()' 'blog hydration reapplies active inline filter state onto adopted rendered cards'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'function syncRenderedPostCardMenus()' 'blog hydration decorates rendered cards with admin menus separately from card markup ownership'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'postOffsiteLinkNoteHtml(post, author)' 'blog page no longer calls a parallel client-side off-site link note renderer for post cards'
