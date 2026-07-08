@@ -3933,20 +3933,15 @@
       if (state.chat.emojiPickerOpen && !target.closest('.secure-chat-emoji-popover, .secure-chat-emoji-button')) {
         setSecureChatEmojiPickerOpen(false);
       }
+      if (window.__wizardryHandleManagedNavbarTitleAction(event, target, {
+        isAdmin: isAdmin,
+        editMode: state.editMode,
+        beginEdit: beginNavbarTitleEdit,
+        save: saveNavbarTitle
+      })) {
+        return;
+      }
       if (isAdmin() && state.editMode) {
-        var navTitleActionNode = target.closest('[data-page-nav-title-action]');
-        if (navTitleActionNode instanceof HTMLElement) {
-          event.preventDefault();
-          var navTitleAction = String(navTitleActionNode.getAttribute('data-page-nav-title-action') || '');
-          if (navTitleAction === 'edit') {
-            beginNavbarTitleEdit();
-            return;
-          }
-          if (navTitleAction === 'save') {
-            saveNavbarTitle();
-            return;
-          }
-        }
         var headEditNode = target.closest('[data-contact-head-edit]');
         if (headEditNode instanceof HTMLElement) {
           event.preventDefault();

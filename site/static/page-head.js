@@ -1070,6 +1070,39 @@
     return startManagedNavbarTitleEdit(managedNavbarTitlePageActionOptions(options));
   }
 
+  function handleManagedNavbarTitleAction(event, target, options) {
+    var targetNode = target instanceof Element ? target : null;
+    var opts = options && typeof options === 'object' ? options : {};
+    if (!targetNode) {
+      return false;
+    }
+    var actionNode = targetNode.closest('[data-page-nav-title-action]');
+    if (!(actionNode instanceof HTMLElement)) {
+      return false;
+    }
+    var isAdmin = typeof opts.isAdmin === 'function' ? opts.isAdmin() : opts.isAdmin === true;
+    if (!isAdmin || opts.editMode !== true) {
+      return false;
+    }
+    if (event && typeof event.preventDefault === 'function') {
+      event.preventDefault();
+    }
+    var action = String(actionNode.getAttribute('data-page-nav-title-action') || '');
+    if (action === 'edit') {
+      if (typeof opts.beginEdit === 'function') {
+        opts.beginEdit();
+      }
+      return true;
+    }
+    if (action === 'save') {
+      if (typeof opts.save === 'function') {
+        opts.save();
+      }
+      return true;
+    }
+    return false;
+  }
+
   function resetManagedNavbarTitleState(state, options) {
     var targetState = state && typeof state === 'object' ? state : null;
     var opts = options && typeof options === 'object' ? options : {};
@@ -2622,6 +2655,7 @@
   window.__wizardryRenderManagedPageHeadForPage = renderManagedPageHeadForPage;
   window.__wizardryRenderManagedPageHead = renderManagedPageHead;
   window.__wizardryManagedNavbarTitlePageOptions = managedNavbarTitlePageOptions;
+  window.__wizardryHandleManagedNavbarTitleAction = handleManagedNavbarTitleAction;
   window.__wizardryRenderManagedPayloadValidationSummary = renderManagedPayloadValidationSummary;
   window.__wizardryRenderManagedSaveStatus = renderManagedSaveStatus;
   window.__wizardryRenderManagedAdminActionBar = renderManagedAdminActionBar;

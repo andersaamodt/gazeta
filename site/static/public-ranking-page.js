@@ -1295,18 +1295,13 @@
       if (!(target instanceof HTMLElement)) {
         return;
       }
-      var navTitleActionNode = target.closest('[data-page-nav-title-action]');
-      if (navTitleActionNode instanceof HTMLElement && isAdmin() && state.editMode) {
-        event.preventDefault();
-        var navTitleAction = String(navTitleActionNode.getAttribute('data-page-nav-title-action') || '');
-        if (navTitleAction === 'edit') {
-          beginNavbarTitleEdit();
-          return;
-        }
-        if (navTitleAction === 'save') {
-          saveNavbarTitle();
-          return;
-        }
+      if (window.__wizardryHandleManagedNavbarTitleAction(event, target, {
+        isAdmin: isAdmin,
+        editMode: state.editMode,
+        beginEdit: beginNavbarTitleEdit,
+        save: saveNavbarTitle
+      })) {
+        return;
       }
 
       var headEdit = target.closest('[data-ranking-head-edit]');
