@@ -58,10 +58,6 @@
     });
   }
 
-  function prerenderFragment(key) {
-    return window.__wizardryPrerenderFragment(state.payload, key);
-  }
-
   function applyBootstrapState(optimisticPayload, payload) {
     state.payload = optimisticPayload;
     state.draft = normalizeDraftState((payload && payload.state) || {});

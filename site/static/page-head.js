@@ -925,7 +925,6 @@
   window.__wizardryRenderSyncStatusPill = renderSyncStatusPill;
   window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;
   window.__wizardryReadNostrPageBootstrap = readNostrPageBootstrap;
-  window.__wizardryPrerenderFragment = prerenderFragment;
   window.__wizardryReadPrerenderHtmlFragment = readPrerenderHtmlFragment;
   window.__wizardryMountPrerenderHtmlFragment = mountPrerenderHtmlFragment;
   window.__wizardryHasMatchingStaticPrerender = hasMatchingStaticPrerender;

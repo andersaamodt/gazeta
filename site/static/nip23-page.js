@@ -227,10 +227,6 @@
     return productPriceDisplayText(s) || '$0.00';
   }
 
-  function prerenderFragment(key) {
-    return window.__wizardryPrerenderFragment(state.payload, key);
-  }
-
   function markInitialContentPainted() {
     window.__wizardryNotifyInitialContentPainted(slug, {
       state: state,

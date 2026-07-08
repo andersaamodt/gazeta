@@ -217,10 +217,6 @@
     return !payload.is_admin && !window.__wizardryHasLikelyAuthenticatedSession();
   }
 
-  function prerenderFragment(key) {
-    return window.__wizardryPrerenderFragment(state.payload, key);
-  }
-
   function shouldPreserveAdoptedStaticPrerender() {
     return state.staticPrerenderListAdopted &&
       !window.__wizardryHasLikelyAuthenticatedSession() &&

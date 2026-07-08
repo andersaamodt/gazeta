@@ -498,10 +498,6 @@
 	    });
   }
 
-  function prerenderFragment(key) {
-    return window.__wizardryPrerenderFragment(state.payload, key);
-  }
-
   function ensureFilterGutterLayout() {
     if (!root || !els.toggle) {
       return;
