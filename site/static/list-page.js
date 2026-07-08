@@ -2858,7 +2858,7 @@
       descriptionNode: els.description,
       descriptionPayload: state.payload,
       allowPrerenderDescription: canUsePrerenderReadOnlyView(s),
-      readOnlyDescriptionFallback: {
+      descriptionFallback: {
         text: descText,
         hidden: !descText && !hasMainContent
       },

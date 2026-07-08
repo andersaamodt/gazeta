@@ -348,7 +348,7 @@
       descriptionNode: els.description,
       descriptionPayload: state.payload,
       allowPrerenderDescription: canUsePrerenderReadOnlyView(s),
-      readOnlyDescriptionFallback: desc ? {
+      descriptionFallback: desc ? {
         html: markdownInline(desc),
         hidden: false
       } : {

@@ -176,18 +176,6 @@
     return shell;
   }
 
-  function renderReadOnlyTitleShellWithSync(titleNode, textValue, syncStatus, syncOptions) {
-    var shell = renderReadOnlyTitleShell(titleNode, textValue);
-    if (titleNode) {
-      titleNode.hidden = false;
-    }
-    var syncTarget = shell && shell.actions ? shell.actions : null;
-    if (syncTarget) {
-      renderSyncStatusPill(syncTarget, syncStatus, syncOptions);
-    }
-    return shell;
-  }
-
   function renderReadOnlyDescriptionShell(descriptionNode, options) {
     var opts = options && typeof options === 'object' ? options : {};
     var text = ensureReadOnlyDescriptionShell(descriptionNode);
@@ -203,51 +191,6 @@
       descriptionNode.hidden = !!opts.hidden;
     }
     return text;
-  }
-
-  function renderReadOnlyPrerenderDescriptionShell(descriptionNode, payload, name) {
-    var fragment = readPrerenderHtmlFragment(payload, name);
-    if (!fragment) {
-      return false;
-    }
-    renderReadOnlyDescriptionShell(descriptionNode, {
-      html: fragment.html,
-      hidden: fragment.hidden
-    });
-    return true;
-  }
-
-  function renderReadOnlyDescriptionShellFromPrerender(descriptionNode, payload, name, options) {
-    var opts = options && typeof options === 'object' ? options : {};
-    if (opts.allowPrerender !== false && renderReadOnlyPrerenderDescriptionShell(descriptionNode, payload, name)) {
-      return true;
-    }
-    renderReadOnlyDescriptionShell(descriptionNode, opts.fallback);
-    return false;
-  }
-
-  function renderReadOnlyPageHead(options) {
-    var opts = options && typeof options === 'object' ? options : {};
-    if (Object.prototype.hasOwnProperty.call(opts, 'pageTitle') && opts.pageTitle !== null && typeof opts.pageTitle !== 'undefined') {
-      var pageTitle = String(opts.pageTitle || '').trim();
-      if (pageTitle) {
-        applyPageTitle(pageTitle);
-      }
-    }
-    if (opts.titleNode) {
-      renderReadOnlyTitleShellWithSync(
-        opts.titleNode,
-        opts.titleText,
-        opts.syncStatus,
-        opts.titleSyncOptions
-      );
-    }
-    if (opts.descriptionNode && Object.prototype.hasOwnProperty.call(opts, 'descriptionFallback')) {
-      renderReadOnlyDescriptionShellFromPrerender(opts.descriptionNode, opts.descriptionPayload, String(opts.descriptionName || 'description'), {
-        allowPrerender: opts.allowPrerenderDescription,
-        fallback: opts.descriptionFallback
-      });
-    }
   }
 
   function htmlAttr(name, value) {
@@ -344,17 +287,33 @@
       }
       return true;
     }
-    renderReadOnlyPageHead({
-      pageTitle: opts.pageTitle,
-      titleNode: opts.titleNode,
-      titleText: opts.titleText,
-      syncStatus: opts.syncStatus,
-      titleSyncOptions: opts.titleSyncOptions,
-      descriptionNode: opts.descriptionNode,
-      descriptionPayload: opts.descriptionPayload,
-      allowPrerenderDescription: opts.allowPrerenderDescription,
-      descriptionFallback: opts.readOnlyDescriptionFallback
-    });
+    if (Object.prototype.hasOwnProperty.call(opts, 'pageTitle') && opts.pageTitle !== null && typeof opts.pageTitle !== 'undefined') {
+      var pageTitle = String(opts.pageTitle || '').trim();
+      if (pageTitle) {
+        applyPageTitle(pageTitle);
+      }
+    }
+    if (opts.titleNode) {
+      var titleShell = renderReadOnlyTitleShell(opts.titleNode, opts.titleText);
+      opts.titleNode.hidden = false;
+      if (titleShell && titleShell.actions) {
+        renderSyncStatusPill(titleShell.actions, opts.syncStatus, opts.titleSyncOptions);
+      }
+    }
+    if (opts.descriptionNode && Object.prototype.hasOwnProperty.call(opts, 'descriptionFallback')) {
+      var descriptionFragment = null;
+      if (opts.allowPrerenderDescription !== false) {
+        descriptionFragment = readPrerenderHtmlFragment(opts.descriptionPayload, String(opts.descriptionName || 'description'));
+      }
+      if (descriptionFragment) {
+        renderReadOnlyDescriptionShell(opts.descriptionNode, {
+          html: descriptionFragment.html,
+          hidden: descriptionFragment.hidden
+        });
+      } else {
+        renderReadOnlyDescriptionShell(opts.descriptionNode, opts.descriptionFallback);
+      }
+    }
     return true;
   }
 
