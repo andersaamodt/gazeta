@@ -1360,8 +1360,6 @@
   window.__wizardryMarkHydrationPageReady = markHydrationPageReady;
   window.__wizardryNotifyInitialContentPainted = notifyInitialContentPainted;
   window.__wizardryRenderLoadFallback = renderLoadFallback;
-  window.__wizardryRenderFromBootstrapSources = renderFromBootstrapSources;
-  window.__wizardryRenderManagedNostrBootstrapPayload = renderManagedNostrBootstrapPayload;
   window.__wizardryRenderManagedNostrPageBootstrapPayload = renderManagedNostrPageBootstrapPayload;
   window.__wizardryRemoveLegacyTitleBlock = removeLegacyTitleBlock;
   window.__wizardryRenderReadOnlyPageHead = renderReadOnlyPageHead;
@@ -1376,7 +1374,6 @@
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
   window.__wizardryRenderSyncStatusPill = renderSyncStatusPill;
   window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;
-  window.__wizardryHasMatchingStaticPrerender = hasMatchingStaticPrerender;
   window.__wizardryWritePageBootstrapCache = writePageBootstrapCache;
   window.__wizardryAuthPayload = authPayload;
   window.__wizardrySessionAuthSignature = sessionAuthSignature;
