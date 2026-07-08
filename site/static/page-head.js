@@ -2190,6 +2190,68 @@
     });
   }
 
+  function refreshManagedNostrPageView(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var refreshOptions = Object.assign({}, opts);
+    delete refreshOptions.consoleLabel;
+    delete refreshOptions.state;
+    delete refreshOptions.contentNode;
+    delete refreshOptions.fallbackText;
+    delete refreshOptions.rootNode;
+    delete refreshOptions.loadingClass;
+    delete refreshOptions.markPageReady;
+
+    if (opts.loadFallback !== false) {
+      var loadFallback = opts.loadFallback && typeof opts.loadFallback === 'object'
+        ? Object.assign({}, opts.loadFallback)
+        : {};
+      if (!Object.prototype.hasOwnProperty.call(loadFallback, 'consoleLabel') && Object.prototype.hasOwnProperty.call(opts, 'consoleLabel')) {
+        loadFallback.consoleLabel = opts.consoleLabel;
+      }
+      if (!Object.prototype.hasOwnProperty.call(loadFallback, 'state') && Object.prototype.hasOwnProperty.call(opts, 'state')) {
+        loadFallback.state = opts.state;
+      }
+      if (!Object.prototype.hasOwnProperty.call(loadFallback, 'contentNode') && Object.prototype.hasOwnProperty.call(opts, 'contentNode')) {
+        loadFallback.contentNode = opts.contentNode;
+      }
+      if (!Object.prototype.hasOwnProperty.call(loadFallback, 'fallbackText') && Object.prototype.hasOwnProperty.call(opts, 'fallbackText')) {
+        loadFallback.fallbackText = opts.fallbackText;
+      }
+      if (!Object.prototype.hasOwnProperty.call(loadFallback, 'rootNode') && Object.prototype.hasOwnProperty.call(opts, 'rootNode')) {
+        loadFallback.rootNode = opts.rootNode;
+      }
+      if (!Object.prototype.hasOwnProperty.call(loadFallback, 'loadingClass') && Object.prototype.hasOwnProperty.call(opts, 'loadingClass')) {
+        loadFallback.loadingClass = opts.loadingClass;
+      }
+      refreshOptions.loadFallback = loadFallback;
+    } else {
+      delete refreshOptions.loadFallback;
+    }
+
+    if (opts.notifyInitialContentPainted !== false) {
+      var notifyOptions = opts.notifyInitialContentPainted && typeof opts.notifyInitialContentPainted === 'object'
+        ? Object.assign({}, opts.notifyInitialContentPainted)
+        : {};
+      if (!Object.prototype.hasOwnProperty.call(notifyOptions, 'state') && Object.prototype.hasOwnProperty.call(opts, 'state')) {
+        notifyOptions.state = opts.state;
+      }
+      if (!Object.prototype.hasOwnProperty.call(notifyOptions, 'rootNode') && Object.prototype.hasOwnProperty.call(opts, 'rootNode')) {
+        notifyOptions.rootNode = opts.rootNode;
+      }
+      if (!Object.prototype.hasOwnProperty.call(notifyOptions, 'loadingClass') && Object.prototype.hasOwnProperty.call(opts, 'loadingClass')) {
+        notifyOptions.loadingClass = opts.loadingClass;
+      }
+      if (!Object.prototype.hasOwnProperty.call(notifyOptions, 'markPageReady') && Object.prototype.hasOwnProperty.call(opts, 'markPageReady')) {
+        notifyOptions.markPageReady = opts.markPageReady;
+      }
+      refreshOptions.notifyInitialContentPainted = notifyOptions;
+    } else {
+      delete refreshOptions.notifyInitialContentPainted;
+    }
+
+    return refreshManagedNostrPage(refreshOptions);
+  }
+
   function mergeManagedPagePayload(targetPayload, sourcePayload, options) {
     var target = targetPayload && typeof targetPayload === 'object' ? targetPayload : null;
     var source = sourcePayload && typeof sourcePayload === 'object' ? sourcePayload : null;
@@ -2408,6 +2470,7 @@
   window.__wizardryManagedSlugsEquivalent = slugsEquivalent;
   window.__wizardryRenderManagedNostrBootstrapSources = renderManagedNostrBootstrapSources;
   window.__wizardryRefreshManagedNostrPage = refreshManagedNostrPage;
+  window.__wizardryRefreshManagedNostrPageView = refreshManagedNostrPageView;
   window.__wizardryResolveManagedPagePreviewHtml = resolveManagedPagePreviewHtml;
   window.__wizardryCommitManagedPagePayload = commitManagedPagePayload;
   window.__wizardryReconcileManagedPageRefreshRender = reconcileManagedPageRefreshRender;

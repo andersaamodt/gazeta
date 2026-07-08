@@ -4510,23 +4510,18 @@
     if (!hasSecureChatSession() && storedSessionToken()) {
       state.chat.authChecking = true;
     }
-    return window.__wizardryRefreshManagedNostrPage({
+    return window.__wizardryRefreshManagedNostrPageView({
       slug: slug,
       authSignature: window.__wizardrySessionAuthSignature,
       isExpectedPayload: isExpectedPayload,
       unexpectedPayloadMessage: 'Unexpected page payload for profile page',
       renderPayload: renderBootstrapPayload,
       afterRender: initializeSecureChatAfterLoad,
-      loadFallback: {
-        consoleLabel: 'Contact page',
-        state: state,
-        contentNode: els.content,
-        fallbackText: 'Page content is still loading. The latest page data was not available yet.'
-      },
-      notifyInitialContentPainted: {
-        state: state,
-        markPageReady: true
-      }
+      consoleLabel: 'Contact page',
+      state: state,
+      contentNode: els.content,
+      fallbackText: 'Page content is still loading. The latest page data was not available yet.',
+      markPageReady: true
     });
   }
 

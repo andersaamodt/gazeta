@@ -822,28 +822,23 @@
 
   function load() {
     state.authSignature = window.__wizardrySessionAuthSignature();
-    return window.__wizardryRefreshManagedNostrPage({
+    return window.__wizardryRefreshManagedNostrPageView({
       slug: slug,
       authSignature: window.__wizardrySessionAuthSignature,
       isExpectedPayload: isExpectedPayload,
       unexpectedPayloadMessage: 'Unexpected page payload for long-form page',
       renderPayload: renderBootstrapPayload,
+      consoleLabel: 'Nostr page',
+      state: state,
+      contentNode: els.content,
+      fallbackText: 'Page content is still loading. The latest page data was not available yet.',
+      markPageReady: true,
       handleFailurePayload: function (payload) {
         if (payload && payload.success === false && slug === 'index' && String(payload.code || '') === 'unknown_page') {
           window.location.replace('/posts');
           return true;
         }
         return false;
-      },
-      loadFallback: {
-        consoleLabel: 'Nostr page',
-        state: state,
-        contentNode: els.content,
-        fallbackText: 'Page content is still loading. The latest page data was not available yet.'
-      },
-      notifyInitialContentPainted: {
-        state: state,
-        markPageReady: true
       }
     });
   }

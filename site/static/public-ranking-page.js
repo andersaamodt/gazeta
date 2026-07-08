@@ -1458,26 +1458,21 @@
   function load(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var sortMetric = normalizeMetric(opts.sortMetric || requestedMetric());
-    return window.__wizardryRefreshManagedNostrPage({
+    return window.__wizardryRefreshManagedNostrPageView({
       slug: slug,
       authSignature: window.__wizardrySessionAuthSignature,
       isExpectedPayload: isExpectedPayload,
       unexpectedPayloadMessage: 'Unexpected page payload for public ranking page',
+      consoleLabel: 'Public ranking page',
+      state: state,
+      contentNode: els.content,
+      fallbackText: 'Page content is still loading. The latest ranking data was not available yet.',
+      markPageReady: true,
       extraParams: {
         sort_metric: sortMetric
       },
       persist: sortMetric === defaultMetricForCache(),
-      renderPayload: renderBootstrapPayload,
-      loadFallback: {
-        consoleLabel: 'Public ranking page',
-        state: state,
-        contentNode: els.content,
-        fallbackText: 'Page content is still loading. The latest ranking data was not available yet.'
-      },
-      notifyInitialContentPainted: {
-        state: state,
-        markPageReady: true
-      }
+      renderPayload: renderBootstrapPayload
     });
   }
 

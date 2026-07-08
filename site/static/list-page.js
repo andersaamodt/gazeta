@@ -5113,7 +5113,7 @@
         }
       });
     }
-    return window.__wizardryRefreshManagedNostrPage({
+    return window.__wizardryRefreshManagedNostrPageView({
       slug: slug,
       authSignature: window.__wizardryViewerAuthSignature,
       isExpectedPayload: isExpectedPayload,
@@ -5124,20 +5124,13 @@
       },
       unexpectedPayloadMessage: 'Unexpected page payload for list page',
       renderPayload: applyFetchedPayload,
-      loadFallback: {
-        consoleLabel: 'List page',
-        state: state,
-        contentNode: els.content,
-        fallbackText: 'Page content is still loading. The latest list data was not available yet.',
-        rootNode: root,
-        loadingClass: 'is-loading'
-      },
-      notifyInitialContentPainted: {
-        state: state,
-        rootNode: root,
-        loadingClass: 'is-loading',
-        markPageReady: true
-      }
+      consoleLabel: 'List page',
+      state: state,
+      contentNode: els.content,
+      fallbackText: 'Page content is still loading. The latest list data was not available yet.',
+      rootNode: root,
+      loadingClass: 'is-loading',
+      markPageReady: true
     });
   }
 
