@@ -178,6 +178,10 @@ require_managed_page_title_shell "$site_root/site/pages/projects.md" "public-ran
   printf '%s\n' "projects page missing hydration-matching public-ranking title shell" >&2
   exit 1
 }
+grep -Fq 'data-page-title="Projects"' "$site_root/site/pages/projects.md" || {
+  printf '%s\n' "projects page missing Lodestone-owned page title on the root shell" >&2
+  exit 1
+}
 
 grep -Fq '<p class="list-page-empty-state">No content yet.</p>' "$site_root/site/pages/projects.md" || {
   printf '%s\n' "projects page missing prerendered empty state" >&2
@@ -187,6 +191,15 @@ grep -Fq '<p class="list-page-empty-state">No content yet.</p>' "$site_root/site
 projects_root_count=$(grep -F '<section id="public-ranking-root"' "$site_root/site/pages/projects.md" | wc -l | tr -d ' ')
 [ "$projects_root_count" = "1" ] || {
   printf '%s\n' "projects page rendered nested public-ranking shells" >&2
+  exit 1
+}
+
+grep -Fq 'data-page-title={title}' "$site_root/site/lodestone/templates/public-ranking.stone.html" || {
+  printf '%s\n' "public-ranking template missing shared page-title root attribute" >&2
+  exit 1
+}
+grep -Fq 'data-page-title={title}' "$site_root/site/lodestone/templates/nip23.stone.html" || {
+  printf '%s\n' "nip23 template missing shared page-title root attribute" >&2
   exit 1
 }
 

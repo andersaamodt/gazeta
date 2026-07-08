@@ -142,6 +142,13 @@
     return '<p>' + escapeHtml(value).replace(/\n/g, '<br>') + '</p>';
   }
 
+  function fallbackPageTitle() {
+    if (!root) {
+      return 'Public Ranking';
+    }
+    return String(root.getAttribute('data-page-title') || 'Public Ranking').trim() || 'Public Ranking';
+  }
+
   function normalizeMetric(raw) {
     var metric = String(raw || '').trim().toLowerCase();
     if (metric === 'support' || metric === 'enthusiasm' || metric === 'intensity') {
@@ -165,7 +172,7 @@
     return {
       slug: String(src.slug || slug),
       type: 'public-ranking',
-      title: String(src.title || root.getAttribute('data-page-title') || 'Public Ranking'),
+      title: String(src.title || fallbackPageTitle()),
       description: String(src.description || ''),
       content: String(src.content || ''),
       extras_after: String(src.extras_after || ''),
@@ -293,7 +300,7 @@
       allowPrerenderDescription: canUsePrerenderReadOnlyView(s),
       fieldStateOptions: {
         renderState: s,
-        fallbackTitleText: 'Public Ranking',
+        fallbackTitleText: fallbackPageTitle(),
         syncMessageVariant: 'local_source',
         isAdmin: isAdmin(),
         activeField: state.activeHeadField,
@@ -320,7 +327,7 @@
         renderState: s,
         rootNode: root,
         fallbackAttributeNames: ['data-page-title'],
-        fallbackText: 'Public Ranking',
+        fallbackText: fallbackPageTitle(),
         state: state,
         slug: slug,
         isAdmin: isAdmin,
@@ -855,7 +862,7 @@
       payload: state.payload,
       rootNode: root,
       fallbackAttributeNames: ['data-page-title'],
-      fallbackText: 'Public Ranking',
+      fallbackText: fallbackPageTitle(),
       slug: slug,
       isAdmin: isAdmin,
       renderHead: renderHead
@@ -868,7 +875,7 @@
       renderState: getRenderState(),
       rootNode: root,
       fallbackAttributeNames: ['data-page-title'],
-      fallbackText: 'Public Ranking',
+      fallbackText: fallbackPageTitle(),
       state: state,
       renderHead: renderHead
     }));

@@ -175,6 +175,13 @@
     };
   }
 
+  function fallbackPageTitle() {
+    if (!root) {
+      return 'Untitled';
+    }
+    return String(root.getAttribute('data-page-title') || 'Untitled').trim() || 'Untitled';
+  }
+
   function parseMoney(value) {
     var n = Number(value);
     if (!isFinite(n) || n < 0) {
@@ -306,7 +313,7 @@
       titleNode: els.title,
       titleStateOptions: {
         renderState: s,
-        fallbackTitleText: 'Untitled',
+        fallbackTitleText: fallbackPageTitle(),
         syncMessageVariant: 'local_source'
       },
       navbarTitleOptions: {
@@ -314,7 +321,7 @@
         renderState: s,
         rootNode: root,
         fallbackAttributeNames: ['data-page-title'],
-        fallbackText: 'Untitled',
+        fallbackText: fallbackPageTitle(),
         state: state,
         slug: slug,
         isAdmin: isAdmin,
@@ -530,7 +537,7 @@
       payload: state.payload,
       rootNode: root,
       fallbackAttributeNames: ['data-page-title'],
-      fallbackText: 'Untitled',
+      fallbackText: fallbackPageTitle(),
       slug: slug,
       isAdmin: isAdmin,
       renderHead: renderHead
@@ -543,7 +550,7 @@
       renderState: getRenderState(),
       rootNode: root,
       fallbackAttributeNames: ['data-page-title'],
-      fallbackText: 'Untitled',
+      fallbackText: fallbackPageTitle(),
       state: state,
       renderHead: renderHead
     }));
