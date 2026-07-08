@@ -48,7 +48,6 @@
 
   function renderHead() {
     const payload = bootstrapPayload();
-    const currentTitle = String(payload && payload.nav_title || '').trim() || 'Overworld';
     const titleNode = document.getElementById('overworld-page-title');
     window.__wizardryRenderManagedPageHeadForPage({
       isAdmin: false,
@@ -60,7 +59,6 @@
         syncMessageVariant: 'local_source'
       },
       navbarTitleOptions: {
-        configuredText: currentTitle,
         rootNode: overworldRoot(),
         fallbackAttributeNames: ['data-page-title'],
         fallbackText: 'Overworld',

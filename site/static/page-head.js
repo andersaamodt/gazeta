@@ -622,6 +622,11 @@
     if (configured) {
       return configured;
     }
+    var payload = opts.payload && typeof opts.payload === 'object' ? opts.payload : null;
+    var payloadTitle = String(payload && payload.nav_title || '').trim();
+    if (payloadTitle) {
+      return payloadTitle;
+    }
     var renderState = opts.renderState && typeof opts.renderState === 'object' ? opts.renderState : null;
     var renderTitle = String(renderState && renderState.title || '').trim();
     if (renderTitle) {
@@ -652,6 +657,7 @@
     var opts = options && typeof options === 'object' ? options : {};
     var current = resolveManagedNavbarTitle({
       configuredText: opts.configuredText,
+      payload: opts.payload,
       renderState: opts.renderState,
       rootNode: opts.rootNode,
       fallbackAttributeNames: opts.fallbackAttributeNames,
@@ -685,6 +691,7 @@
     };
     [
       'configuredText',
+      'payload',
       'renderState',
       'isAdmin',
       'editMode',
@@ -711,6 +718,7 @@
     return Object.assign(
       managedNavbarTitleOptions({
         configuredText: opts.configuredText,
+        payload: opts.payload,
         renderState: opts.renderState,
         rootNode: opts.rootNode,
         fallbackAttributeNames: opts.fallbackAttributeNames,
@@ -743,6 +751,7 @@
     return Object.assign(
       managedNavbarTitleOptions({
         configuredText: opts.configuredText,
+        payload: opts.payload,
         renderState: opts.renderState,
         rootNode: opts.rootNode,
         fallbackAttributeNames: opts.fallbackAttributeNames,

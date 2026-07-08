@@ -400,7 +400,6 @@
         hidden: true
       },
       navbarTitleOptions: {
-        configuredText: state.payload && state.payload.nav_title,
         renderState: page,
         rootNode: root,
         fallbackAttributeNames: ['data-page-title'],
