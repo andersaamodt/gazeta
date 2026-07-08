@@ -451,10 +451,9 @@
   function resolveManagedNavbarTitleHost(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var titleNode = opts.titleNode || null;
-    var headNode = opts.headNode || (titleNode && titleNode.parentNode && titleNode.parentNode.querySelector ? titleNode.parentNode : null);
     var host = titleNode && titleNode.querySelector ? titleNode.querySelector('[data-page-nav-title-host="true"]') : null;
-    if (!(host instanceof HTMLElement) && headNode && headNode.querySelector) {
-      host = headNode.querySelector('[data-page-nav-title-host="true"]');
+    if (!(host instanceof HTMLElement) && titleNode && titleNode.parentNode && titleNode.parentNode.querySelector) {
+      host = titleNode.parentNode.querySelector('[data-page-nav-title-host="true"]');
     }
     return host instanceof HTMLElement ? host : null;
   }
