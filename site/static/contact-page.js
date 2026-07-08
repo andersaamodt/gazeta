@@ -602,13 +602,6 @@
     return payloadSlug === slug && payloadType === 'contact';
   }
 
-  function writeBootstrapCache(payload) {
-    window.__wizardryWritePageBootstrapCache(payload, {
-      slug: slug,
-      authSignature: window.__wizardrySessionAuthSignature
-    });
-  }
-
   function applyBootstrapState(optimisticPayload, payload) {
     state.payload = optimisticPayload;
     state.draft = normalizeDraftState((payload && payload.state) || { title: '', description: '', rows: [] });
@@ -5020,7 +5013,10 @@
       if (!isExpectedPayload(payload)) {
         throw new Error('Unexpected page payload for profile page');
       }
-      writeBootstrapCache(payload);
+      window.__wizardryWritePageBootstrapCache(payload, {
+        slug: slug,
+        authSignature: window.__wizardrySessionAuthSignature
+      });
       renderBootstrapPayload(payload);
       initializeSecureChatAfterLoad();
     }).catch(function (err) {
@@ -5055,8 +5051,7 @@
     maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
     authSignature: window.__wizardrySessionAuthSignature,
     isExpectedPayload: isExpectedPayload,
-    renderPayload: renderBootstrapPayload,
-    writeCache: writeBootstrapCache
+    renderPayload: renderBootstrapPayload
   });
   secureChatRegisterBrowserNativeTransport();
   load();

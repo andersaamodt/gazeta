@@ -259,13 +259,6 @@
     return false;
   }
 
-  function writeBootstrapCache(payload) {
-    window.__wizardryWritePageBootstrapCache(payload, {
-      slug: slug,
-      authSignature: window.__wizardrySessionAuthSignature
-    });
-  }
-
   function applyBootstrapState(optimisticPayload, payload) {
     state.payload = optimisticPayload;
     state.draft = normalizeDraftState((payload && payload.state) || { title: '', content: '' });
@@ -1004,7 +997,10 @@
       if (!isExpectedPayload(payload)) {
         throw new Error('Unexpected page payload for long-form page');
       }
-      writeBootstrapCache(payload);
+      window.__wizardryWritePageBootstrapCache(payload, {
+        slug: slug,
+        authSignature: window.__wizardrySessionAuthSignature
+      });
       renderBootstrapPayload(payload);
     }).catch(function (err) {
       renderLoadFallback(err, 'Page content is still loading. The latest page data was not available yet.');
@@ -1022,8 +1018,7 @@
     maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
     authSignature: window.__wizardrySessionAuthSignature,
     isExpectedPayload: isExpectedPayload,
-    renderPayload: renderBootstrapPayload,
-    writeCache: writeBootstrapCache
+    renderPayload: renderBootstrapPayload
   });
   load();
 })();

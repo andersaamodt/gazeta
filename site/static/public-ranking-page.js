@@ -51,13 +51,6 @@
     return payloadSlug === slug && payloadType === 'public-ranking';
   }
 
-  function writeBootstrapCache(payload) {
-    window.__wizardryWritePageBootstrapCache(payload, {
-      slug: slug,
-      authSignature: window.__wizardrySessionAuthSignature
-    });
-  }
-
   function applyBootstrapState(optimisticPayload, payload) {
     state.payload = optimisticPayload;
     state.draft = normalizeDraftState((payload && payload.state) || {});
@@ -1643,7 +1636,10 @@
       if (!payload || String(payload.page_type || '').toLowerCase() !== 'public-ranking') {
         throw new Error('Unexpected page payload for public ranking page');
       }
-      writeBootstrapCache(payload);
+      window.__wizardryWritePageBootstrapCache(payload, {
+        slug: slug,
+        authSignature: window.__wizardrySessionAuthSignature
+      });
       renderBootstrapPayload(payload);
     } catch (err) {
       renderLoadFallback(err, 'Page content is still loading. The latest ranking data was not available yet.');
@@ -1662,8 +1658,7 @@
     maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
     authSignature: window.__wizardrySessionAuthSignature,
     isExpectedPayload: isExpectedPayload,
-    renderPayload: renderBootstrapPayload,
-    writeCache: writeBootstrapCache
+    renderPayload: renderBootstrapPayload
   });
   load();
 })();
