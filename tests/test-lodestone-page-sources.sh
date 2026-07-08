@@ -129,6 +129,11 @@ grep -Fq '<p id="blog-page-description" class="muted" hidden><span class="list-p
   exit 1
 }
 
+grep -Fq '<div id="blog-draft-notice" class="blog-draft-notice" hidden></div>' "$site_root/site/pages/blog.md" || {
+  printf '%s\n' "blog page missing Lodestone-owned draft notice shell" >&2
+  exit 1
+}
+
 grep -Fq '/static/compose-shared.js?v=20260403-compose1' "$site_root/site/pages/blog.md" || {
   printf '%s\n' "blog page missing script from lodestone source" >&2
   exit 1

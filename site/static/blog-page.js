@@ -21,6 +21,7 @@
 
   var CACHE_KEY = 'wizardry_blog_posts_v2';
   var POSTS_CACHE_MAX_AGE_MS = 15000;
+  var BOOTSTRAP_CACHE_MAX_AGE_MS = 15000;
   var DRAFT_NOTICE_CACHE_KEY = 'wizardry_blog_draft_notice_v1';
   var DRAFT_NOTICE_CACHE_MAX_AGE_MS = 10 * 60 * 1000;
   var root = document.getElementById('blog-page-root');
@@ -497,52 +498,21 @@
     });
   }
 
-  function ensureFilterGutterLayout() {
-    if (!root || !els.toggle) {
+  function filterColumnHost() {
+    if (!root) {
       return;
     }
-
-    var layout = root.querySelector('.blog-layout');
-    if (!layout) {
-      layout = document.createElement('div');
-      layout.className = 'blog-layout';
-      while (root.firstChild) {
-        layout.appendChild(root.firstChild);
-      }
-      root.appendChild(layout);
-    }
-
-    var filterCol = layout.querySelector('.blog-filter-column');
-    if (!filterCol) {
-      filterCol = document.createElement('div');
-      filterCol.className = 'blog-filter-column';
-      layout.insertBefore(filterCol, layout.firstChild);
-    }
-
-    var mainCol = layout.querySelector('.blog-main-column');
-    if (!mainCol) {
-      mainCol = document.createElement('div');
-      mainCol.className = 'blog-main-column';
-      var cursor = filterCol.nextSibling;
-      while (cursor) {
-        var next = cursor.nextSibling;
-        mainCol.appendChild(cursor);
-        cursor = next;
-      }
-      layout.appendChild(mainCol);
-    }
-
-    if (els.toggle.parentNode !== filterCol) {
-      filterCol.appendChild(els.toggle);
-    }
+    return root.querySelector('.blog-filter-column');
   }
 
-  function resolveMainColumnHost() {
-    var layout = root.querySelector('.blog-layout');
-    if (!layout) {
-      return null;
+  function syncFilterTogglePlacement() {
+    if (!els.toggle) {
+      return;
     }
-    return layout.querySelector('.blog-main-column');
+    var filterCol = filterColumnHost();
+    if (filterCol && els.toggle.parentNode !== filterCol) {
+      filterCol.appendChild(els.toggle);
+    }
   }
 
   function ensureDraftNoticeHost() {
@@ -554,22 +524,7 @@
       els.draftNotice = existing;
       return existing;
     }
-    var mainCol = resolveMainColumnHost();
-    if (!mainCol) {
-      return null;
-    }
-    var node = document.createElement('div');
-    node.id = 'blog-draft-notice';
-    node.className = 'blog-draft-notice';
-    node.hidden = true;
-    var adminNode = document.getElementById('blog-page-admin');
-    if (adminNode && adminNode.parentNode === mainCol) {
-      mainCol.insertBefore(node, adminNode);
-    } else {
-      mainCol.insertBefore(node, mainCol.firstChild);
-    }
-    els.draftNotice = node;
-    return node;
+    return null;
   }
 
   function clearDraftNoticeState() {
@@ -947,7 +902,7 @@
       state.pageSettingsOpen = false;
       els.admin.hidden = true;
       els.admin.innerHTML = '';
-      ensureFilterGutterLayout();
+      syncFilterTogglePlacement();
       return;
     }
     if (actionsHost) {
@@ -4506,12 +4461,6 @@
     }
   }
 
-  function readPrerenderPageBootstrap() {
-    return window.__wizardryReadNostrPageBootstrap(slug, function (payload) {
-      return isExpectedPayload(payload);
-    });
-  }
-
   function isExpectedPayload(payload) {
     var payloadType = String(payload && payload.page_type || '').trim().toLowerCase();
     var payloadSlug = String(payload && payload.slug || '').trim();
@@ -4534,6 +4483,13 @@
   function applyBootstrapState(optimisticPayload) {
     state.payload = optimisticPayload;
     applyDefaultFilters();
+  }
+
+  function writeBootstrapCache(payload) {
+    window.__wizardryWritePageBootstrapCache(payload, {
+      slug: slug,
+      authSignature: authSignature
+    });
   }
 
   function primeBootstrapPosts(payload) {
@@ -4673,6 +4629,7 @@
         maybeRepairRoute('blog-template-page-type-mismatch:' + pageType);
         return;
       }
+      writeBootstrapCache(data);
 	      var previousSignature = state.renderSignature;
 	      state.payload = data;
 	      try {
@@ -5358,15 +5315,21 @@
 
   window.__wizardryRemoveLegacyTitleBlock(root);
   clearRouteRepairParam();
-  ensureFilterGutterLayout();
+  syncFilterTogglePlacement();
   ensureDraftNoticeHost();
 
   (function bootstrapOnce() {
-    var hasWarmPosts = false;
     hydrateDraftNoticeFromCache();
-    var prerenderedPayload = readPrerenderPageBootstrap();
-    hasWarmPosts = primeBootstrapPosts(prerenderedPayload);
-    renderBootstrapPayload(prerenderedPayload, hasWarmPosts);
+    window.__wizardryRenderManagedNostrBootstrapSources({
+      slug: slug,
+      maxAgeMs: BOOTSTRAP_CACHE_MAX_AGE_MS,
+      authSignature: authSignature,
+      isExpectedPayload: isExpectedPayload,
+      renderPayload: function (payload) {
+        return renderBootstrapPayload(payload, primeBootstrapPosts(payload));
+      },
+      writeCache: writeBootstrapCache
+    });
     state.initialPageStateLoaded = true;
     state.initialPostsLoaded = true;
     waitForInitialDraftNotice().finally(function () {
