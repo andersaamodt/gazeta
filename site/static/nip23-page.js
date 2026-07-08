@@ -527,16 +527,17 @@
   }
 
   function currentPayloadPreviewHtml(renderState) {
-    if (!state.payload || !window.__wizardryReadPrerenderHtmlFragment) {
+    if (!state.payload || !window.__wizardryResolveManagedPagePreviewHtml) {
       return '';
     }
-    var payloadState = normalizeDraftState((state.payload && state.payload.state) || { title: '', content: '' });
     var currentState = normalizeDraftState(renderState || getRenderState());
-    if (JSON.stringify(payloadState) !== JSON.stringify(currentState)) {
-      return '';
-    }
-    var fragment = window.__wizardryReadPrerenderHtmlFragment(state.payload, 'content');
-    return fragment && !fragment.hidden ? String(fragment.html || '') : '';
+    return window.__wizardryResolveManagedPagePreviewHtml({
+      payload: state.payload,
+      matchesPayload: function (payload) {
+        var payloadState = normalizeDraftState((payload && payload.state) || { title: '', content: '' });
+        return JSON.stringify(payloadState) === JSON.stringify(currentState);
+      }
+    });
   }
 
   function renderContent() {
@@ -678,7 +679,6 @@
         : normalizeDraftState(state.draft || {});
       window.__wizardryCommitManagedPagePayload(state.payload, data, {
         validationFallback: { errors: [], warnings: [], can_publish: true },
-        passthroughFields: ['prerender', 'prerender_signature'],
         statePayload: nextState,
         draftExists: true,
         draftDiffers: localChangedDuringSave,
@@ -748,7 +748,6 @@
     }).then(function (data) {
       window.__wizardryCommitManagedPagePayload(state.payload, data, {
         validationFallback: { errors: [], warnings: [], can_publish: true },
-        passthroughFields: ['prerender', 'prerender_signature'],
         statePayload: data.state,
         draftExists: true,
         draftDiffers: false,

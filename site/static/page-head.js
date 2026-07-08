@@ -610,6 +610,22 @@
     return true;
   }
 
+  function resolveManagedPagePreviewHtml(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var payload = opts.payload && typeof opts.payload === 'object' ? opts.payload : null;
+    if (!payload) {
+      return '';
+    }
+    if (typeof opts.matchesPayload !== 'function' || opts.matchesPayload(payload) !== true) {
+      return '';
+    }
+    var fragment = readPrerenderHtmlFragment(payload, 'content');
+    if (!fragment || fragment.hidden) {
+      return '';
+    }
+    return String(fragment.html || '');
+  }
+
   function hasMatchingStaticPrerender(rootNode, contentNode, payload) {
     var signature = String(payload && payload.prerender_signature || '').trim();
     if (!signature || !rootNode || !contentNode) {
@@ -1235,6 +1251,11 @@
         target[fieldName] = !!source[fieldName];
       }
     });
+    ['prerender', 'prerender_signature'].forEach(function (fieldName) {
+      if (Object.prototype.hasOwnProperty.call(source, fieldName)) {
+        target[fieldName] = source[fieldName];
+      }
+    });
     var passthroughFields = Array.isArray(opts.passthroughFields) ? opts.passthroughFields : [];
     passthroughFields.forEach(function (fieldName) {
       if (!fieldName || !Object.prototype.hasOwnProperty.call(source, fieldName)) {
@@ -1394,7 +1415,7 @@
   window.__wizardryScheduleMarkedUpgrade = scheduleMarkedUpgrade;
   window.__wizardryRenderManagedNostrBootstrapSources = renderManagedNostrBootstrapSources;
   window.__wizardryRefreshManagedNostrPage = refreshManagedNostrPage;
-  window.__wizardryReadPrerenderHtmlFragment = readPrerenderHtmlFragment;
+  window.__wizardryResolveManagedPagePreviewHtml = resolveManagedPagePreviewHtml;
   window.__wizardryCommitManagedPagePayload = commitManagedPagePayload;
   window.__wizardryPostFormJson = postFormJson;
 
