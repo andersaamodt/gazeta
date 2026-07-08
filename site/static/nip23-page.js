@@ -437,17 +437,26 @@
     return renderProductCard(s) + readOnlyMain + outroHtml;
   }
 
-  function currentPayloadPreviewHtml(renderState) {
-    if (!state.payload || !window.__wizardryResolveManagedPagePreviewHtml) {
+  function resolveManagedPagePreviewHtml(renderState) {
+    if (!state.payload) {
       return '';
     }
-    return window.__wizardryResolveManagedPagePreviewHtml({
-      payload: state.payload,
-      renderState: renderState || getRenderState(),
-      normalizeState: function (value) {
-        return normalizeDraftState(value || { title: '', content: '' });
-      }
-    });
+    var payloadState = normalizeDraftState((state.payload && state.payload.state) || { title: '', content: '' });
+    var nextRenderState = normalizeDraftState(renderState || getRenderState());
+    if (JSON.stringify(payloadState) !== JSON.stringify(nextRenderState)) {
+      return '';
+    }
+    var prerender = state.payload && state.payload.prerender && typeof state.payload.prerender === 'object'
+      ? state.payload.prerender
+      : null;
+    if (!prerender) {
+      return '';
+    }
+    return String(prerender.content_html || '');
+  }
+
+  function currentPayloadPreviewHtml(renderState) {
+    return resolveManagedPagePreviewHtml(renderState || getRenderState());
   }
 
   function renderContent() {

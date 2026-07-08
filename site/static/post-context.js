@@ -485,13 +485,17 @@
     }
   }
 
+  function eventHasVerifiedAdminState(event) {
+    return !!(event && event.detail && event.detail.authenticated === true && typeof event.detail.is_admin !== 'undefined');
+  }
+
   function refreshPostPageMenuVisibility(event) {
     var menu = normalizePostPageMenu(document.querySelector('.post-page-menu'));
     if (!menu) {
       return;
     }
     var hasReaderActions = setReaderMenuEnabled();
-    if (window.__wizardryEventHasVerifiedAdminState(event)) {
+    if (eventHasVerifiedAdminState(event)) {
       setPostPageMenuVisibility(menu, event.detail.is_admin === true, hasReaderActions);
       return;
     }

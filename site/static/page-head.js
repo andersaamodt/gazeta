@@ -2550,7 +2550,6 @@
   window.__wizardryViewerAuthSignature = viewerAuthSignature;
   window.__wizardryBindSessionAuthRefresh = bindSessionAuthRefresh;
   window.__wizardryHasLikelyAuthenticatedSession = hasLikelyAuthenticatedSession;
-  window.__wizardryEventHasVerifiedAdminState = eventHasVerifiedAdminState;
   window.__wizardryAuthEventIsLikelyAdmin = authEventIsLikelyAdmin;
   window.__wizardryCanUseVisitorPrerenderReadOnly = canUseVisitorPrerenderReadOnly;
   window.__wizardryCanUsePayloadPrerenderReadOnly = canUsePayloadPrerenderReadOnly;
@@ -2563,7 +2562,6 @@
   window.__wizardryRenderManagedNostrBootstrapSources = renderManagedNostrBootstrapSources;
   window.__wizardryRefreshManagedNostrPage = refreshManagedNostrPage;
   window.__wizardryRefreshManagedNostrPageView = refreshManagedNostrPageView;
-  window.__wizardryResolveManagedPagePreviewHtml = resolveManagedPagePreviewHtml;
   window.__wizardryCommitManagedPagePayload = commitManagedPagePayload;
   window.__wizardryReconcileManagedPageRefreshRender = reconcileManagedPageRefreshRender;
   window.__wizardryPostFormJson = postFormJson;
