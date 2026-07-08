@@ -488,6 +488,71 @@
     return current;
   }
 
+  function startManagedNavbarTitleEdit(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var state = opts.state && typeof opts.state === 'object' ? opts.state : null;
+    if (!state) {
+      return false;
+    }
+    state.navTitleEditing = true;
+    state.navTitleInput = resolveManagedNavbarTitle(opts);
+    if (typeof opts.renderHead === 'function') {
+      opts.renderHead();
+    }
+    return true;
+  }
+
+  function saveManagedNavbarTitle(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var state = opts.state && typeof opts.state === 'object' ? opts.state : null;
+    var isAdmin = typeof opts.isAdmin === 'function' ? opts.isAdmin() : opts.isAdmin === true;
+    if (!state || !isAdmin || state.navTitleBusy) {
+      return Promise.resolve(false);
+    }
+    var rootNode = opts.rootNode || null;
+    var input = rootNode && rootNode.querySelector ? rootNode.querySelector('[data-page-nav-title-input="true"]') : null;
+    if (input instanceof HTMLInputElement) {
+      state.navTitleInput = String(input.value || '');
+    }
+    var nextTitle = String(state.navTitleInput || '').trim();
+    var slug = String(opts.slug || '').trim();
+    state.navTitleBusy = true;
+    var auth = authPayload();
+    return postFormJson('/cgi/blog-update-nostr-page-nav-title', {
+      page_slug: slug,
+      nav_title: nextTitle,
+      session_token: auth.session_token,
+      csrf_token: auth.csrf_token
+    }).then(function (data) {
+      var updated = String((data && data.nav_title) || nextTitle || resolveManagedNavbarTitle(opts)).trim();
+      state.navTitle = updated;
+      state.navTitleEditing = false;
+      state.navTitleInput = '';
+      if (opts.payload && typeof opts.payload === 'object') {
+        opts.payload.nav_title = updated;
+      } else if (state.payload && typeof state.payload === 'object') {
+        state.payload.nav_title = updated;
+      }
+      try {
+        window.dispatchEvent(new CustomEvent('wizardry-navbar-refresh-request'));
+      } catch (_err) {
+        // Ignore navbar refresh dispatch failures.
+      }
+      if (typeof opts.renderHead === 'function') {
+        opts.renderHead();
+      }
+      return true;
+    }).catch(function (err) {
+      window.alert(err && err.message ? err.message : 'Could not save navbar title');
+      return false;
+    }).finally(function () {
+      state.navTitleBusy = false;
+      if (typeof opts.renderHead === 'function') {
+        opts.renderHead();
+      }
+    });
+  }
+
   function renderResolvedReadOnlyContent(options) {
     var opts = options && typeof options === 'object' ? options : {};
     var targetNode = opts.targetNode || null;
@@ -1563,6 +1628,8 @@
   window.__wizardryRenderManagedNavbarTitleRow = renderManagedNavbarTitleRow;
   window.__wizardryResolveManagedNavbarTitle = resolveManagedNavbarTitle;
   window.__wizardryRenderManagedNavbarTitleState = renderManagedNavbarTitleState;
+  window.__wizardryStartManagedNavbarTitleEdit = startManagedNavbarTitleEdit;
+  window.__wizardrySaveManagedNavbarTitle = saveManagedNavbarTitle;
   window.__wizardryRenderResolvedReadOnlyContent = renderResolvedReadOnlyContent;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
   window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;

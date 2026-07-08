@@ -1426,30 +1426,28 @@
     };
   }
 
-  function resolvedNavbarTitle(renderState, configuredText) {
-    return window.__wizardryResolveManagedNavbarTitle({
+  function managedNavbarTitleResolveOptions(renderState, configuredText) {
+    return {
       configuredText: configuredText,
       renderState: renderState,
       rootNode: root,
       fallbackAttributeNames: ['data-list-title', 'data-page-title'],
       fallbackText: 'List'
-    });
+    };
   }
 
   function renderNavbarTitleRow(renderState) {
-    return window.__wizardryRenderManagedNavbarTitleState({
-      configuredText: state.navTitle,
-      renderState: renderState,
-      rootNode: root,
-      fallbackAttributeNames: ['data-list-title', 'data-page-title'],
-      fallbackText: 'List',
+    return window.__wizardryRenderManagedNavbarTitleState(Object.assign(
+      managedNavbarTitleResolveOptions(renderState, state.navTitle),
+      {
       isAdmin: isAdmin(),
       editMode: state.editMode,
       titleNode: els.title || null,
       editing: !!state.navTitleEditing,
       inputValue: state.navTitleInput,
       saveDisabled: state.navTitleBusy
-    });
+      }
+    ));
   }
 
   function findElementIndex(uid) {
@@ -3751,43 +3749,27 @@
   }
 
   function saveNavbarTitle() {
-    if (!isAdmin() || state.navTitleBusy) {
-      return Promise.resolve(false);
-    }
-    var input = root.querySelector('[data-page-nav-title-input="true"]');
-    if (input instanceof HTMLInputElement) {
-      state.navTitleInput = String(input.value || '');
-    }
-    var nextTitle = String(state.navTitleInput || '').trim();
-    state.navTitleBusy = true;
-    var auth = window.__wizardryAuthPayload();
-    return apiPost('/cgi/blog-update-nostr-page-nav-title', {
-      page_slug: slug,
-      nav_title: nextTitle,
-      session_token: auth.session_token,
-      csrf_token: auth.csrf_token
-    }).then(function (data) {
-      var updated = String((data && data.nav_title) || nextTitle || resolvedNavbarTitle()).trim();
-      state.navTitle = updated;
-      state.navTitleEditing = false;
-      state.navTitleInput = '';
-      if (state.payload && typeof state.payload === 'object') {
-        state.payload.nav_title = updated;
+    return window.__wizardrySaveManagedNavbarTitle(Object.assign(
+      managedNavbarTitleResolveOptions(),
+      {
+        state: state,
+        payload: state.payload,
+        rootNode: root,
+        slug: slug,
+        isAdmin: isAdmin,
+        renderHead: renderHead
       }
-      try {
-        window.dispatchEvent(new CustomEvent('wizardry-navbar-refresh-request'));
-      } catch (_err) {
-        // Ignore navbar refresh dispatch failures.
+    ));
+  }
+
+  function beginNavbarTitleEdit() {
+    return window.__wizardryStartManagedNavbarTitleEdit(Object.assign(
+      managedNavbarTitleResolveOptions(getRenderState(), state.navTitle),
+      {
+        state: state,
+        renderHead: renderHead
       }
-      renderHead();
-      return true;
-    }).catch(function (err) {
-      window.alert(err && err.message ? err.message : 'Could not save navbar title');
-      return false;
-    }).finally(function () {
-      state.navTitleBusy = false;
-      renderHead();
-    });
+    ));
   }
 
   function focusInlineField(uid, field) {
@@ -3969,9 +3951,7 @@
         event.preventDefault();
         var navTitleAction = String(navTitleActionNode.getAttribute('data-page-nav-title-action') || '');
         if (navTitleAction === 'edit') {
-          state.navTitleEditing = true;
-          state.navTitleInput = resolvedNavbarTitle();
-          renderHead();
+          beginNavbarTitleEdit();
           return;
         }
         if (navTitleAction === 'save') {
