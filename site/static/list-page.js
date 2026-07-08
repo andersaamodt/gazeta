@@ -3730,10 +3730,14 @@
       if (fullEditMode) {
         replaceListContentHtml(renderInlineEditor([]) + afterContent);
       } else {
-        var adoptedEmptyPrerenderContent = usePrerenderReadOnly &&
-          window.__wizardryMountPrerenderHtmlFragment(els.content, state.payload, 'content', {
+        var adoptedEmptyPrerenderContent = window.__wizardryRenderReadOnlyContentFromPrerender({
+          targetNode: els.content,
+          payload: state.payload,
+          allowPrerender: usePrerenderReadOnly,
+          mountOptions: {
             applyHtml: replaceListContentHtml
-          });
+          }
+        });
         if (!adoptedEmptyPrerenderContent) {
           els.content.hidden = false;
           replaceListContentHtml(renderPublicListSubmissionForm(s) + '<p class="list-page-empty-state">No content yet.</p>' + afterContent);
@@ -3750,10 +3754,14 @@
       return;
     }
 
-    var adoptedPrerenderContent = usePrerenderReadOnly &&
-      window.__wizardryMountPrerenderHtmlFragment(els.content, state.payload, 'content', {
+    var adoptedPrerenderContent = window.__wizardryRenderReadOnlyContentFromPrerender({
+      targetNode: els.content,
+      payload: state.payload,
+      allowPrerender: usePrerenderReadOnly,
+      mountOptions: {
         applyHtml: replaceListContentHtml
-      });
+      }
+    });
     if (adoptedPrerenderContent) {
       initializePrerenderMarkerFiltersFromPayload();
       refreshProductCartButtons();

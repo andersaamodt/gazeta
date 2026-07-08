@@ -1015,8 +1015,11 @@
       return;
     }
     var renderState = getRenderState();
-    if (canUsePrerenderReadOnlyView(renderState) &&
-        window.__wizardryMountPrerenderHtmlFragment(els.content, state.payload, 'content')) {
+    if (window.__wizardryRenderReadOnlyContentFromPrerender({
+      targetNode: els.content,
+      payload: state.payload,
+      allowPrerender: canUsePrerenderReadOnlyView(renderState)
+    })) {
       return;
     }
     els.content.hidden = false;

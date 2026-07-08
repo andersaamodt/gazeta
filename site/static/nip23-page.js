@@ -644,10 +644,14 @@
       return;
     }
 
-    if (!window.__wizardryMountPrerenderHtmlFragment(els.content, state.payload, 'content')) {
-      els.content.innerHTML = '';
-      els.content.hidden = false;
-    }
+    window.__wizardryRenderReadOnlyContentFromPrerender({
+      targetNode: els.content,
+      payload: state.payload,
+      renderFallback: function () {
+        els.content.innerHTML = '';
+        els.content.hidden = false;
+      }
+    });
   }
 
   function renderAll() {

@@ -4026,10 +4026,14 @@
     if (!els.content) {
       return;
     }
-    if (!window.__wizardryMountPrerenderHtmlFragment(els.content, state.payload, 'content')) {
-      els.content.hidden = false;
-      els.content.innerHTML = '';
-    }
+    window.__wizardryRenderReadOnlyContentFromPrerender({
+      targetNode: els.content,
+      payload: state.payload,
+      renderFallback: function () {
+        els.content.hidden = false;
+        els.content.innerHTML = '';
+      }
+    });
   }
 
   function formatType(value) {

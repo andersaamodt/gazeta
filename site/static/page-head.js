@@ -238,6 +238,22 @@
     }
   }
 
+  function renderReadOnlyContentFromPrerender(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var adopted = opts.allowPrerender !== false &&
+      mountPrerenderHtmlFragment(opts.targetNode || null, opts.payload, String(opts.name || 'content'), opts.mountOptions);
+    if (adopted) {
+      if (typeof opts.afterAdopt === 'function') {
+        opts.afterAdopt();
+      }
+      return true;
+    }
+    if (typeof opts.renderFallback === 'function') {
+      opts.renderFallback();
+    }
+    return false;
+  }
+
   function escapeHtml(value) {
     return String(value || '')
       .replace(/&/g, '&amp;')
@@ -985,6 +1001,7 @@
   window.__wizardryRenderReadOnlyPrerenderDescriptionShell = renderReadOnlyPrerenderDescriptionShell;
   window.__wizardryRenderReadOnlyDescriptionShellFromPrerender = renderReadOnlyDescriptionShellFromPrerender;
   window.__wizardryRenderReadOnlyPageHead = renderReadOnlyPageHead;
+  window.__wizardryRenderReadOnlyContentFromPrerender = renderReadOnlyContentFromPrerender;
   window.__wizardrySyncStatusPillHtml = syncStatusPillHtml;
   window.__wizardryRenderSyncStatusPill = renderSyncStatusPill;
   window.__wizardryStripLegacyNostrSyncPills = stripLegacyNostrSyncPills;
