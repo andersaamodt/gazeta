@@ -158,42 +158,6 @@ filter_blog_posts_json_for_default_tag() {
   ' 2>/dev/null || printf '%s\n' "$posts_json"
 }
 
-public_ranking_prerender_nodes_json() {
-  state_json=${1-}
-  tmp=$(mktemp "${TMPDIR:-/tmp}/blog-ranking-prerender-nodes.XXXXXX")
-  printf '%s\n' "$state_json" | jq -r '.root_refs[]? // empty' 2>/dev/null | while IFS= read -r coord || [ -n "$coord" ]; do
-    [ -n "$coord" ] || continue
-    event_json=$(blog_public_ranking_latest_node_event_json "$coord" 2>/dev/null || printf '')
-    [ -n "$event_json" ] || continue
-    printf '%s\n' "$event_json" | jq -c --arg coord "$coord" '
-      def tag($k): ([.tags[]? | select(type=="array" and length>=2 and .[0]==$k) | .[1]] | first // "");
-      {
-        coordinate: $coord,
-        kind: (.kind // 0),
-        pubkey: (.pubkey // ""),
-        created_at: (.created_at // 0),
-        title: (tag("title") | if length > 0 then . else $coord end),
-        summary: tag("summary"),
-        content: (.content // ""),
-        status: (tag("status") | if length > 0 then . else "approved" end),
-        url: tag("url"),
-        post_ref: tag("r"),
-        author: tag("author"),
-        parent: tag("parent"),
-        ranking: tag("ranking"),
-        metrics: { enthusiasm: 0, support: 0, momentum: 0, intensity: 0 },
-        node_kind: (if (.kind // 0) == 30040 then "group" else "entry" end)
-      }
-    ' 2>/dev/null || true
-  done > "$tmp"
-  if [ -s "$tmp" ]; then
-    jq -s '.' "$tmp" 2>/dev/null || printf '[]\n'
-  else
-    printf '[]\n'
-  fi
-  rm -f "$tmp"
-}
-
 fallback_payload_json() {
   slug_in=${1-}
   page_type=${2-}
@@ -211,9 +175,11 @@ fallback_payload_json() {
         state_json=$(blog_nostr_page_load_draft_state_json "$slug" "$page_type" 2>/dev/null || printf '')
       fi
       [ -n "$state_json" ] || state_json=$(blog_public_ranking_default_state_json "$slug")
-      nodes_json=$(public_ranking_prerender_nodes_json "$state_json")
-      state_json=$(printf '%s\n' "$state_json" | jq -c --argjson nodes "$nodes_json" '. + {nodes: $nodes}' 2>/dev/null || printf '%s\n' "$state_json")
       validation_json=$(blog_public_ranking_validate_and_enrich_state_json "$state_json" false 2>/dev/null || printf '%s\n' "$validation_json")
+      ranking_json=$(blog_public_ranking_view_json "$slug" "$state_json" "$canonical_event" false "" "" 2>/dev/null || printf '')
+      if [ -n "$ranking_json" ]; then
+        state_json=$(printf '%s\n' "$state_json" | jq -c --argjson ranking "$ranking_json" '. + $ranking' 2>/dev/null || printf '%s\n' "$state_json")
+      fi
       ;;
     contact)
       state_json=$(blog_nostr_page_load_draft_state_json "$slug" "$page_type" 2>/dev/null || blog_contact_default_state_json "$slug")

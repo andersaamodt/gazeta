@@ -506,11 +506,20 @@ blog_public_ranking_view_json() {
     --argjson posts "$posts_json" '
       def first_tag($tags; $k): ([($tags // [])[]? | select(type=="array" and length>=2 and .[0]==$k) | .[1]] | first // "");
       def all_tags($tags; $k): [($tags // [])[]? | select(type=="array" and length>=2 and .[0]==$k) | .[1]];
+      def has_value($items; $value): ((($items // []) | index($value)) != null);
       def is_coord($v): (($v // "") | tostring | test("^[0-9]+:[0-9a-f]{64}:[^[:space:]]+$"));
       def coord_of($ev): ((($ev.kind // 0) | tostring) + ":" + ($ev.pubkey // "") + ":" + first_tag($ev.tags; "d"));
       def is_root($ev):
         (coord_of($ev) == $root_coord)
         and ((all_tags($ev.tags; "t") | map(ascii_downcase) | index("public-ranking")) != null);
+      def parent_coord($ev):
+        (first_tag($ev.tags; "parent")) as $parent
+        | if is_coord($parent) then
+            $parent
+          else
+            (first_tag($ev.tags; "a")) as $address
+            | if is_coord($address) then $address else "" end
+          end;
       def metric_name($state_metric; $override):
         ($override | tostring | ascii_downcase) as $o
         | if ($o == "momentum" or $o == "support" or $o == "enthusiasm" or $o == "intensity") then $o else $state_metric end;
@@ -531,7 +540,7 @@ blog_public_ranking_view_json() {
               coordinate: coord_of(.),
               d: first_tag(.tags; "d"),
               ranking: first_tag(.tags; "ranking"),
-              parent: (first_tag(.tags; "parent") | if is_coord(.) then . else (first_tag(.tags; "a") | if is_coord(.) then . else "" end) end),
+              parent: parent_coord(.),
               status: (first_tag(.tags; "status") | tostring | ascii_downcase),
               title: first_tag(.tags; "title"),
               summary: first_tag(.tags; "summary"),
@@ -555,17 +564,17 @@ blog_public_ranking_view_json() {
         | unique) as $root_refs
       | (
           (($all_nodes
-            | map(select((.ranking == $root_coord) or (.parent == $root_coord) or (($root_refs | index(.coordinate)) != null)))
+            | map(select((.ranking == $root_coord) or (.parent == $root_coord) or has_value($root_refs; .coordinate)))
             | map(.coordinate)
             | unique)
           + ($root_refs | map(select(is_coord(.)))))
           | unique
         ) as $seed
       | def descendants($set):
-          ($set + ($all_nodes | map(select((.parent | length) > 0 and (($set | index(.parent)) != null)) | .coordinate)) | unique) as $next
+          ($set + ($all_nodes | map(select((.parent | length) > 0 and has_value($set; .parent)) | .coordinate)) | unique) as $next
           | if ($next | length) == ($set | length) then $next else descendants($next) end;
       (descendants($seed)) as $selected_coords
-      | ($all_nodes | map(select(($selected_coords | index(.coordinate)) != null))) as $selected_nodes
+      | ($all_nodes | map(select(has_value($selected_coords; .coordinate)))) as $selected_nodes
       | (($selected_nodes | map(select(.status == "pending"))) // []) as $pending_nodes
       | (
           ([ $root_refs[]? | { parent: $root_coord, child: . } ]
@@ -603,12 +612,12 @@ blog_public_ranking_view_json() {
       | (
           $events
           | map(select(type=="object" and (.kind // 0) == 7 and (.content // "") == "+" and (.pubkey | type) == "string" and (.tags | type) == "array"))
-          | map(select(($blocked | index((.pubkey | ascii_downcase))) == null))
+          | map(select(has_value($blocked; (.pubkey | ascii_downcase)) | not))
           | map({
               id: (.id // ""),
               pubkey: (.pubkey // ""),
               created_at: ((.created_at // 0) | tonumber? // 0),
-              target: ((all_tags(.tags; "a") | map(select(($score_coords | index(.)) != null)) | first) // "")
+              target: ((all_tags(.tags; "a") | map(select(has_value($score_coords; .))) | first) // "")
             })
           | map(select((.target | length) > 0))
           | sort_by(.target, .created_at, .id)
@@ -631,7 +640,7 @@ blog_public_ranking_view_json() {
             ($events
               | map(select(type=="object" and (.kind // 0) == 7 and (.content // "") == "+" and (.pubkey // "") == $viewer_pubkey and (.tags | type) == "array"))
               | map({
-                  target: ((all_tags(.tags; "a") | map(select(($score_coords | index(.)) != null)) | first) // ""),
+                  target: ((all_tags(.tags; "a") | map(select(has_value($score_coords; .))) | first) // ""),
                   created_at: (((.created_at // 0) | tonumber? // 0))
                 })
               | map(select((.target | length) > 0))
@@ -675,7 +684,7 @@ blog_public_ranking_view_json() {
           nodes: $sorted_nodes,
           edges: (
             $all_edges
-            | map(select(($score_coords | index(.child)) != null and ($score_coords | index(.parent)) != null))
+            | map(select(has_value($score_coords; .child) and has_value($score_coords; .parent)))
             | unique
           )
         }

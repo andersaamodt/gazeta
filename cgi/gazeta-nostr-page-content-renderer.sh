@@ -978,18 +978,258 @@ blog_nostr_prerender_contact_video_chat_html() {
 
 blog_nostr_prerender_public_ranking_html() {
   payload_json=${1-}
+  if command -v python3 >/dev/null 2>&1; then
+    payload_file=${BLOG_NOSTR_PRERENDER_PAYLOAD_FILE-}
+    cleanup_payload_file=false
+    if [ -z "$payload_file" ] || [ ! -f "$payload_file" ]; then
+      payload_file=$(mktemp "${TMPDIR:-/tmp}/blog-public-ranking-payload.XXXXXX")
+      printf '%s\n' "$payload_json" > "$payload_file"
+      cleanup_payload_file=true
+    fi
+    if python3 - "$payload_file" <<'PY'
+import html
+import json
+import re
+import sys
+
+path = sys.argv[1]
+try:
+    with open(path, "r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+except Exception:
+    sys.exit(1)
+
+state = payload.get("state") if isinstance(payload, dict) else {}
+if not isinstance(state, dict):
+    state = {}
+
+def text(value):
+    return "" if value is None else str(value)
+
+def esc(value):
+    return html.escape(text(value), quote=True)
+
+def md_inline(value):
+    escaped = esc(value)
+    escaped = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", lambda match: '<a href="%s">%s</a>' % (html.escape(match.group(2), quote=True), html.escape(match.group(1), quote=True)), escaped)
+    escaped = re.sub(r"\*([^*\n]+)\*", r"<em>\1</em>", escaped)
+    return escaped.replace("\n", "<br>")
+
+def md_block(value):
+    raw = text(value).strip()
+    if not raw:
+        return ""
+    blocks = re.split(r"\n\s*\n", raw)
+    out = []
+    for block in blocks:
+        block = block.strip()
+        if not block:
+            continue
+        out.append("<p>%s</p>" % "<br>".join(md_inline(line) for line in block.splitlines()))
+    return "".join(out)
+
+def metric_name(value):
+    raw = text(value).strip().lower()
+    return raw if raw in ("support", "enthusiasm", "intensity") else "momentum"
+
+def metric_label(metric):
+    if metric == "support":
+        return "Upvotes (unique voters)"
+    if metric == "enthusiasm":
+        return "Popularity (total votes)"
+    if metric == "intensity":
+        return "Engagement (votes/voter)"
+    return "Hotness (recent-weighted)"
+
+def metric_value(node, metric):
+    metrics = node.get("metrics") if isinstance(node, dict) else {}
+    if not isinstance(metrics, dict):
+        metrics = {}
+    try:
+        if metric == "support":
+            return float(metrics.get("support") or 0)
+        if metric == "enthusiasm":
+            return float(metrics.get("enthusiasm") or 0)
+        if metric == "intensity":
+            return float(metrics.get("intensity") or 0)
+        return float(metrics.get("momentum") or 0)
+    except Exception:
+        return 0.0
+
+def format_metric(value, metric):
+    try:
+        number = float(value)
+    except Exception:
+        number = 0.0
+    if metric in ("momentum", "intensity"):
+        return f"{number:.3f}"
+    return str(int(round(number)))
+
+def compare_key(node, metric):
+    metrics = node.get("metrics") if isinstance(node, dict) else {}
+    if not isinstance(metrics, dict):
+        metrics = {}
+    try:
+        support = float(metrics.get("support") or 0)
+    except Exception:
+        support = 0.0
+    try:
+        enthusiasm = float(metrics.get("enthusiasm") or 0)
+    except Exception:
+        enthusiasm = 0.0
+    try:
+        created_at = int(float(node.get("created_at") or 0))
+    except Exception:
+        created_at = 0
+    return (
+        -metric_value(node, metric),
+        -support,
+        -enthusiasm,
+        -created_at,
+        text(node.get("coordinate")),
+    )
+
+nodes = state.get("nodes")
+if not isinstance(nodes, list):
+    nodes = []
+edges = state.get("edges")
+if not isinstance(edges, list):
+    edges = []
+root_coord = text(state.get("root_coord")).strip()
+metric = metric_name(state.get("metric") or state.get("default_metric") or "momentum")
+
+visible_nodes = []
+for node in nodes:
+    if not isinstance(node, dict):
+        continue
+    coord = text(node.get("coordinate")).strip()
+    if not coord:
+        continue
+    status = text(node.get("status") or "approved").strip().lower()
+    if status != "approved":
+        continue
+    visible_nodes.append(node)
+
+node_map = {text(node.get("coordinate")).strip(): node for node in visible_nodes}
+children = {}
+
+def add_edge(parent, child):
+    p = text(parent).strip()
+    c = text(child).strip()
+    if not p or not c or c not in node_map:
+        return
+    children.setdefault(p, [])
+    if c not in children[p]:
+        children[p].append(c)
+
+for edge in edges:
+    if not isinstance(edge, dict):
+        continue
+    add_edge(edge.get("parent"), edge.get("child"))
+
+for node in visible_nodes:
+    add_edge(node.get("parent"), node.get("coordinate"))
+
+def render_links(node):
+    url = text(node.get("url")).strip()
+    post_ref = text(node.get("post_ref")).strip()
+    if not url and not post_ref:
+        return ""
+    html_bits = ['<p class="public-ranking-node-links">']
+    if url:
+        html_bits.append('<a href="%s" target="_blank" rel="noopener noreferrer">External link</a>' % esc(url))
+    if post_ref:
+        if url:
+            html_bits.append(" • ")
+            html_bits.append('<a href="%s">Nostr post</a>' % esc(url))
+        else:
+            html_bits.append("<code>%s</code>" % esc(post_ref))
+    html_bits.append("</p>")
+    return "".join(html_bits)
+
+def render_node(coord, depth, path):
+    if coord in path or coord not in node_map:
+        return ""
+    node = node_map[coord]
+    kids = [node_map[child] for child in children.get(coord, []) if child in node_map]
+    kids.sort(key=lambda child: compare_key(child, metric))
+    parts = []
+    parts.append('<li class="public-ranking-item depth-%d">' % depth)
+    parts.append('<article class="public-ranking-node" data-node-coord="%s">' % esc(coord))
+    parts.append('<header class="public-ranking-node-head">')
+    parts.append('<div class="public-ranking-node-title-wrap">')
+    parts.append('<h4 class="public-ranking-node-title">%s</h4>' % esc(node.get("title") or node.get("coordinate") or "Untitled"))
+    parts.append('</div>')
+    parts.append('<div class="public-ranking-node-actions">')
+    parts.append('<button type="button" data-ranking-action="vote" data-node-coord="%s" title="Upvote" disabled aria-disabled="true">+</button>' % esc(coord))
+    parts.append('</div>')
+    parts.append('</header>')
+    metrics = node.get("metrics") if isinstance(node.get("metrics"), dict) else {}
+    parts.append('<dl class="public-ranking-metrics">')
+    parts.append('<div><dt>%s</dt><dd>%s</dd></div>' % (esc(metric_label(metric)), esc(format_metric(metric_value(node, metric), metric))))
+    parts.append('<div><dt>Support</dt><dd>%s</dd></div>' % esc(format_metric(metrics.get("support") or 0, "support")))
+    parts.append('<div><dt>Enthusiasm</dt><dd>%s</dd></div>' % esc(format_metric(metrics.get("enthusiasm") or 0, "enthusiasm")))
+    parts.append('<div><dt>Intensity</dt><dd>%s</dd></div>' % esc(format_metric(metrics.get("intensity") or 0, "intensity")))
+    parts.append('</dl>')
+    summary = text(node.get("summary")).strip()
+    content = text(node.get("content")).strip()
+    if summary:
+        parts.append('<p class="public-ranking-node-summary">%s</p>' % md_inline(summary))
+    if content:
+        parts.append('<div class="public-ranking-node-content">%s</div>' % md_block(content))
+    parts.append(render_links(node))
+    parts.append('</article>')
+    if kids:
+        parts.append('<ol class="public-ranking-level">')
+        for child in kids:
+            parts.append(render_node(text(child.get("coordinate")).strip(), depth + 1, path + [coord]))
+        parts.append('</ol>')
+    parts.append('</li>')
+    return "".join(parts)
+
+intro = text(state.get("content")).strip()
+outro = text(state.get("extras_after")).strip()
+root_children = [node_map[coord] for coord in children.get(root_coord, []) if coord in node_map]
+root_children.sort(key=lambda node: compare_key(node, metric))
+
+parts = []
+if intro:
+    parts.append('<section class="nostr-page-extra nostr-page-extra-before">%s</section>' % md_block(intro))
+if not root_children:
+    parts.append('<p class="list-page-empty-state">No content yet.</p>')
+else:
+    parts.append('<ol class="public-ranking-level depth-0">')
+    for node in root_children:
+        parts.append(render_node(text(node.get("coordinate")).strip(), 0, []))
+    parts.append('</ol>')
+if outro:
+    parts.append('<section class="nostr-page-extra nostr-page-extra-after">%s</section>' % md_block(outro))
+
+sys.stdout.write("".join(parts))
+PY
+    then
+      if [ "$cleanup_payload_file" = true ]; then
+        rm -f "$payload_file"
+      fi
+      return 0
+    fi
+    if [ "$cleanup_payload_file" = true ]; then
+      rm -f "$payload_file"
+    fi
+  fi
+
   blog_nostr_prerender_payload_input "$payload_json" | jq -r '
     def h:
       tostring | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;") | gsub("\""; "&quot;") | gsub("'"'"'"; "&#39;");
     (.state // {}) as $s
     | (($s.content // "") | tostring) as $intro
-    | (($s.nodes // []) | map(select(((.status // "") | tostring | ascii_downcase) != "pending"))) as $nodes
+    | (($s.nodes // []) | map(select(((.status // "") | tostring | ascii_downcase) == "approved"))) as $nodes
     | (if ($intro | length) > 0 then "<section class=\"nostr-page-extra nostr-page-extra-before\"><p>" + ($intro | h) + "</p></section>" else "" end) +
-      (if ($nodes | length) == 0 then "<p class=\"list-page-empty-state\">No rankings yet.</p>"
-       else "<ol class=\"public-ranking-tree\">" + ($nodes | map("<li class=\"public-ranking-node\"><article><h3>" + (((.title // .coordinate // "Untitled") | tostring) | h) + "</h3>" + (if (((.summary // .content // "") | tostring | length) > 0) then "<p>" + (((.summary // .content // "") | tostring) | h) + "</p>" else "" end) + "</article></li>") | join("")) + "</ol>"
+      (if ($nodes | length) == 0 then "<p class=\"list-page-empty-state\">No content yet.</p>"
+       else "<ol class=\"public-ranking-level depth-0\">" + ($nodes | map("<li class=\"public-ranking-item depth-0\"><article class=\"public-ranking-node\"><h4 class=\"public-ranking-node-title\">" + (((.title // .coordinate // "Untitled") | tostring) | h) + "</h4></article></li>") | join("")) + "</ol>"
        end) +
       (if (($s.extras_after // "") | tostring | length) > 0 then "<section class=\"nostr-page-extra nostr-page-extra-after\"><p>" + (($s.extras_after // "") | tostring | h) + "</p></section>" else "" end)
-  ' 2>/dev/null || printf '<p class="list-page-empty-state">No rankings yet.</p>\n'
+  ' 2>/dev/null || printf '<p class="list-page-empty-state">No content yet.</p>\n'
 }
 
 blog_nostr_template_path() {

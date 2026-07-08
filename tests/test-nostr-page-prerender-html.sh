@@ -298,6 +298,17 @@ else
   fail 'index slug with only a local source stays readable instead of returning unknown_page'
 fi
 
+projects_payload=$(env REQUEST_METHOD=GET CONTENT_LENGTH=0 QUERY_STRING=page_slug=projects "$ROOT_DIR/cgi/blog-get-nostr-page")
+projects_body=$(printf '%s\n' "$projects_payload" | awk '{ sub(/\r$/, "") } BEGIN { body = 0 } body { print } /^$/ { body = 1 }')
+if [ -z "$projects_body" ]; then
+  projects_body=$projects_payload
+fi
+if printf '%s\n' "$projects_body" | jq -e '(.state.root_coord // "") as $root | .success == true and ($root | length > 0) and any(.state.nodes[]?; .title == "Project Alpha") and any(.state.edges[]?; .parent == $root and .child == "30041:'"$KEY_A"':project-alpha")' >/dev/null; then
+  pass
+else
+  fail 'public ranking page payload uses the shared enriched graph instead of falling back to a thin bootstrap-only shape'
+fi
+
 for page in oeuvre reading-list software blog values contact projects overworld; do
   assert_file_contains "$SITE_ROOT/site/pages/$page.md" 'data-prerender-painted="true"' "$page page is marked as prerendered"
   assert_file_not_contains "$SITE_ROOT/site/pages/$page.md" 'Loading page content' "$page page does not ship page-loading copy"
@@ -351,6 +362,10 @@ assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'vcw-shell vcw-shell-no-
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'vcw-call-owner-btn' 'contact prerender includes final icon call controls while the video widget loads'
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'contact-archived-group' 'contact prerender includes archived contact rows'
 assert_file_contains "$SITE_ROOT/site/pages/projects.md" 'Project Alpha' 'public ranking prerender includes ranking node row'
+assert_file_contains "$SITE_ROOT/site/pages/projects.md" 'public-ranking-level depth-0' 'public ranking prerender includes the hierarchical ranking list shell'
+assert_file_contains "$SITE_ROOT/site/pages/projects.md" 'public-ranking-metrics' 'public ranking prerender includes metric summary rows'
+assert_file_contains "$SITE_ROOT/site/pages/projects.md" 'data-ranking-action="vote"' 'public ranking prerender includes disabled vote controls in the anonymous visitor shell'
+assert_file_not_contains "$SITE_ROOT/site/static/nostr-page-bootstrap/projects.js" '"view_mode":"static-fallback"' 'public ranking bootstrap comes from the shared hydrated payload path'
 assert_file_contains "$ROOT_DIR/cgi/blog-public-ranking-common.sh" '.allow_signed_in_submissions == true' 'public ranking normalization maps legacy signed-in submissions flag to open mode'
 assert_file_contains "$SITE_ROOT/site/pages/overworld.md" 'overworld-godot-frame-wrap' 'Overworld prerender includes stable play surface'
 assert_file_contains "$SITE_ROOT/site/pages/overworld.md" 'Download (6.8 MB)' 'Overworld prerender includes splash controls'

@@ -82,7 +82,7 @@ license: "CC BY 4.0"
 <div data-lodestone-root="page" data-lodestone-render="universal">
 <section id="public-ranking-root" class="list-page-shell public-ranking-shell" data-ranking-slug="projects" data-page-type="public-ranking" data-page-title="Projects">
 <div id="public-ranking-content" class="list-page-content">
-<p class="list-page-empty-state">No rankings yet.</p>
+<p class="list-page-empty-state">No content yet.</p>
 </div>
 </section>
 </div>
@@ -166,7 +166,7 @@ grep -Fq '<h1 id="public-ranking-title"><span class="list-page-title-text">Proje
   exit 1
 }
 
-grep -Fq '<p class="list-page-empty-state">No rankings yet.</p>' "$site_root/site/pages/projects.md" || {
+grep -Fq '<p class="list-page-empty-state">No content yet.</p>' "$site_root/site/pages/projects.md" || {
   printf '%s\n' "projects page missing prerendered empty state" >&2
   exit 1
 }
