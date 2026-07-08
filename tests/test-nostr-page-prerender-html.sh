@@ -413,6 +413,7 @@ assert_file_not_contains "$SITE_ROOT/site/pages/software.md" 'marked@11.0.0/mark
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'Fixture Blog Post' 'blog prerender includes public post card'
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'blog-inline-tag' 'blog prerender includes post tag chips'
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'writing' 'blog prerender includes the default-tag text'
+assert_file_contains "$SITE_ROOT/site/pages/blog.md" '<h1 id="blog-page-title"><span class="list-page-title-text">Blog</span><span id="blog-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' 'blog prerender includes the hydration-matching shared title shell'
 assert_file_not_contains "$SITE_ROOT/site/pages/blog.md" 'Filtered Out Post' 'blog prerender applies default-tag filtering before hydration'
 assert_file_not_contains "$SITE_ROOT/site/static/nostr-page-bootstrap/blog.js" 'Filtered Out Post' 'blog bootstrap excludes posts outside the default tag'
 assert_file_contains "$SITE_ROOT/site/static/nostr-page-bootstrap/blog.js" '"prerender"' 'blog bootstrap carries shared prerender fragments'

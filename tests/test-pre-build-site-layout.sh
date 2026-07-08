@@ -148,6 +148,10 @@ EOFSTALE
   printf '%s\n' "missing generated contact page" >&2
   exit 1
 }
+[ -f "$canonical_root/pages/blog.md" ] || {
+  printf '%s\n' "missing generated blog page" >&2
+  exit 1
+}
 [ ! -e "$site_root/build/contact/index.html" ] || {
   printf '%s\n' "stale clean-url contact build copy was not pruned" >&2
   exit 1
@@ -245,6 +249,14 @@ grep -Fq 'window.__wizardryNostrPageBootstrap' "$canonical_root/static/nostr-pag
   printf '%s\n' "contact bootstrap missing hydration payload" >&2
   exit 1
 }
+grep -Fq '<h1 id="blog-page-title"><span class="list-page-title-text">Blog</span><span id="blog-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>' "$canonical_root/pages/blog.md" || {
+  printf '%s\n' "blog page missing hydration-matching title shell after pre-build rewrite" >&2
+  exit 1
+}
+if grep -Fq '<nostr-sync-pill slug=' "$canonical_root/pages/blog.md"; then
+  printf '%s\n' "blog page still emits a stale static sync pill after pre-build rewrite" >&2
+  exit 1
+fi
 grep -Fq 'class="footer-version"' "$ROOT_DIR/site/includes/footer.md" || {
   printf '%s\n' "footer missing site version marker before GitHub" >&2
   exit 1
