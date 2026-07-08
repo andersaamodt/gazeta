@@ -132,10 +132,13 @@ To publish a draft:
 visibility: "public"  # Change from "draft"
 ```
 
-## Static Pages
+## Site Architecture
 
-- Public page source lives under `.sitedata/<site>/content/pages/`
-- `site/pages/*.md` mounts are generated from that canonical content directory during build
+### Ownership Model
+
+- Canonical authored content lives under `.sitedata/<site>/content/`, not in the template tree.
+- Public page source lives under `.sitedata/<site>/content/pages/`.
+- `site/pages/*.md` mounts and `site/pages/posts` are generated projections from that canonical content directory; the repo checkout is template code, not app state.
 - When the source checkout itself lives under `~/git`, generated page mounts and related bootstrap/catalog artifacts are written under `${XDG_STATE_HOME:-$HOME/.local/state}/gazeta/generated/<site>/` instead of back into the repo checkout.
 - Lodestone page sources in `site/lodestone/` are site-owned template overrides; their rendered Markdown outputs belong in the generated page root, not in the source checkout. When a site does not override a Lodestone template, Gazeta falls back to the bundled default under the repo `site/lodestone/` tree.
 - Gazeta-owned Lodestone content components are rendered by `cgi/gazeta-lodestone-components`; Lodestone itself stays responsible only for the generic universal rendering kernel.
@@ -155,6 +158,19 @@ visibility: "public"  # Change from "draft"
 - `prerender` is the shared Lodestone/Gazeta projection envelope; page scripts should consume it through shared helpers instead of parsing fragment keys ad hoc.
 - Page-specific payload data lives inside `state` and `canonical_state`.
 - Blog pages may additionally carry `bootstrap_posts`, which is the shared post-card list used for prerender parity and client adoption.
+
+### Build And Deploy Model
+
+- Deployments should publish application code and rebuild output without replacing `.sitedata/<site>/content/`.
+- That keeps writing separate from the app tree and makes external sync/archive tooling safe to attach to the content directory.
+- For repo-root local tooling runs under `~/git`, Gazeta also moves the canonical `.sitedata/<site>` default to `${XDG_STATE_HOME:-$HOME/.local/state}/gazeta/sites-data/<site>` so local app state and generated mounts do not accumulate inside the synced git tree.
+- Wizardry builds should consume Gazeta projections through explicit `pages-dir`, `static-dir`, and `build-dir` paths, or the equivalent `WIZARDRY_PAGES_DIR`, `WIZARDRY_STATIC_DIR`, and `WIZARDRY_BUILD_DIR` environment variables.
+- Site-specific deployment config such as `site.conf` is host-local and not committed in this repo.
+- When `site.conf` sets `local-template=/absolute/path/to/gazeta`, template-owned build inputs such as `cgi/`, `site/static/`, `site/includes/`, and Lodestone page/template sources should come from that Gazeta checkout; the live site root should only remain the destination for generated page/static outputs plus host-local config.
+- When a live site root points at this repo with `local-template=/absolute/path/to/gazeta`, deployment builds should stage a temporary site root that combines the live `site.conf`, the live sibling `.sitedata/<site>/`, and the repo-owned Gazeta code, while writing the build output to the deployment-owned build directory.
+- Deployment staging should express Gazeta-specific build behavior through temporary `site.conf` overrides such as `blog_legacy_asset_mode=manifest`, `blog_public_file_alias_mode=manifest`, `blog_legacy_assets_dir=/absolute/path/to/.sitedata/<site>/files/legacy-assets`, and `nostr_page_prerender_enabled=false`.
+- In that deployment mode, Gazeta emits public-file and legacy-asset manifests and links those files into the final deployment build afterward instead of copying heavyweight asset trees through the build pipeline.
+- Legacy published assets belong under `.sitedata/<site>/files/legacy-assets/`; generated bootstrap/catalog files belong under the generated/static roots, not in the repo checkout.
 
 ## Sample Site Data
 
@@ -245,23 +261,9 @@ To enable Nostr bridge for a site, turn on “Enable Nostr Bridge” in `/pages/
 - `.sitedata/<site>/nostr/state/authors.txt`
 - `.sitedata/<site>/nostr/state/relays.txt`
 
-## Canonical Content Storage
-
-- Canonical authored content lives under `.sitedata/<site>/content/`, not in the template tree.
-- `site/pages/posts` and managed public page files in `site/pages/*.md` are mounts generated from that content directory.
-- Deployments should publish application code and rebuild output without replacing `.sitedata/<site>/content/`.
-- That keeps writing separate from the app tree and makes external sync/archive tooling safe to attach to the content directory.
-- For repo-root local tooling runs under `~/git`, Gazeta also moves the canonical `.sitedata/<site>` default to `${XDG_STATE_HOME:-$HOME/.local/state}/gazeta/sites-data/<site>` so local app state and generated mounts do not accumulate inside the synced git tree.
-- Wizardry builds should consume Gazeta projections through explicit `pages-dir`, `static-dir`, and `build-dir` paths, or the equivalent `WIZARDRY_PAGES_DIR`, `WIZARDRY_STATIC_DIR`, and `WIZARDRY_BUILD_DIR` environment variables.
-- Site-specific deployment config such as `site.conf` is host-local and not committed in this repo.
-- When `site.conf` sets `local-template=/absolute/path/to/gazeta`, template-owned build inputs such as `cgi/`, `site/static/`, `site/includes/`, and Lodestone page/template sources should come from that Gazeta checkout; the live site root should only remain the destination for generated page/static outputs plus host-local config.
-- When a live site root points at this repo with `local-template=/absolute/path/to/gazeta`, deployment builds should stage a temporary site root that combines the live `site.conf`, the live sibling `.sitedata/<site>/`, and the repo-owned Gazeta code, while writing the build output to the deployment-owned build directory.
-- Deployment staging should express Gazeta-specific build behavior through temporary `site.conf` overrides such as `blog_legacy_asset_mode=manifest`, `blog_public_file_alias_mode=manifest`, `blog_legacy_assets_dir=/absolute/path/to/.sitedata/<site>/files/legacy-assets`, and `nostr_page_prerender_enabled=false`.
-- In that deployment mode, Gazeta emits public-file and legacy-asset manifests and links those files into the final deployment build afterward instead of copying heavyweight asset trees through the build pipeline.
-- Legacy published assets belong under `.sitedata/<site>/files/legacy-assets/`; generated bootstrap/catalog files belong under the generated/static roots, not in the repo checkout.
-- `simplex-web` stays in its own repo; `gazeta` vendors the browser chat shell files with `./sync-simplex-web-vendor.sh`.
-- Secure Chat durable state lives under `.sitedata/<site>/secure-chat/` as plain JSON/text files plus runtime logs and sockets.
-- Secure Chat host overrides can be set in `site.conf` with `secure_chat_node_binary=/absolute/path/to/node` and `secure_chat_simplex_binary=/absolute/path/to/simplex-chat` when the site user PATH does not expose those binaries.
+`simplex-web` stays in its own repo; `gazeta` vendors the browser chat shell files with `./sync-simplex-web-vendor.sh`.
+Secure Chat durable state lives under `.sitedata/<site>/secure-chat/` as plain JSON/text files plus runtime logs and sockets.
+Secure Chat host overrides can be set in `site.conf` with `secure_chat_node_binary=/absolute/path/to/node` and `secure_chat_simplex_binary=/absolute/path/to/simplex-chat` when the site user PATH does not expose those binaries.
 
 ## Authentication
 
