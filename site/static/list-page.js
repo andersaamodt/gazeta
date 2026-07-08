@@ -274,14 +274,13 @@
   }
 
   function renderBootstrapPayload(payload) {
-    return window.__wizardryRenderManagedNostrBootstrapPayload(payload, {
+    return window.__wizardryRenderManagedNostrPageBootstrapPayload(payload, {
+      rootNode: root,
+      contentNode: els.content,
       isExpectedPayload: isExpectedPayload,
       applyState: applyBootstrapState,
       canAdoptStaticPrerender: function (optimisticPayload) {
         return canPreserveStaticPrerender(optimisticPayload);
-      },
-      hasMatchingStaticPrerender: function (optimisticPayload) {
-        return window.__wizardryHasMatchingStaticPrerender(root, els.content, optimisticPayload);
       },
       renderAdoptedPrerender: function () {
         state.staticPrerenderListAdopted = true;

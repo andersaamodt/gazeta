@@ -773,6 +773,39 @@
     return true;
   }
 
+  function renderManagedNostrPageBootstrapPayload(payload, options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var rootNode = opts.rootNode || null;
+    var contentNode = opts.contentNode || null;
+    return renderManagedNostrBootstrapPayload(payload, {
+      isExpectedPayload: opts.isExpectedPayload,
+      applyState: opts.applyState,
+      canAdoptStaticPrerender: opts.canAdoptStaticPrerender,
+      promoteAuthenticated: opts.promoteAuthenticated,
+      hasMatchingStaticPrerender: typeof opts.hasMatchingStaticPrerender === 'function'
+        ? opts.hasMatchingStaticPrerender
+        : function (optimisticPayload) {
+            return hasMatchingStaticPrerender(rootNode, contentNode, optimisticPayload);
+          },
+      renderAdoptedPrerender: typeof opts.renderAdoptedPrerender === 'function'
+        ? opts.renderAdoptedPrerender
+        : function () {
+            if (typeof opts.renderHead === 'function') {
+              opts.renderHead();
+            }
+            if (typeof opts.renderAdmin === 'function') {
+              opts.renderAdmin();
+            }
+            if (typeof opts.renderValidation === 'function') {
+              opts.renderValidation();
+            }
+          },
+      renderAll: opts.renderAll,
+      afterRender: opts.afterRender,
+      markInitialContentPainted: opts.markInitialContentPainted
+    });
+  }
+
   function renderManagedNostrBootstrapSources(options) {
     var opts = options && typeof options === 'object' ? options : {};
     return renderFromBootstrapSources({
@@ -914,6 +947,7 @@
   window.__wizardryRenderLoadFallback = renderLoadFallback;
   window.__wizardryRenderFromBootstrapSources = renderFromBootstrapSources;
   window.__wizardryRenderManagedNostrBootstrapPayload = renderManagedNostrBootstrapPayload;
+  window.__wizardryRenderManagedNostrPageBootstrapPayload = renderManagedNostrPageBootstrapPayload;
   window.__wizardryRemoveLegacyTitleBlock = removeLegacyTitleBlock;
   window.__wizardryEnsureReadOnlyTitleShell = ensureReadOnlyTitleShell;
   window.__wizardryEnsureReadOnlyDescriptionShell = ensureReadOnlyDescriptionShell;

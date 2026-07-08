@@ -4551,12 +4551,11 @@
   }
 
   function renderBootstrapPayload(payload, hasWarmPosts) {
-    return window.__wizardryRenderManagedNostrBootstrapPayload(payload, {
+    return window.__wizardryRenderManagedNostrPageBootstrapPayload(payload, {
+      rootNode: root,
+      contentNode: els.list,
       isExpectedPayload: isExpectedPayload,
       applyState: applyBootstrapState,
-      hasMatchingStaticPrerender: function (optimisticPayload) {
-        return window.__wizardryHasMatchingStaticPrerender(root, els.list, optimisticPayload);
-      },
       renderAdoptedPrerender: function () {
         state.postsLoading = !hasWarmPosts;
         state.staticPrerenderListAdopted = true;

@@ -625,17 +625,14 @@
   }
 
   function renderBootstrapPayload(payload) {
-    return window.__wizardryRenderManagedNostrBootstrapPayload(payload, {
+    return window.__wizardryRenderManagedNostrPageBootstrapPayload(payload, {
+      rootNode: root,
+      contentNode: els.content,
       isExpectedPayload: isExpectedPayload,
       applyState: applyBootstrapState,
-      hasMatchingStaticPrerender: function (optimisticPayload) {
-        return window.__wizardryHasMatchingStaticPrerender(root, els.content, optimisticPayload);
-      },
-      renderAdoptedPrerender: function () {
-        renderHead();
-        renderAdmin();
-        renderValidation();
-      },
+      renderHead: renderHead,
+      renderAdmin: renderAdmin,
+      renderValidation: renderValidation,
       renderAll: renderAll,
       afterRender: function () {
         syncSecureChatLastContentHtmlFromDom();
