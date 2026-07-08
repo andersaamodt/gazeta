@@ -213,10 +213,6 @@ assert_blog_shared_fragment_contract() {
   expected_types_html=$(blog_post_cards_render_type_filter_html "$posts_json")
   expected_empty_text=$(blog_post_cards_empty_text "$posts_json")
   expected_empty_attrs=$(blog_post_cards_empty_attrs "$posts_json")
-  expected_description_html=$(printf '%s\n' "$payload_json" | jq -r '.prerender.description_html // ""')
-  expected_description_attrs=$(printf '%s\n' "$payload_json" | jq -r '.prerender.description_attrs // ""')
-  expected_content_html=$(printf '%s\n' "$payload_json" | jq -r '.prerender.content_html // ""')
-  expected_content_attrs=$(printf '%s\n' "$payload_json" | jq -r '.prerender.content_attrs // ""')
   payload_tags_html=$(printf '%s\n' "$payload_json" | jq -r '.prerender.filter_tags_html // ""')
   payload_years_html=$(printf '%s\n' "$payload_json" | jq -r '.prerender.filter_years_html // ""')
   payload_types_html=$(printf '%s\n' "$payload_json" | jq -r '.prerender.filter_types_html // ""')
@@ -227,10 +223,6 @@ assert_blog_shared_fragment_contract() {
   actual_types_html=$(extract_element_inner_html "$page_file" blog-filter-types)
   actual_empty_text=$(extract_element_inner_html "$page_file" blog-empty)
   actual_empty_attrs=$(extract_element_attrs "$page_file" blog-empty)
-  actual_description_attrs=$(extract_element_attrs "$page_file" blog-page-description)
-  actual_description_html=$(extract_class_element_inner_html "$page_file" list-page-description-text)
-  actual_content_attrs=$(extract_element_attrs "$page_file" blog-page-content)
-  actual_content_html=$(extract_element_inner_html "$page_file" blog-page-content)
 
   assert_text_equals "$actual_list_html" "$expected_list_html" "$label_prefix prerendered post list exactly matches the shared blog-card renderer"
   assert_text_equals "$payload_tags_html" "$expected_tags_html" "$label_prefix payload tag-filter fragment exactly matches the shared blog filter renderer"
@@ -240,8 +232,7 @@ assert_blog_shared_fragment_contract() {
   assert_text_equals "$actual_years_html" "$expected_years_html" "$label_prefix prerendered year filters exactly match the shared blog filter renderer"
   assert_text_equals "$actual_types_html" "$expected_types_html" "$label_prefix prerendered type filters exactly match the shared blog filter renderer"
   assert_text_equals "$actual_empty_text" "$expected_empty_text" "$label_prefix prerendered empty-state text exactly matches the shared blog-card contract"
-  assert_text_equals "$actual_description_html" "$expected_description_html" "$label_prefix prerendered description markup exactly matches the payload prerender fragment"
-  assert_text_equals "$actual_content_html" "$expected_content_html" "$label_prefix prerendered content markup exactly matches the payload prerender fragment"
+  assert_prerender_fragment_contract "$page_file" "$bootstrap_file" "$slug" blog-page-content blog-page-description "$label_prefix"
 
   case "$expected_empty_attrs" in
     *hidden*)
@@ -257,21 +248,23 @@ assert_blog_shared_fragment_contract() {
       esac
       ;;
   esac
+}
 
-  case "$expected_description_attrs" in
-    *hidden*)
-      case "$actual_description_attrs" in
-        *hidden*) pass ;;
-        *) fail "$label_prefix prerendered description visibility matches the payload prerender attrs" ;;
-      esac
-      ;;
-    *)
-      case "$actual_description_attrs" in
-        *hidden*) fail "$label_prefix prerendered description visibility matches the payload prerender attrs" ;;
-        *) pass ;;
-      esac
-      ;;
-  esac
+assert_prerender_fragment_contract() {
+  page_file=$1
+  bootstrap_file=$2
+  slug=$3
+  content_element_id=$4
+  description_element_id=$5
+  label_prefix=$6
+
+  payload_json=$(extract_bootstrap_payload_json "$bootstrap_file" "$slug")
+  expected_content_html=$(printf '%s\n' "$payload_json" | jq -r '.prerender.content_html // ""')
+  expected_content_attrs=$(printf '%s\n' "$payload_json" | jq -r '.prerender.content_attrs // ""')
+  actual_content_html=$(extract_element_inner_html "$page_file" "$content_element_id")
+  actual_content_attrs=$(extract_element_attrs "$page_file" "$content_element_id")
+
+  assert_text_equals "$actual_content_html" "$expected_content_html" "$label_prefix prerendered content markup exactly matches the payload prerender fragment"
 
   case "$expected_content_attrs" in
     *hidden*)
@@ -287,6 +280,30 @@ assert_blog_shared_fragment_contract() {
       esac
       ;;
   esac
+
+  if [ -n "$description_element_id" ]; then
+    expected_description_html=$(printf '%s\n' "$payload_json" | jq -r '.prerender.description_html // ""')
+    expected_description_attrs=$(printf '%s\n' "$payload_json" | jq -r '.prerender.description_attrs // ""')
+    actual_description_html=$(extract_class_element_inner_html "$page_file" list-page-description-text)
+    actual_description_attrs=$(extract_element_attrs "$page_file" "$description_element_id")
+
+    assert_text_equals "$actual_description_html" "$expected_description_html" "$label_prefix prerendered description markup exactly matches the payload prerender fragment"
+
+    case "$expected_description_attrs" in
+      *hidden*)
+        case "$actual_description_attrs" in
+          *hidden*) pass ;;
+          *) fail "$label_prefix prerendered description visibility matches the payload prerender attrs" ;;
+        esac
+        ;;
+      *)
+        case "$actual_description_attrs" in
+          *hidden*) fail "$label_prefix prerendered description visibility matches the payload prerender attrs" ;;
+          *) pass ;;
+        esac
+        ;;
+    esac
+  fi
 }
 
 assert_managed_payload_contract() {
@@ -659,6 +676,8 @@ assert_file_contains "$SITE_ROOT/site/pages/reading-list.md" 'data-list-vote-val
 assert_file_not_contains "$SITE_ROOT/site/pages/reading-list.md" 'data-list-vote-value="-1"' 'list prerender omits reading-list downvote buttons'
 assert_file_contains "$SITE_ROOT/site/pages/reading-list.md" 'disabled aria-disabled="true"' 'list prerender renders anonymous vote buttons disabled'
 assert_file_contains "$SITE_ROOT/site/static/nostr-page-bootstrap/reading-list.js" 'public-fixture-entry' 'list bootstrap includes public submitted list entries'
+assert_prerender_fragment_contract "$SITE_ROOT/site/pages/oeuvre.md" "$SITE_ROOT/site/static/nostr-page-bootstrap/oeuvre.js" oeuvre list-page-content list-page-description 'oeuvre page'
+assert_prerender_fragment_contract "$SITE_ROOT/site/pages/reading-list.md" "$SITE_ROOT/site/static/nostr-page-bootstrap/reading-list.js" reading-list list-page-content list-page-description 'reading-list page'
 assert_file_contains "$SITE_ROOT/site/pages/software.md" 'Tiny App' 'icon-gallery prerender includes tile label'
 assert_file_contains "$SITE_ROOT/site/pages/software.md" 'list-tile-image' 'icon-gallery prerender includes image markup'
 assert_file_contains "$SITE_ROOT/site/pages/software.md" 'class="list-page-shell icon-gallery-shell"' 'icon-gallery prerender emits a stable shell class'
@@ -669,6 +688,7 @@ assert_file_contains "$SITE_ROOT/site/pages/software.md" 'data-page-type=softwar
 assert_file_not_contains "$SITE_ROOT/site/pages/software.md" "printf ' icon-gallery-shell" 'icon-gallery prerender does not leak shell fragments into HTML'
 assert_file_not_contains "$SITE_ROOT/site/pages/oeuvre.md" 'marked@11.0.0/marked.min.js' 'list prerender does not block hydration on the external Markdown renderer'
 assert_file_not_contains "$SITE_ROOT/site/pages/software.md" 'marked@11.0.0/marked.min.js' 'icon-gallery prerender does not block hydration on the external Markdown renderer'
+assert_prerender_fragment_contract "$SITE_ROOT/site/pages/software.md" "$SITE_ROOT/site/static/nostr-page-bootstrap/software.js" software list-page-content list-page-description 'software page'
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'Fixture Blog Post' 'blog prerender includes public post card'
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'blog-inline-tag' 'blog prerender includes post tag chips'
 assert_file_contains "$SITE_ROOT/site/pages/blog.md" 'writing' 'blog prerender includes the default-tag text'
@@ -685,6 +705,7 @@ assert_blog_shared_fragment_contract "$SITE_ROOT/site/pages/blog.md" "$SITE_ROOT
 assert_file_contains "$SITE_ROOT/site/pages/values.md" 'Values body' 'NIP-23 prerender includes content body'
 assert_file_contains "$SITE_ROOT/site/pages/values.md" 'data-page-slug="values" data-page-type="nip23" data-page-title="Values"' 'NIP-23 prerender publishes the Lodestone-owned page title on the managed root shell'
 assert_managed_page_title_shell "$SITE_ROOT/site/pages/values.md" "nip23-page-title" "Values" "nip23-page-title-actions" 'NIP-23 prerender includes the hydration-matching shared title shell'
+assert_prerender_fragment_contract "$SITE_ROOT/site/pages/values.md" "$SITE_ROOT/site/static/nostr-page-bootstrap/values.js" values nip23-page-content '' 'values page'
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'hello@example.com' 'contact prerender includes public contact row'
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'secure-chat-panel' 'contact prerender includes secure chat panel'
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'secure-chat-login-gate' 'contact prerender includes the final Secure Chat login gate'
@@ -692,6 +713,7 @@ assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'contact-widget-video-ch
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'vcw-shell vcw-shell-no-heading vcw-shell-center-precall' 'contact prerender includes the final call widget shell while the video widget loads'
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'vcw-call-owner-btn' 'contact prerender includes final icon call controls while the video widget loads'
 assert_file_contains "$SITE_ROOT/site/pages/contact.md" 'contact-archived-group' 'contact prerender includes archived contact rows'
+assert_prerender_fragment_contract "$SITE_ROOT/site/pages/contact.md" "$SITE_ROOT/site/static/nostr-page-bootstrap/contact.js" contact contact-page-content contact-page-description 'contact page'
 assert_file_contains "$SITE_ROOT/site/pages/projects.md" 'Project Alpha' 'public ranking prerender includes ranking node row'
 assert_file_contains "$SITE_ROOT/site/pages/projects.md" 'data-ranking-slug="projects" data-page-type="public-ranking" data-page-title="Projects"' 'public ranking prerender publishes the Lodestone-owned page title on the managed root shell'
 assert_managed_page_title_shell "$SITE_ROOT/site/pages/projects.md" "public-ranking-title" "Projects" "public-ranking-page-title-actions" 'public ranking prerender includes the hydration-matching shared title shell'
@@ -699,6 +721,7 @@ assert_file_contains "$SITE_ROOT/site/pages/projects.md" 'public-ranking-level d
 assert_file_contains "$SITE_ROOT/site/pages/projects.md" 'public-ranking-metrics' 'public ranking prerender includes metric summary rows'
 assert_file_contains "$SITE_ROOT/site/pages/projects.md" 'data-ranking-action="vote"' 'public ranking prerender includes disabled vote controls in the anonymous visitor shell'
 assert_file_not_contains "$SITE_ROOT/site/static/nostr-page-bootstrap/projects.js" '"view_mode":"static-fallback"' 'public ranking bootstrap comes from the shared hydrated payload path'
+assert_prerender_fragment_contract "$SITE_ROOT/site/pages/projects.md" "$SITE_ROOT/site/static/nostr-page-bootstrap/projects.js" projects public-ranking-content public-ranking-description 'projects page'
 assert_file_contains "$ROOT_DIR/cgi/blog-public-ranking-common.sh" '.allow_signed_in_submissions == true' 'public ranking normalization maps legacy signed-in submissions flag to open mode'
 assert_file_contains "$SITE_ROOT/site/pages/overworld.md" 'overworld-godot-frame-wrap' 'Overworld prerender includes stable play surface'
 assert_file_contains "$SITE_ROOT/site/pages/overworld.md" 'Download (6.8 MB)' 'Overworld prerender includes splash controls'
