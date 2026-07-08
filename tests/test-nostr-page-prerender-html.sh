@@ -38,6 +38,41 @@ assert_file_not_contains() {
   fi
 }
 
+assert_managed_payload_contract() {
+  body=$1
+  expected_type=$2
+  label=$3
+  if printf '%s\n' "$body" | jq -e --arg expected_type "$expected_type" '
+    (.success == true) and
+    (has("slug") and (.slug | type == "string" and length > 0)) and
+    (has("page_type") and (.page_type == $expected_type)) and
+    (has("nav_title") and (.nav_title | type == "string")) and
+    (has("kind") and (.kind | type == "number")) and
+    (has("is_admin") and (.is_admin | type == "boolean")) and
+    (has("viewer_authenticated") and (.viewer_authenticated | type == "boolean")) and
+    (has("viewer_can_submit") and (.viewer_can_submit | type == "boolean")) and
+    (has("view_mode") and (.view_mode | type == "string" and length > 0)) and
+    (has("canonical_exists") and (.canonical_exists | type == "boolean")) and
+    (has("draft_exists") and (.draft_exists | type == "boolean")) and
+    (has("draft_differs") and (.draft_differs | type == "boolean")) and
+    (has("sync_status") and (.sync_status | type == "object")) and
+    (has("state") and (.state | type == "object")) and
+    (has("canonical_state") and (.canonical_state | type == "object")) and
+    (has("canonical_event") and ((.canonical_event == null) or (.canonical_event | type == "object"))) and
+    (has("zap_config") and (.zap_config | type == "object")) and
+    (has("validation") and (.validation | type == "object")) and
+    (.validation | has("errors") and (.errors | type == "array")) and
+    (.validation | has("warnings") and (.warnings | type == "array")) and
+    (.validation | has("can_publish") and (.can_publish | type == "boolean")) and
+    (has("prerender") and (.prerender | type == "object")) and
+    (has("prerender_signature") and (.prerender_signature | type == "string" and length > 0))
+  ' >/dev/null; then
+    pass
+  else
+    fail "$label"
+  fi
+}
+
 write_event() {
   pubkey=$1
   kind=$2
@@ -274,6 +309,7 @@ if printf '%s\n' "$oeuvre_body" | jq -e '.view_mode == "local" and (.sync_status
 else
   fail 'hydrated Nostr page payload keeps the server page-state as the visitor-visible source'
 fi
+assert_managed_payload_contract "$oeuvre_body" 'list' 'list page payload exposes the canonical managed-page envelope'
 
 if printf '%s\n' "$oeuvre_body" | jq -e '(.prerender_signature // "") | type == "string" and length > 0' >/dev/null; then
   pass
@@ -308,17 +344,33 @@ if printf '%s\n' "$projects_body" | jq -e '(.state.root_coord // "") as $root | 
 else
   fail 'public ranking page payload uses the shared enriched graph instead of falling back to a thin bootstrap-only shape'
 fi
+assert_managed_payload_contract "$projects_body" 'public-ranking' 'public ranking payload exposes the canonical managed-page envelope'
 
 blog_payload=$(env REQUEST_METHOD=GET CONTENT_LENGTH=0 QUERY_STRING=page_slug=blog "$ROOT_DIR/cgi/blog-get-nostr-page")
 blog_body=$(printf '%s\n' "$blog_payload" | awk '{ sub(/\r$/, "") } BEGIN { body = 0 } body { print } /^$/ { body = 1 }')
 if [ -z "$blog_body" ]; then
   blog_body=$blog_payload
 fi
+assert_managed_payload_contract "$blog_body" 'blog' 'blog page payload exposes the canonical managed-page envelope'
 if printf '%s\n' "$blog_body" | jq -e '.success == true and .page_type == "blog" and any(.bootstrap_posts[]?; .title == "Fixture Blog Post") and (any(.bootstrap_posts[]?; .title == "Filtered Out Post") | not)' >/dev/null; then
   pass
 else
   fail 'blog page runtime payload carries the filtered bootstrap post-card list on the shared managed-page contract'
 fi
+
+values_payload=$(env REQUEST_METHOD=GET CONTENT_LENGTH=0 QUERY_STRING=page_slug=values "$ROOT_DIR/cgi/blog-get-nostr-page")
+values_body=$(printf '%s\n' "$values_payload" | awk '{ sub(/\r$/, "") } BEGIN { body = 0 } body { print } /^$/ { body = 1 }')
+if [ -z "$values_body" ]; then
+  values_body=$values_payload
+fi
+assert_managed_payload_contract "$values_body" 'nip23' 'NIP-23 payload exposes the canonical managed-page envelope'
+
+contact_payload=$(env REQUEST_METHOD=GET CONTENT_LENGTH=0 QUERY_STRING=page_slug=contact "$ROOT_DIR/cgi/blog-get-nostr-page")
+contact_body=$(printf '%s\n' "$contact_payload" | awk '{ sub(/\r$/, "") } BEGIN { body = 0 } body { print } /^$/ { body = 1 }')
+if [ -z "$contact_body" ]; then
+  contact_body=$contact_payload
+fi
+assert_managed_payload_contract "$contact_body" 'contact' 'contact payload exposes the canonical managed-page envelope'
 
 for page in oeuvre reading-list software blog values contact projects overworld; do
   assert_file_contains "$SITE_ROOT/site/pages/$page.md" 'data-prerender-painted="true"' "$page page is marked as prerendered"
