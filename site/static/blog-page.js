@@ -191,36 +191,12 @@
       return;
     }
     routeSelfHealTriggered = true;
-    var url;
-    try {
-      url = new URL(window.location.href);
-    } catch (_err) {
-      window.location.reload();
-      return;
-    }
-    var attempted = url.searchParams.get('__route_repair') === '1';
-    if (attempted) {
-      clearRouteRepairParam();
-      return;
-    }
-    url.searchParams.set('__route_repair', '1');
-    fetch('/cgi/blog-list-navbar-pages', { cache: 'no-store' })
-      .catch(function () {
-        // Ignore sync hint errors; still attempt one repair reload.
-      })
-      .finally(function () {
-        window.setTimeout(function () {
-          if (reason) {
-            // Preserve last reason for debugging in browser console/state.
-            try {
-              sessionStorage.setItem('wizardry_last_route_repair_reason', String(reason));
-            } catch (_storageErr) {
-              // Ignore storage errors.
-            }
-          }
-          window.location.replace(url.toString());
-        }, 220);
-      });
+    window.__wizardryRequestManagedRouteRepair({
+      reason: reason,
+      preflight: function () {
+        return fetch('/cgi/blog-list-navbar-pages', { cache: 'no-store' });
+      }
+    });
   }
 
   function escapeHtml(value) {
