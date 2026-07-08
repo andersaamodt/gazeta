@@ -4696,15 +4696,8 @@
 	      });
 	  }
 
-  function authEventIsAdmin(event) {
-    if (event && event.detail && event.detail.is_admin === true) {
-      return true;
-    }
-    return typeof window.__wizardryHasLikelyAdminSession === 'function' && window.__wizardryHasLikelyAdminSession();
-  }
-
   function applyOptimisticAdminFromAuthEvent(event) {
-    if (!authEventIsAdmin(event) || !state.payload || state.payload.is_admin) {
+    if (!window.__wizardryAuthEventIsLikelyAdmin(event) || !state.payload || state.payload.is_admin) {
       return;
     }
     state.payload = Object.assign({}, state.payload, { is_admin: true });

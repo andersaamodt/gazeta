@@ -848,6 +848,17 @@
     }
   }
 
+  function eventHasVerifiedAdminState(event) {
+    return !!(event && event.detail && event.detail.authenticated === true && typeof event.detail.is_admin !== 'undefined');
+  }
+
+  function authEventIsLikelyAdmin(event) {
+    if (eventHasVerifiedAdminState(event)) {
+      return event.detail.is_admin === true;
+    }
+    return hasLikelyAdminSession();
+  }
+
   function canUseVisitorPrerenderReadOnly(options) {
     var opts = options && typeof options === 'object' ? options : {};
     if (opts.isAdmin === true && opts.allowAdmin !== true) {
@@ -1453,6 +1464,8 @@
   window.__wizardryBindSessionAuthRefresh = bindSessionAuthRefresh;
   window.__wizardryHasLikelyAuthenticatedSession = hasLikelyAuthenticatedSession;
   window.__wizardryHasLikelyAdminSession = hasLikelyAdminSession;
+  window.__wizardryEventHasVerifiedAdminState = eventHasVerifiedAdminState;
+  window.__wizardryAuthEventIsLikelyAdmin = authEventIsLikelyAdmin;
   window.__wizardryCanUseVisitorPrerenderReadOnly = canUseVisitorPrerenderReadOnly;
   window.__wizardryCanUsePayloadPrerenderReadOnly = canUsePayloadPrerenderReadOnly;
   window.__wizardryEnsureNostrPublishDialog = ensureNostrPublishDialog;
