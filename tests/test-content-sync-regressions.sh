@@ -694,6 +694,8 @@ assert_file_not_contains "$SITE_SOURCE_ROOT/static/blog-page.js" '__wizardryRend
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" '__wizardryRenderManagedPayloadValidationSummary' 'blog runtime delegates payload-validation rendering to the shared page-head helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" '__wizardryRenderManagedAdminActionBar({' 'blog runtime now delegates managed admin action-bar mount choreography to the shared page-head helper'
 assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" '__wizardryRenderResolvedReadOnlyContent' 'blog runtime delegates Lodestone read-only render-or-fallback mounting to the shared page-head helper'
+assert_file_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "root.querySelector('[data-blog-action=\"toggle-page-settings\"]')" 'blog runtime resolves its page-settings toggle from the page root it owns instead of a document-wide selector'
+assert_file_not_contains "$SITE_SOURCE_ROOT/static/blog-page.js" "document.querySelector('[data-blog-action=\"toggle-page-settings\"]')" 'blog runtime no longer reaches for a document-wide page-settings toggle outside its own page boundary'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/blog-page.js" '__wizardryReconcileAdoptedPrerenderRefresh' 'blog runtime keeps adopted-prerender refresh choreography local once the shared helper is removed'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/blog-page.js" '<div class="list-validation-block is-error"><strong>Validation errors</strong><ul>' 'blog runtime no longer hardcodes managed validation block markup'
 assert_file_not_contains "$SITE_SOURCE_ROOT/static/blog-page.js" 'could not validate .*state' 'blog runtime no longer hardcodes transient validation filtering rules'

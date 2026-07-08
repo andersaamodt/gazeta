@@ -711,7 +711,7 @@
     }
     var next = !!open;
     state.pageSettingsOpen = next;
-    var editToggle = document.querySelector('[data-blog-action="toggle-page-settings"]');
+    var editToggle = root ? root.querySelector('[data-blog-action="toggle-page-settings"]') : null;
     if (editToggle instanceof HTMLElement) {
       editToggle.setAttribute('aria-expanded', next ? 'true' : 'false');
     }
