@@ -4602,7 +4602,6 @@
       if (!opts.deferRender) {
         renderFetchedPageStateIfChanged(previousSignature);
       }
-      loadDraftNoticeData();
     }
     return window.__wizardryRefreshManagedNostrPage({
       slug: slug,
@@ -4618,7 +4617,6 @@
           if (!opts.deferRender) {
             renderFetchedPageStateIfChanged(state.renderSignature);
           }
-          loadDraftNoticeData();
           return true;
         }
         return false;
@@ -4627,8 +4625,10 @@
         if (!opts.deferRender) {
           renderFetchedPageStateIfChanged(state.renderSignature);
         }
-        loadDraftNoticeData();
       },
+      onFinally: function () {
+        loadDraftNoticeData();
+      }
     });
   }
 
@@ -5244,7 +5244,6 @@
 
     loadPageState({ deferRender: true }).finally(function () {
       state.postsLoading = false;
-      loadDraftNoticeData();
       var nextSignature = renderSignature();
       var hasChanges = state.renderSignature !== nextSignature;
       var canPreserve = shouldPreserveAdoptedStaticPrerender();
