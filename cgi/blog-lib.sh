@@ -35,6 +35,19 @@ case "${WIZARDRY_SITES_DATA_DIR:-}" in
     ;;
 esac
 blog_site_name=${WIZARDRY_SITE_NAME-}
+blog_script_path=${SCRIPT_FILENAME-}
+if [ -z "$blog_script_path" ]; then
+  blog_script_path=${SCRIPT_NAME-}
+fi
+blog_script_site_root=
+case "$blog_script_path" in
+  */cgi/*)
+    candidate_site_root=${blog_script_path%/cgi/*}
+    if [ -f "$candidate_site_root/site.conf" ] || [ -d "$candidate_site_root/site" ] || [ -d "$candidate_site_root/cgi" ]; then
+      blog_script_site_root=$candidate_site_root
+    fi
+    ;;
+esac
 
 # Recover the site context from host/path when launcher env is missing.
 blog_request_host=${HTTP_HOST:-${SERVER_NAME:-}}
@@ -53,10 +66,6 @@ if [ -z "$blog_site_name" ] && [ -n "$blog_request_host" ]; then
   fi
 fi
 if [ -z "$blog_site_name" ]; then
-  blog_script_path=${SCRIPT_FILENAME-}
-  if [ -z "$blog_script_path" ]; then
-    blog_script_path=${SCRIPT_NAME-}
-  fi
   case "$blog_script_path" in
     "$blog_sites_dir"/*/site/cgi/*)
       blog_site_name=${blog_script_path#"$blog_sites_dir"/}
@@ -69,6 +78,9 @@ if [ -z "$blog_site_name" ]; then
 fi
 
 blog_site_root="$blog_sites_dir/$blog_site_name"
+if [ -n "$blog_script_site_root" ] && [ ! -e "$blog_site_root" ]; then
+  blog_site_root=$blog_script_site_root
+fi
 blog_site_conf="$blog_site_root/site.conf"
 blog_site_data="$blog_sites_data_dir/$blog_site_name"
 blog_legacy_site_data="$blog_default_sites_data_dir/$blog_site_name"
@@ -256,6 +268,14 @@ blog_managed_sites_data_dir=$blog_sites_data_dir
 case "$blog_site_root" in
   */releases/*)
     blog_site_root_parent=${blog_site_root%/releases/*}
+    case "${WIZARDRY_SITES_DATA_DIR:-}" in
+      '')
+        blog_managed_sites_data_dir="$blog_site_root_parent/.sitedata"
+        ;;
+    esac
+    ;;
+  */current)
+    blog_site_root_parent=${blog_site_root%/current}
     case "${WIZARDRY_SITES_DATA_DIR:-}" in
       '')
         blog_managed_sites_data_dir="$blog_site_root_parent/.sitedata"

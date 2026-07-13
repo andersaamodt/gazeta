@@ -3302,14 +3302,22 @@ assert_not_contains "$ranking_projection_readonly_html" 'data-ranking-action="to
 
 managed_home="$TMP_ROOT/managed-site"
 managed_release_root="$managed_home/releases/20260416000000"
+managed_current_root="$managed_home/current"
 managed_shared_data="$managed_home/.sitedata/site"
-mkdir -p "$managed_release_root" "$managed_shared_data"
+mkdir -p "$managed_release_root" "$managed_current_root/cgi" "$managed_shared_data"
+touch "$managed_current_root/site.conf"
 managed_site_data=$(
   WIZARDRY_SITES_DIR="$managed_home/releases" \
   WIZARDRY_SITE_NAME="20260416000000" \
   sh -c '. "$1/cgi/blog-lib.sh"; printf "%s\n" "$blog_site_data"' sh "$ROOT_DIR"
 )
 assert_eq "$managed_shared_data" "$managed_site_data" 'managed releases resolve shared site data root'
+managed_current_site_data=$(
+  SCRIPT_FILENAME="$managed_current_root/cgi/nostr-auth-login-begin" \
+  WIZARDRY_SITE_NAME="andersaamodt.com" \
+  sh -c '. "$1/cgi/blog-lib.sh"; printf "%s\n" "$blog_site_data"' sh "$ROOT_DIR"
+)
+assert_eq "$managed_shared_data" "$managed_current_site_data" 'managed current CGI path resolves shared site data root'
 
 TOTAL=$((PASS_COUNT + FAIL_COUNT))
 printf 'Assertions: %s\n' "$TOTAL"
