@@ -345,6 +345,8 @@ BLOG_SESSION_FORCE_INTERACTIVE=${BLOG_SESSION_FORCE_INTERACTIVE-}
 
 blog_ensure_support_bin_path() {
   for candidate_dir in \
+    "${WIZARDRY_DIR:-}/spells/.imps/cgi" \
+    "${WIZARDRY_DIR:-}/spells/.imps/fs" \
     "$blog_sites_dir/app/cgi-bin" \
     "$blog_sites_dir/site/cgi-bin" \
     "$blog_site_root/app/cgi-bin" \
