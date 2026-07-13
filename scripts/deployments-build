@@ -11,6 +11,7 @@ staged_sites_root=
 resolved_site_root=
 resolved_web_root=
 resolved_site_name=
+disabled_prerender_script=
 
 canonical_dir() {
   CDPATH= cd -- "$1" && pwd -P
@@ -116,8 +117,17 @@ else
 fi
 site_conf="$site_root/site.conf"
 site_conf_backup=$(mktemp "${TMPDIR:-/tmp}/gazeta-site-conf.XXXXXX")
+prerender_script_path="$site_root/cgi/blog-prerender-nostr-page-bootstraps"
+if [ -f "$prerender_script_path" ] && [ -x "$prerender_script_path" ]; then
+  disabled_prerender_script="$prerender_script_path.deployments-disabled"
+  rm -f "$disabled_prerender_script"
+  mv "$prerender_script_path" "$disabled_prerender_script"
+fi
 
 cleanup() {
+  if [ -n "$disabled_prerender_script" ] && [ -f "$disabled_prerender_script" ]; then
+    mv "$disabled_prerender_script" "${disabled_prerender_script%.deployments-disabled}"
+  fi
   if [ "$site_conf_existed" = "1" ] && [ -f "$site_conf_backup" ]; then
     mv "$site_conf_backup" "$site_conf"
   else
