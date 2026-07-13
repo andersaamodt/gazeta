@@ -366,6 +366,19 @@ blog_ensure_support_bin_path() {
   if command -v config-get >/dev/null 2>&1 && command -v config-set >/dev/null 2>&1; then
     return 0
   fi
+
+  for helper_name in http-status http-header http-end-headers; do
+    helper_path=$(command -v "$helper_name" 2>/dev/null || printf '')
+    [ -n "$helper_path" ] || continue
+    helper_dir=$(dirname "$helper_path")
+    helper_parent=$(dirname "$helper_dir")
+    candidate_dir="$helper_parent/fs"
+    if [ -x "$candidate_dir/config-get" ] || [ -x "$candidate_dir/config-set" ]; then
+      PATH="$candidate_dir:$PATH"
+      export PATH
+      return 0
+    fi
+  done
 }
 
 blog_ensure_support_bin_path
