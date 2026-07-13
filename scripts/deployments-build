@@ -159,6 +159,7 @@ mv "$site_conf_tmp" "$site_conf"
 WEB_WIZARDRY_ROOT="$web_root" \
 WIZARDRY_SITES_DIR="$web_root" \
 WIZARDRY_SITES_DATA_DIR="$site_data_root" \
+BLOG_NOSTR_PAGE_PRERENDER_ENABLED=0 \
 "$builder" "$site_name" --full
 cleanup
 trap - EXIT HUP INT TERM
