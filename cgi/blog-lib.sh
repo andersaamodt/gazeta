@@ -282,6 +282,14 @@ case "$blog_site_root" in
         ;;
     esac
     ;;
+  */site)
+    blog_site_root_parent=${blog_site_root%/site}
+    case "${WIZARDRY_SITES_DATA_DIR:-}" in
+      '')
+        blog_managed_sites_data_dir="$blog_site_root_parent/.sitedata"
+        ;;
+    esac
+    ;;
 esac
 if [ "$blog_site_root_parent" != "$blog_site_root" ] && [ -d "$blog_managed_sites_data_dir/site" ]; then
   blog_site_data="$blog_managed_sites_data_dir/site"
