@@ -678,6 +678,9 @@ write_local_embed_bootstraps() {
 write_local_embed_bootstraps
 
 blog_prerender_enabled=$(blog_nostr_page_prerender_enabled)
+if [ "${WIZARDRY_BUILD_IN_PROGRESS:-0}" = "1" ] || [ "${BLOG_SUPPRESS_ASYNC_BUILD:-0}" = "1" ]; then
+  blog_prerender_enabled=false
+fi
 
 if [ "$blog_prerender_enabled" = true ] && [ -x "$SCRIPT_DIR/blog-prerender-nostr-page-bootstraps" ]; then
   prerender_timeout=${BLOG_NOSTR_PAGE_PRERENDER_TIMEOUT_SECONDS-}
