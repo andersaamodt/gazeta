@@ -1935,6 +1935,9 @@
     if ((state && state.initialContentPainted) || !contentNode) {
       return false;
     }
+    if (contentNode.getAttribute && contentNode.getAttribute('data-prerender-painted') === 'true') {
+      return notifyInitialContentPainted(opts.slug || '', opts);
+    }
     var fallbackText = String(opts.fallbackText || 'Page content is still loading.');
     contentNode.innerHTML = '<p class="placeholder">' + fallbackText
       .replace(/&/g, '&amp;')
