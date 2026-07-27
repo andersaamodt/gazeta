@@ -1888,6 +1888,14 @@
     return routeRootSlugFromDom() || slugFromPath(window.location.pathname || '/') || '';
   }
 
+  function hasPaintedManagedContent(contentNode) {
+    return !!(
+      contentNode &&
+      contentNode.getAttribute &&
+      contentNode.getAttribute('data-prerender-painted') === 'true'
+    );
+  }
+
   function notifyInitialContentPainted(slug, options) {
     var opts = options && typeof options === 'object' ? options : {};
     var state = opts.state && typeof opts.state === 'object' ? opts.state : null;
@@ -1935,7 +1943,7 @@
     if ((state && state.initialContentPainted) || !contentNode) {
       return false;
     }
-    if (contentNode.getAttribute && contentNode.getAttribute('data-prerender-painted') === 'true') {
+    if (hasPaintedManagedContent(contentNode)) {
       return notifyInitialContentPainted(opts.slug || '', opts);
     }
     var fallbackText = String(opts.fallbackText || 'Page content is still loading.');
@@ -2345,6 +2353,19 @@
       refreshOptions.notifyInitialContentPainted = notifyOptions;
     } else {
       delete refreshOptions.notifyInitialContentPainted;
+    }
+
+    if (
+      hasPaintedManagedContent(opts.contentNode) &&
+      refreshOptions.notifyInitialContentPainted &&
+      typeof refreshOptions.notifyInitialContentPainted === 'object'
+    ) {
+      notifyInitialContentPainted(
+        Object.prototype.hasOwnProperty.call(refreshOptions.notifyInitialContentPainted, 'slug')
+          ? refreshOptions.notifyInitialContentPainted.slug
+          : opts.slug,
+        refreshOptions.notifyInitialContentPainted
+      );
     }
 
     return refreshManagedNostrPage(refreshOptions);
