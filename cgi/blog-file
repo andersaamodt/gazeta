@@ -115,6 +115,13 @@ case "$mime_type" in
   *) disposition='attachment' ;;
 esac
 
+# nginx serves authorized files through an internal alias. Grant its worker
+# read/traverse access only after this request has passed the privacy check.
+if [ -n "$storage_rel" ] && command -v setfacl >/dev/null 2>&1; then
+  setfacl -m u:www-data:--x "$blog_site_data" "$blog_files_dir" 2>/dev/null || true
+  setfacl -m u:www-data:r-- "$file_path" 2>/dev/null || true
+fi
+
 http-status 200 "OK"
 http-header "Content-Type" "$mime_type"
 if blog_file_is_public_effective "$file_id"; then
