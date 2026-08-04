@@ -192,6 +192,12 @@ legacy_share_url=$(printf '%s\n' "$legacy_share_create_output" | sed -n '/^{/,$p
 legacy_share_token=$(printf '%s\n' "$legacy_share_url" | sed -n 's#^/file/\([^/]*\).*#\1#p')
 test "${#legacy_share_token}" -eq 22
 test "$legacy_share_url" = "/file/$legacy_share_token/hello.txt"
+legacy_list_files_output=$(
+  REQUEST_METHOD=GET \
+  QUERY_STRING="session_token=$token&csrf_token=$csrf" \
+  /bin/sh "$ROOT_DIR/cgi/blog-list-files-legacy"
+)
+printf '%s\n' "$legacy_list_files_output" | sed -n '/^{/,$p' | jq -e '.files[0].share_url == "'"$legacy_share_url"'"' >/dev/null
 printf '%s' "$share_revoke_body" |
   REQUEST_METHOD=POST \
   CONTENT_TYPE=application/x-www-form-urlencoded \
