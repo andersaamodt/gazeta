@@ -82,12 +82,12 @@ pretty_url=$(
   blog_init
   blog_file_public_url_encoded "$file_id" "$stored_name"
 )
-test "$pretty_url" = "/hello%20public.txt"
+test "$pretty_url" = "/file/hello%20public.txt"
 
 pretty_ids=$(
   . "$ROOT_DIR/cgi/blog-lib.sh"
   blog_init
-  blog_file_ids_from_text '[hello](https://example.test/hello%20public.txt)'
+  blog_file_ids_from_text '[hello](https://example.test/file/hello%20public.txt)'
 )
 test "$pretty_ids" = "$file_id"
 
@@ -106,7 +106,7 @@ list_files_output=$(
   /bin/sh "$ROOT_DIR/cgi/blog-list-files"
 )
 list_files_json=$(printf '%s\n' "$list_files_output" | sed -n '/^{/,$p')
-printf '%s\n' "$list_files_json" | jq -e '.success == true and (.files | length) == 1 and .files[0].file_id == "'"$file_id"'" and .files[0].url == "/hello%20public.txt"' >/dev/null
+printf '%s\n' "$list_files_json" | jq -e '.success == true and (.files | length) == 1 and .files[0].file_id == "'"$file_id"'" and .files[0].url == "/file/hello%20public.txt"' >/dev/null
 printf '%s\n' "$list_files_json" | jq -e '.files[0].share_url == ""' >/dev/null
 
 serve_query="fileid=$file_id&session_token=$token&csrf_token=$csrf"
@@ -146,15 +146,17 @@ share_create_output=$(
 )
 share_create_json=$(printf '%s\n' "$share_create_output" | sed -n '/^{/,$p')
 share_url=$(printf '%s\n' "$share_create_json" | jq -r '.share_url')
-share_token=$(printf '%s\n' "$share_url" | sed -n 's/.*[?&]share=//p')
+share_token=$(printf '%s\n' "$share_url" | sed -n 's#^/file/\([^/]*\).*#\1#p')
 test -n "$share_token"
+test "${#share_token}" -eq 22
+test "$share_url" = "/file/$share_token/hello.txt"
 grep -q "^share_token=$share_token$" "$record"
 
-share_query="fileid=$file_id&share=$share_token"
+share_query="file_key=$share_token"
 share_serve_output=$(
   REQUEST_METHOD=GET \
   QUERY_STRING="$share_query" \
-  REQUEST_URI="/cgi/blog-file?$share_query" \
+  REQUEST_URI="/file/$share_token/hello.txt" \
   /bin/sh "$ROOT_DIR/cgi/blog-file"
 )
 printf '%s\n' "$share_serve_output" | tr -d '\r' | grep -q '^Status: 200 OK$'
@@ -179,6 +181,23 @@ revoked_serve_output=$(
 )
 printf '%s\n' "$revoked_serve_output" | tr -d '\r' | grep -q '^Status: 403 Forbidden$'
 
+legacy_share_create_output=$(
+  printf '%s' "$share_create_body" |
+    REQUEST_METHOD=POST \
+    CONTENT_TYPE=application/x-www-form-urlencoded \
+    CONTENT_LENGTH=${#share_create_body} \
+    /bin/sh "$ROOT_DIR/cgi/blog-share-file-legacy"
+)
+legacy_share_url=$(printf '%s\n' "$legacy_share_create_output" | sed -n '/^{/,$p' | jq -r '.share_url')
+legacy_share_token=$(printf '%s\n' "$legacy_share_url" | sed -n 's#^/file/\([^/]*\).*#\1#p')
+test "${#legacy_share_token}" -eq 22
+test "$legacy_share_url" = "/file/$legacy_share_token/hello.txt"
+printf '%s' "$share_revoke_body" |
+  REQUEST_METHOD=POST \
+  CONTENT_TYPE=application/x-www-form-urlencoded \
+  CONTENT_LENGTH=${#share_revoke_body} \
+  /bin/sh "$ROOT_DIR/cgi/blog-share-file-legacy" >/dev/null
+
 visibility_public_body="session_token=$token&csrf_token=$csrf&file_id=$file_id&make_public=true"
 visibility_public_output=$(
   printf '%s' "$visibility_public_body" |
@@ -189,10 +208,20 @@ visibility_public_output=$(
     /bin/sh "$ROOT_DIR/cgi/blog-set-file-visibility"
 )
 visibility_public_json=$(printf '%s\n' "$visibility_public_output" | sed -n '/^{/,$p')
-printf '%s\n' "$visibility_public_json" | jq -e '.success == true and .explicit_public == true and .effective_public == true and .url == "/hello%20public.txt"' >/dev/null
+printf '%s\n' "$visibility_public_json" | jq -e '.success == true and .explicit_public == true and .effective_public == true and .url == "/file/hello%20public.txt"' >/dev/null
 grep -q '^explicit_public=true$' "$record"
 test -f "$SITE_ROOT/build/hello public.txt"
 grep -q '^Hello$' "$SITE_ROOT/build/hello public.txt"
+
+public_query='file_key=hello%20public.txt'
+public_serve_output=$(
+  REQUEST_METHOD=GET \
+  QUERY_STRING="$public_query" \
+  REQUEST_URI='/file/hello%20public.txt' \
+  /bin/sh "$ROOT_DIR/cgi/blog-file"
+)
+printf '%s\n' "$public_serve_output" | tr -d '\r' | grep -q '^Status: 200 OK$'
+printf '%s\n' "$public_serve_output" | tr -d '\r' | grep -q '^Cache-Control: public, max-age=31536000, immutable$'
 
 delete_body="session_token=$token&csrf_token=$csrf&file_id=$file_id"
 delete_output=$(

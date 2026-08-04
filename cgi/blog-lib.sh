@@ -1965,7 +1965,7 @@ blog_file_public_url() {
   if [ -n "$record_path" ] && [ -f "$record_path" ] && blog_file_is_public_effective "$safe_id"; then
     public_path=$(blog_file_public_path_for_record "$record_path" 2>/dev/null || printf '')
     if [ -n "$public_path" ] && blog_file_public_path_is_unique_for_record "$record_path" "$public_path"; then
-      printf '/%s\n' "$(blog_url_encode "$public_path")"
+      printf '/file/%s\n' "$(blog_url_encode "$public_path")"
       return 0
     fi
   fi
@@ -2013,6 +2013,25 @@ blog_file_find_record_by_public_path() {
     [ -f "$record_path" ] || continue
     current_public_path=$(blog_file_public_path_for_record "$record_path" 2>/dev/null || printf '')
     [ "$current_public_path" = "$public_path" ] || continue
+    if [ -n "$found_path" ]; then
+      return 1
+    fi
+    found_path=$record_path
+  done
+  [ -n "$found_path" ] || return 1
+  printf '%s\n' "$found_path"
+}
+
+blog_file_find_record_by_share_token() {
+  share_token=${1-}
+  case "$share_token" in
+    ''|*[!A-Za-z0-9_-]*) return 1 ;;
+  esac
+  found_path=
+  for record_path in "$blog_file_records_dir"/*.conf; do
+    [ -f "$record_path" ] || continue
+    current_share_token=$(blog_config_get "$record_path" share_token 2>/dev/null || printf '')
+    [ -n "$current_share_token" ] && [ "$current_share_token" = "$share_token" ] || continue
     if [ -n "$found_path" ]; then
       return 1
     fi
@@ -2137,6 +2156,16 @@ blog_file_ids_from_text() {
   fi
   {
     printf '%s\n' "$content" | tr '&' '\n' | sed -n 's/.*file_id=\([A-Za-z0-9._~-][A-Za-z0-9._~-]*\).*/\1/p'
+    printf '%s\n' "$content" \
+      | grep -Eo "(/|https?://[^[:space:])>\"']+/)file/[A-Za-z0-9._~%+-]+" 2>/dev/null \
+      | sed -E -e 's#^https?://[^/]*/#/#' -e 's#^/file/##' -e 's/[?#].*$//' \
+      | while IFS= read -r public_path || [ -n "$public_path" ]; do
+          [ -n "$public_path" ] || continue
+          public_path=$(blog_url_decode_common "$public_path")
+          record_path=$(blog_file_find_record_by_public_path "$public_path" 2>/dev/null || printf '')
+          [ -f "$record_path" ] || continue
+          blog_config_get "$record_path" file_id 2>/dev/null || printf ''
+        done
     printf '%s\n' "$content" \
       | grep -Eo '(/|https?://[^[:space:])>"'\'']+/)[A-Za-z0-9._~%+-]+[.][A-Za-z0-9][A-Za-z0-9._~-]*' 2>/dev/null \
       | sed -E -e 's#^https?://[^/]*/#/#' -e 's#^/##' -e 's/[?#].*$//' \

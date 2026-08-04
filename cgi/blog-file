@@ -57,12 +57,24 @@ resolve_file_id() {
   printf '\n'
 }
 
-file_id=$(resolve_file_id)
-file_id=$(printf '%s' "$file_id" | sed 's/[^A-Za-z0-9._~-]//g')
 req_token=$(blog_param session_token)
 req_csrf=$(blog_param csrf_token)
 req_share=$(blog_param share)
+file_key=$(blog_param file_key)
+file_id=$(resolve_file_id)
+file_id=$(printf '%s' "$file_id" | sed 's/[^A-Za-z0-9._~-]//g')
 record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
+if { [ -z "$record_path" ] || [ ! -f "$record_path" ]; } && [ -n "$file_key" ]; then
+  record_path=$(blog_file_find_record_by_share_token "$file_key" 2>/dev/null || printf '')
+  if [ -n "$record_path" ]; then
+    req_share=$file_key
+  else
+    record_path=$(blog_file_find_record_by_public_path "$file_key" 2>/dev/null || printf '')
+  fi
+  if [ -n "$record_path" ]; then
+    file_id=$(basename "$record_path" .conf)
+  fi
+fi
 if [ -z "$file_id" ] || [ ! -f "$record_path" ]; then
   http-status 404 "Not Found"
   http-header "Content-Type" "text/plain; charset=utf-8"

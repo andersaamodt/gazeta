@@ -1079,7 +1079,7 @@ fn blog_share_file() -> Result<Value> {
         .ok_or_else(|| AdminError::new("not_found", "File not found"))?;
 
     match request.value("action").unwrap_or_default().as_str() {
-        "create" | "regenerate" => record.share_token = random_hex(24)?,
+        "create" | "regenerate" => record.share_token = random_url_token(16)?,
         "revoke" => record.share_token.clear(),
         _ => {
             return Err(AdminError::new(
@@ -3877,11 +3877,13 @@ fn file_share_url_for_record(record: &FileRecord) -> String {
     if record.share_token.is_empty() {
         String::new()
     } else {
-        format!(
-            "/cgi/blog-file?file_id={}&share={}",
-            sanitize_public_segment(&record.file_id),
-            sanitize_public_segment(&record.share_token)
-        )
+        let token = sanitize_public_segment(&record.share_token);
+        let filename = percent_encode_path_segment(&record.safe_name);
+        if filename.is_empty() {
+            format!("/file/{token}")
+        } else {
+            format!("/file/{token}/{filename}")
+        }
     }
 }
 
@@ -3937,7 +3939,7 @@ fn file_public_url_for_record(paths: &SitePaths, record: &FileRecord) -> String 
     if file_is_public_effective(paths, record) {
         if let Some(public_path) = file_public_path(record) {
             if public_path_available(paths, &public_path, &record.file_id) {
-                return format!("/{}", percent_encode_path_segment(&public_path));
+                return format!("/file/{}", percent_encode_path_segment(&public_path));
             }
         }
     }
@@ -4142,6 +4144,37 @@ fn random_hex(bytes: usize) -> Result<String> {
     let mut out = String::with_capacity(bytes * 2);
     for byte in buf {
         out.push_str(&format!("{byte:02x}"));
+    }
+    Ok(out)
+}
+
+fn random_url_token(bytes: usize) -> Result<String> {
+    const ALPHABET: &[u8; 64] =
+        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    let mut buf = vec![0u8; bytes];
+    getrandom::fill(&mut buf).map_err(|error| {
+        AdminError::new(
+            "random_failed",
+            format!("Could not create random token: {error}"),
+        )
+    })?;
+    let mut out = String::with_capacity((bytes * 4).div_ceil(3));
+    for chunk in buf.chunks(3) {
+        let first = chunk[0];
+        out.push(ALPHABET[(first >> 2) as usize] as char);
+        if chunk.len() == 1 {
+            out.push(ALPHABET[((first & 0x03) << 4) as usize] as char);
+            continue;
+        }
+        let second = chunk[1];
+        out.push(ALPHABET[(((first & 0x03) << 4) | (second >> 4)) as usize] as char);
+        if chunk.len() == 2 {
+            out.push(ALPHABET[((second & 0x0f) << 2) as usize] as char);
+            continue;
+        }
+        let third = chunk[2];
+        out.push(ALPHABET[(((second & 0x0f) << 2) | (third >> 6)) as usize] as char);
+        out.push(ALPHABET[(third & 0x3f) as usize] as char);
     }
     Ok(out)
 }

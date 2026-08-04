@@ -6590,7 +6590,7 @@
       html += '<div class="file-row-metadata" data-file-metadata="' + escapeAttr(fileId) + '">';
       html += '<label class="file-metadata-field"><span>Display Name</span><input type="text" data-file-field="original_name" value="' + escapeAttr(title) + '"' + (deleting ? ' disabled' : '') + '></label>';
       html += '<label class="file-metadata-field"><span>Download Filename</span><input type="text" data-file-field="safe_name" value="' + escapeAttr(safeName) + '"' + (deleting ? ' disabled' : '') + '></label>';
-      html += '<label class="file-metadata-field"><span>URL Path</span><input type="text" data-file-field="public_path" value="' + escapeAttr(publicPath) + '" placeholder="' + escapeAttr(safeName) + '"' + (deleting ? ' disabled' : '') + '></label>';
+      html += '<label class="file-metadata-field"><span>Public URL Name</span><input type="text" data-file-field="public_path" value="' + escapeAttr(publicPath) + '" placeholder="' + escapeAttr(safeName) + '"' + (deleting ? ' disabled' : '') + '></label>';
       html += '<label class="file-metadata-field"><span>MIME Type</span><input type="text" data-file-field="mime_type" value="' + escapeAttr(mimeType) + '"' + (deleting ? ' disabled' : '') + '></label>';
       html += '<label class="file-metadata-check"><input type="checkbox" data-file-field="explicit_public"' + (explicitPublic ? ' checked' : '') + (deleting ? ' disabled' : '') + '><span>Public</span></label>';
       html += '<button type="button" class="file-metadata-save" data-file-action="save-metadata" data-file-id="' + escapeAttr(fileId) + '"' + (deleting ? ' disabled' : '') + '>Save</button>';

@@ -25,13 +25,17 @@ fi
 case "$action" in
   create|'')
     if command -v openssl >/dev/null 2>&1; then
-      share_token=$(openssl rand -hex 24)
+      share_token=$(openssl rand -base64 16 | tr '+/' '-_' | tr -d '=\n')
     else
-      share_token=$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')
+      share_token=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
     fi
     config-set "$record_path" share_token "$share_token"
     config-set "$record_path" updated_at "$(blog_now_iso)"
-    share_url="/cgi/blog-file?file_id=$file_id&share=$share_token"
+    safe_name=$(config-get "$record_path" safe_name 2>/dev/null || printf '')
+    share_url="/file/$share_token"
+    if [ -n "$safe_name" ]; then
+      share_url="$share_url/$(blog_url_encode "$safe_name")"
+    fi
     ;;
   revoke)
     config-set "$record_path" share_token ''
