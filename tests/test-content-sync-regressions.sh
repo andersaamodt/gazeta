@@ -2932,6 +2932,7 @@ assert_file_contains "$ROOT_DIR/cgi/blog-manage-zaps" '"headquarters_managed":tr
 assert_file_contains "$ROOT_DIR/cgi/blog-manage-zaps" 'Provision Bitcoin, Core Lightning, and the Lightning Address endpoint from the dedicated payments host in Headquarters.' 'zaps cgi reports external software management boundary'
 assert_file_contains "$ROOT_DIR/cgi/blog-manage-zaps" '"effective_lud16"' 'zaps cgi runtime emits effective Lightning Address'
 assert_file_contains "$ROOT_DIR/wizardry-server-requirements.conf" 'bitcoin_node=optional' 'server requirements keep the Bitcoin node off the blog-only VPS by default'
+assert_file_not_contains "$ROOT_DIR/wizardry-server-requirements.conf" 'support_tools=' 'Gazeta does not inherit the Desk-only support-tools publish gate'
 assert_file_contains "$ROOT_DIR/wizardry-server-requirements.conf" 'lightning_node=optional' 'server requirements keep the Lightning node off the blog-only VPS by default'
 assert_file_contains "$ROOT_DIR/wizardry-server-requirements.conf" 'zap_endpoint=optional' 'server requirements keep the Lightning Address endpoint off the blog-only VPS by default'
 assert_file_contains "$ROOT_DIR/wizardry-server-requirements.conf" 'stonr=required' 'server requirements declare the Stonr binary as required'
