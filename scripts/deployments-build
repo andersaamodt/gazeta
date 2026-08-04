@@ -100,7 +100,9 @@ resolve_site_context
 site_name=$resolved_site_name
 site_data_dir=${DEPLOYMENTS_SITE_DATA_DIR:-$(default_site_data_dir "$resolved_web_root" "$site_name")}
 site_data_root=$(dirname "$site_data_dir")
-if [ "$resolved_site_root" != "$release_dir" ]; then
+build_site_data_root=$site_data_root
+site_data_name=$(basename "$site_data_dir")
+if [ "$resolved_site_root" != "$release_dir" ] || [ "$site_data_name" != "$site_name" ]; then
   staged_sites_root=$(mktemp -d "${TMPDIR:-/tmp}/gazeta-deployment-site.XXXXXX")
   site_root="$staged_sites_root/$site_name"
   mkdir -p "$site_root"
@@ -109,6 +111,7 @@ if [ "$resolved_site_root" != "$release_dir" ]; then
   cp "$resolved_site_root/site.conf" "$site_root/site.conf"
   mkdir -p "$staged_sites_root/.sitedata"
   ln -s "$site_data_dir" "$staged_sites_root/.sitedata/$site_name"
+  build_site_data_root="$staged_sites_root/.sitedata"
   site_conf_existed=1
   web_root=$staged_sites_root
 else
@@ -121,7 +124,7 @@ prerender_script_path="$site_root/cgi/blog-prerender-nostr-page-bootstraps"
 if [ -f "$prerender_script_path" ] && [ -x "$prerender_script_path" ]; then
   WIZARDRY_SITES_DIR="$web_root" \
   WIZARDRY_SITE_NAME="$site_name" \
-  WIZARDRY_SITES_DATA_DIR="$site_data_root" \
+  WIZARDRY_SITES_DATA_DIR="$build_site_data_root" \
   BLOG_NOSTR_PAGE_PRERENDER_FORCE=1 \
   "$prerender_script_path"
   disabled_prerender_script="$prerender_script_path.deployments-disabled"
@@ -173,7 +176,7 @@ mv "$site_conf_tmp" "$site_conf"
 
 WEB_WIZARDRY_ROOT="$web_root" \
 WIZARDRY_SITES_DIR="$web_root" \
-WIZARDRY_SITES_DATA_DIR="$site_data_root" \
+WIZARDRY_SITES_DATA_DIR="$build_site_data_root" \
 BLOG_NOSTR_PAGE_PRERENDER_ENABLED=0 \
 "$builder" "$site_name" --full
 [ -d "$build_dir" ] || {
@@ -182,13 +185,13 @@ BLOG_NOSTR_PAGE_PRERENDER_ENABLED=0 \
 }
 mkdir -p "$build_dir/cgi"
 cp -R "$site_root/cgi/." "$build_dir/cgi/"
-cleanup
-trap - EXIT HUP INT TERM
 
 link_public_sitedata() {
   link_src=$1
   link_dest=$2
   [ -e "$link_src" ] || return 0
+  link_src_dir=$(CDPATH= cd -- "$(dirname "$link_src")" && pwd -P) || return 0
+  link_src="$link_src_dir/$(basename "$link_src")"
   mkdir -p "$(dirname "$link_dest")"
   rm -rf "$link_dest"
   ln -s "$link_src" "$link_dest"
@@ -222,6 +225,8 @@ link_public_sitedata "$legacy_assets_dir" "$build_dir/static/legacy-assets"
 link_public_sitedata "$legacy_assets_dir/oeuvre/ultramemes.mkv" "$build_dir/ultramemes.mkv"
 link_public_sitedata "$legacy_assets_dir/oeuvre/ultramemes.mkv" "$build_dir/oeuvre/ultramemes.mkv"
 link_public_sitedata "$overworld_godot_dir" "$build_dir/static/overworld-godot"
+cleanup
+trap - EXIT HUP INT TERM
 
 if [ -n "${DEPLOYMENTS_BUILD_MANIFEST:-}" ]; then
   printf '{"schema":1,"builder":"scripts/deployments-build","mode":"wizardry-full","site_name":"%s","assets":"sitedata-symlinks","source_revision":"%s","release_revision":"%s"}\n' \

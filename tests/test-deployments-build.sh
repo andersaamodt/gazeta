@@ -16,7 +16,7 @@ release_dir_real=
 sites_root="$HOME/sites"
 site_name="example.test"
 site_root="$sites_root/$site_name"
-site_data_root="$sites_root/.sitedata/$site_name"
+site_data_root="$sites_root/.sitedata/site"
 wizardry_dir="$tmp_root/wizardry"
 build_dir="$tmp_root/build-output"
 manifest_path="$tmp_root/build-manifest.json"
@@ -120,7 +120,7 @@ cmp -s "$template_dir/cgi/pre-build" "$site_root/cgi/pre-build" || {
   printf '%s\n' "deployment build staged the wrong site asset tree" >&2
   exit 1
 }
-[ "$(readlink "$WEB_WIZARDRY_ROOT/.sitedata/$site_name")" = "$WIZARDRY_SITES_DATA_DIR/$site_name" ] || {
+[ -f "$WEB_WIZARDRY_ROOT/.sitedata/$site_name/content/posts/fixture-post.md" ] || {
   printf '%s\n' "deployment build did not mount live site data into the staged site root" >&2
   exit 1
 }
@@ -132,7 +132,9 @@ cmp -s "$template_dir/cgi/pre-build" "$site_root/cgi/pre-build" || {
   printf '%s\n' "deployment build did not configure manifest-mode public file aliases" >&2
   exit 1
 }
-[ "$(awk -F= '$1 == "blog_legacy_assets_dir" { value=$0; sub(/^[^=]*=/, "", value); print value; exit }' "$site_conf")" = "$WIZARDRY_SITES_DATA_DIR/$site_name/files/legacy-assets" ] || {
+mounted_site_data=$(CDPATH= cd -- "$WEB_WIZARDRY_ROOT/.sitedata/$site_name" && pwd -P)
+configured_legacy_assets=$(awk -F= '$1 == "blog_legacy_assets_dir" { value=$0; sub(/^[^=]*=/, "", value); print value; exit }' "$site_conf")
+[ "$(CDPATH= cd -- "$configured_legacy_assets/../.." && pwd -P)" = "$mounted_site_data" ] || {
   printf '%s\n' "deployment build did not point legacy assets at live site data" >&2
   exit 1
 }
@@ -156,6 +158,7 @@ EOFBUILD
 chmod +x "$wizardry_dir/spells/web/build"
 
 DEPLOYMENTS_RELEASE_DIR="$release_dir" \
+DEPLOYMENTS_SITE_DATA_DIR="$site_data_root" \
 WIZARDRY_DIR="$wizardry_dir" \
 DEPLOYMENTS_BUILD_MANIFEST="$manifest_path" \
 "$ROOT_DIR/scripts/deployments-build" "$build_dir"
@@ -188,7 +191,8 @@ cmp -s "$original_site_conf" "$site_root/site.conf" || {
   printf '%s\n' "deployment build did not link legacy assets from site data" >&2
   exit 1
 }
-[ "$(readlink "$build_dir/static/legacy-assets")" = "$site_data_root/files/legacy-assets" ] || {
+canonical_site_data_root=$(CDPATH= cd -- "$site_data_root" && pwd -P)
+[ "$(readlink "$build_dir/static/legacy-assets")" = "$canonical_site_data_root/files/legacy-assets" ] || {
   printf '%s\n' "legacy assets symlink points to the wrong site data directory" >&2
   exit 1
 }
@@ -200,7 +204,7 @@ cmp -s "$original_site_conf" "$site_root/site.conf" || {
   printf '%s\n' "deployment build did not link manifest-mode public file aliases" >&2
   exit 1
 }
-[ "$(readlink "$build_dir/fixture-public.pdf")" = "$site_data_root/files/fixture-public.pdf" ] || {
+[ "$(readlink "$build_dir/fixture-public.pdf")" = "$canonical_site_data_root/files/fixture-public.pdf" ] || {
   printf '%s\n' "manifest-mode public file alias points to the wrong source file" >&2
   exit 1
 }
@@ -208,7 +212,7 @@ cmp -s "$original_site_conf" "$site_root/site.conf" || {
   printf '%s\n' "deployment build did not link legacy clean-url aliases from the manifest" >&2
   exit 1
 }
-[ "$(readlink "$build_dir/essay")" = "$site_data_root/files/legacy-assets/root/essay" ] || {
+[ "$(readlink "$build_dir/essay")" = "$canonical_site_data_root/files/legacy-assets/root/essay" ] || {
   printf '%s\n' "legacy clean-url alias points to the wrong source file" >&2
   exit 1
 }
