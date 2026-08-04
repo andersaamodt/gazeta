@@ -33,6 +33,30 @@ exit 0
 EOFPREBUILD
 chmod +x "$release_dir/cgi/pre-build"
 
+cat > "$release_dir/cgi/blog-prerender-nostr-page-bootstraps" <<'EOFPRERENDER'
+#!/bin/sh
+set -eu
+[ "${BLOG_NOSTR_PAGE_PRERENDER_FORCE:-}" = "1" ] || {
+  printf '%s\n' 'deployment prerender was not forced' >&2
+  exit 1
+}
+[ "$WIZARDRY_SITE_NAME" = "example.test" ] || {
+  printf '%s\n' 'deployment prerender used the wrong site name' >&2
+  exit 1
+}
+[ -f "$WIZARDRY_SITES_DIR/$WIZARDRY_SITE_NAME/site.conf" ] || {
+  printf '%s\n' 'deployment prerender could not read the staged site configuration' >&2
+  exit 1
+}
+[ -f "$WIZARDRY_SITES_DATA_DIR/$WIZARDRY_SITE_NAME/content/posts/fixture-post.md" ] || {
+  printf '%s\n' 'deployment prerender could not read live site data' >&2
+  exit 1
+}
+mkdir -p "$WIZARDRY_SITES_DIR/$WIZARDRY_SITE_NAME/site/pages"
+printf '%s\n' 'filtered writing prerender' > "$WIZARDRY_SITES_DIR/$WIZARDRY_SITE_NAME/site/pages/index.md"
+EOFPRERENDER
+chmod +x "$release_dir/cgi/blog-prerender-nostr-page-bootstraps"
+
 cat > "$release_dir/site/lodestone/pages/blog.stone.html" <<'EOFBLOG'
 <main>Fixture blog template</main>
 EOFBLOG
@@ -78,6 +102,14 @@ post_title=$(awk '/^title:/ { sub(/^title:[[:space:]]*/, "", $0); print; exit }'
 }
 [ -d "$site_root/site" ] || {
   printf '%s\n' "deployment build did not stage repo-owned site assets" >&2
+  exit 1
+}
+[ ! -e "$site_root/cgi/blog-prerender-nostr-page-bootstraps" ] || {
+  printf '%s\n' "deployment build left the prerender helper enabled during the nested build" >&2
+  exit 1
+}
+[ "$(cat "$site_root/site/pages/index.md")" = "filtered writing prerender" ] || {
+  printf '%s\n' "deployment build did not refresh the prerender before the nested build" >&2
   exit 1
 }
 cmp -s "$template_dir/cgi/pre-build" "$site_root/cgi/pre-build" || {

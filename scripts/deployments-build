@@ -119,6 +119,11 @@ site_conf="$site_root/site.conf"
 site_conf_backup=$(mktemp "${TMPDIR:-/tmp}/gazeta-site-conf.XXXXXX")
 prerender_script_path="$site_root/cgi/blog-prerender-nostr-page-bootstraps"
 if [ -f "$prerender_script_path" ] && [ -x "$prerender_script_path" ]; then
+  WIZARDRY_SITES_DIR="$web_root" \
+  WIZARDRY_SITE_NAME="$site_name" \
+  WIZARDRY_SITES_DATA_DIR="$site_data_root" \
+  BLOG_NOSTR_PAGE_PRERENDER_FORCE=1 \
+  "$prerender_script_path"
   disabled_prerender_script="$prerender_script_path.deployments-disabled"
   rm -f "$disabled_prerender_script"
   mv "$prerender_script_path" "$disabled_prerender_script"
@@ -171,14 +176,14 @@ WIZARDRY_SITES_DIR="$web_root" \
 WIZARDRY_SITES_DATA_DIR="$site_data_root" \
 BLOG_NOSTR_PAGE_PRERENDER_ENABLED=0 \
 "$builder" "$site_name" --full
-cleanup
-trap - EXIT HUP INT TERM
 [ -d "$build_dir" ] || {
   printf '%s\n' "deployments-build: build directory was not created: $build_dir" >&2
   exit 1
 }
 mkdir -p "$build_dir/cgi"
 cp -R "$site_root/cgi/." "$build_dir/cgi/"
+cleanup
+trap - EXIT HUP INT TERM
 
 link_public_sitedata() {
   link_src=$1
