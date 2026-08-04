@@ -146,7 +146,7 @@ share_create_output=$(
 )
 share_create_json=$(printf '%s\n' "$share_create_output" | sed -n '/^{/,$p')
 share_url=$(printf '%s\n' "$share_create_json" | jq -r '.share_url')
-share_token=$(printf '%s\n' "$share_url" | sed -n 's/.*[?]share=//p')
+share_token=$(printf '%s\n' "$share_url" | sed -n 's/.*[?&]share=//p')
 test -n "$share_token"
 grep -q "^share_token=$share_token$" "$record"
 

@@ -1,0 +1,49 @@
+#!/bin/sh
+# Create or revoke a private attachment's unlisted link (admin only).
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+. "$SCRIPT_DIR/blog-lib.sh"
+
+blog_init
+blog_read_request_body
+blog_send_json_headers
+
+if ! blog_require_session true true; then
+  exit 0
+fi
+
+file_id=$(blog_param file_id)
+action=$(blog_param action)
+record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
+if [ -z "$file_id" ] || [ ! -f "$record_path" ]; then
+  blog_json_error "File not found" "not_found"
+  exit 0
+fi
+
+case "$action" in
+  create|'')
+    if command -v openssl >/dev/null 2>&1; then
+      share_token=$(openssl rand -hex 24)
+    else
+      share_token=$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')
+    fi
+    config-set "$record_path" share_token "$share_token"
+    config-set "$record_path" updated_at "$(blog_now_iso)"
+    share_url="/cgi/blog-file?file_id=$file_id&share=$share_token"
+    ;;
+  revoke)
+    config-set "$record_path" share_token ''
+    config-set "$record_path" updated_at "$(blog_now_iso)"
+    share_url=''
+    ;;
+  *)
+    blog_json_error "Invalid share action" "invalid_action"
+    exit 0
+    ;;
+esac
+
+printf '{"success":true,"file_id":"%s","share_url":"%s"}\n' \
+  "$(blog_json_escape "$file_id")" \
+  "$(blog_json_escape "$share_url")"

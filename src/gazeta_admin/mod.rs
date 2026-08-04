@@ -3878,8 +3878,8 @@ fn file_share_url_for_record(record: &FileRecord) -> String {
         String::new()
     } else {
         format!(
-            "{}?share={}",
-            file_public_url(&record.file_id, &record.safe_name),
+            "/cgi/blog-file?file_id={}&share={}",
+            sanitize_public_segment(&record.file_id),
             sanitize_public_segment(&record.share_token)
         )
     }
