@@ -881,7 +881,7 @@ title: ""
 <div class="row-head">
 <div>
 <h3>Files</h3>
-<p class="muted">Attachments are private by default. Public posts can expose attached files automatically, or you can share a file explicitly.</p>
+<p class="muted">Attachments are private by default. Public posts can expose attached files automatically, or you can create a revocable unlisted link for anyone you send it to.</p>
 <p class="muted">Synced drop folder: <code>files/</code>. Anything you drop there appears here the next time this page loads.</p>
 </div>
 </div>
@@ -4610,6 +4610,11 @@ body {
 .file-pill.is-private {
   background: rgba(122, 92, 31, 0.12);
   color: #6e4f15;
+}
+
+.file-pill.is-unlisted {
+  background: rgba(99, 72, 170, 0.12);
+  color: #5c3e9c;
 }
 
 .file-pill.is-uploading {

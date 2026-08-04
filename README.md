@@ -10,7 +10,7 @@ gazeta is a single-author Nostr blog and self-hosted publishing console for wiza
 - **Autosave drafts**: Debounced autosave with draft persistence
 - **Local drip queue**: Publish one queued post per interval while an admin browser tab remains open (optional jitter)
 - **Scheduled release**: Per-draft exact release datetime
-- **Media workflow**: Drag/drop image upload + markdown embed insertion
+- **Media workflow**: Drag/drop uploads, markdown embeds, and revocable unlisted file links
 - **Content-addressed posts**: SHA-256 hash per published post
 - **Public discovery**: Index, tags, search, RSS, Atom, sitemap
 - **Archive index**: Month-grouped archive view with per-month counts

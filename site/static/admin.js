@@ -6570,10 +6570,11 @@
       const postPath = String(file.post_path || '');
       const explicitPublic = !!file.explicit_public;
       const effectivePublic = !!file.effective_public;
+      const shareUrl = String(file.share_url || '');
       const url = String(file.url || '');
       const openFileUrl = fileAccessUrl(url);
-      const accessLabel = effectivePublic ? (explicitPublic ? 'Public' : 'Public via post') : 'Private';
-      const accessClass = effectivePublic ? ' is-public' : ' is-private';
+      const accessLabel = effectivePublic ? (explicitPublic ? 'Public' : 'Public via post') : (shareUrl ? 'Unlisted link' : 'Private');
+      const accessClass = effectivePublic ? ' is-public' : (shareUrl ? ' is-unlisted' : ' is-private');
       html += '<div class="post-row file-row' + (deleting ? ' is-deleting' : '') + '" data-file-row-id="' + escapeAttr(fileId) + '">';
       html += '<div class="file-col file-col-name">';
       if (openFileUrl) {
@@ -6608,6 +6609,12 @@
       html += '<span class="file-pill' + accessClass + '">' + escapeHtml(accessLabel) + '</span>';
       html += '<div class="file-row-actions">';
       html += '<button type="button" data-file-action="toggle-public" data-file-id="' + escapeAttr(fileId) + '" data-make-public="' + escapeAttr(explicitPublic ? 'false' : 'true') + '"' + (deleting ? ' disabled' : '') + '>' + (explicitPublic ? 'Make Private' : 'Make Public') + '</button>';
+      if (shareUrl) {
+        html += '<button type="button" data-file-action="copy-share-url" data-file-url="' + escapeAttr(shareUrl) + '"' + (deleting ? ' disabled' : '') + '>Copy Unlisted Link</button>';
+        html += '<button type="button" data-file-action="revoke-share-url" data-file-id="' + escapeAttr(fileId) + '"' + (deleting ? ' disabled' : '') + '>Revoke Link</button>';
+      } else {
+        html += '<button type="button" data-file-action="create-share-url" data-file-id="' + escapeAttr(fileId) + '"' + (deleting ? ' disabled' : '') + '>Create Unlisted Link</button>';
+      }
       html += '<button type="button" class="unobtrusive-icon-button" data-file-action="copy-url" data-file-url="' + escapeAttr(url) + '"' +
         (effectivePublic && !deleting ? '' : ' disabled') +
         ' aria-label="Copy file URL" title="' + (effectivePublic ? 'Copy file URL' : 'File is private') + '">' +
@@ -6712,6 +6719,24 @@
     }
     await loadFiles();
     setOutput(els.outputFiles, makePublic ? 'File is now public.' : 'File is private unless exposed by a public post.', 'ok');
+  }
+
+  async function setFileShareState(fileId, action) {
+    const data = await apiPost('/cgi/blog-share-file', {
+      file_id: fileId,
+      action: action
+    }, true);
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to update unlisted link');
+    }
+    if (action !== 'revoke' && data.share_url) {
+      const absoluteUrl = new URL(String(data.share_url), window.location.origin).toString();
+      const copied = await copyTextToClipboard(absoluteUrl);
+      setOutput(els.outputFiles, copied ? 'Unlisted link created and copied.' : 'Unlisted link created.', copied ? 'ok' : 'warn');
+    } else {
+      setOutput(els.outputFiles, 'Unlisted link revoked.', 'ok');
+    }
+    await loadFiles();
   }
 
   async function saveFileMetadata(fileId) {
@@ -10135,6 +10160,27 @@
           const absoluteUrl = new URL(fileUrl, window.location.origin).toString();
           copyTextToClipboard(absoluteUrl).then(function (ok) {
             setOutput(els.outputFiles, ok ? 'File URL copied.' : 'Could not copy file URL.', ok ? 'ok' : 'warn');
+          });
+          return;
+        }
+        if (action === 'copy-share-url') {
+          const fileUrl = String(actionNode.getAttribute('data-file-url') || '').trim();
+          if (!fileUrl) {
+            return;
+          }
+          const absoluteUrl = new URL(fileUrl, window.location.origin).toString();
+          copyTextToClipboard(absoluteUrl).then(function (ok) {
+            setOutput(els.outputFiles, ok ? 'Unlisted link copied.' : 'Could not copy unlisted link.', ok ? 'ok' : 'warn');
+          });
+          return;
+        }
+        if (action === 'create-share-url' || action === 'revoke-share-url') {
+          const fileId = String(actionNode.getAttribute('data-file-id') || '').trim();
+          if (!fileId) {
+            return;
+          }
+          setFileShareState(fileId, action === 'revoke-share-url' ? 'revoke' : 'create').catch(function (err) {
+            setOutput(els.outputFiles, 'Error: ' + err.message, 'error');
           });
           return;
         }

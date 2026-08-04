@@ -107,6 +107,7 @@ list_files_output=$(
 )
 list_files_json=$(printf '%s\n' "$list_files_output" | sed -n '/^{/,$p')
 printf '%s\n' "$list_files_json" | jq -e '.success == true and (.files | length) == 1 and .files[0].file_id == "'"$file_id"'" and .files[0].url == "/hello%20public.txt"' >/dev/null
+printf '%s\n' "$list_files_json" | jq -e '.files[0].share_url == ""' >/dev/null
 
 serve_query="fileid=$file_id&session_token=$token&csrf_token=$csrf"
 serve_output=$(
@@ -133,6 +134,50 @@ visibility_private_json=$(printf '%s\n' "$visibility_private_output" | sed -n '/
 printf '%s\n' "$visibility_private_json" | jq -e '.success == true and .explicit_public == false and .effective_public == false' >/dev/null
 grep -q '^explicit_public=false$' "$record"
 test ! -f "$SITE_ROOT/build/hello public.txt"
+
+share_create_body="session_token=$token&csrf_token=$csrf&file_id=$file_id&action=create"
+share_create_output=$(
+  printf '%s' "$share_create_body" |
+    GAZETA_THEURGY_ALLOW_CARGO=1 \
+    REQUEST_METHOD=POST \
+    CONTENT_TYPE=application/x-www-form-urlencoded \
+    CONTENT_LENGTH=${#share_create_body} \
+    /bin/sh "$ROOT_DIR/cgi/blog-share-file"
+)
+share_create_json=$(printf '%s\n' "$share_create_output" | sed -n '/^{/,$p')
+share_url=$(printf '%s\n' "$share_create_json" | jq -r '.share_url')
+share_token=$(printf '%s\n' "$share_url" | sed -n 's/.*[?]share=//p')
+test -n "$share_token"
+grep -q "^share_token=$share_token$" "$record"
+
+share_query="fileid=$file_id&share=$share_token"
+share_serve_output=$(
+  REQUEST_METHOD=GET \
+  QUERY_STRING="$share_query" \
+  REQUEST_URI="/cgi/blog-file?$share_query" \
+  /bin/sh "$ROOT_DIR/cgi/blog-file"
+)
+printf '%s\n' "$share_serve_output" | tr -d '\r' | grep -q '^Status: 200 OK$'
+printf '%s\n' "$share_serve_output" | tr -d '\r' | grep -q '^Cache-Control: private, no-store$'
+
+share_revoke_body="session_token=$token&csrf_token=$csrf&file_id=$file_id&action=revoke"
+share_revoke_output=$(
+  printf '%s' "$share_revoke_body" |
+    GAZETA_THEURGY_ALLOW_CARGO=1 \
+    REQUEST_METHOD=POST \
+    CONTENT_TYPE=application/x-www-form-urlencoded \
+    CONTENT_LENGTH=${#share_revoke_body} \
+    /bin/sh "$ROOT_DIR/cgi/blog-share-file"
+)
+share_revoke_json=$(printf '%s\n' "$share_revoke_output" | sed -n '/^{/,$p')
+printf '%s\n' "$share_revoke_json" | jq -e '.success == true and .share_url == ""' >/dev/null
+revoked_serve_output=$(
+  REQUEST_METHOD=GET \
+  QUERY_STRING="$share_query" \
+  REQUEST_URI="/cgi/blog-file?$share_query" \
+  /bin/sh "$ROOT_DIR/cgi/blog-file"
+)
+printf '%s\n' "$revoked_serve_output" | tr -d '\r' | grep -q '^Status: 403 Forbidden$'
 
 visibility_public_body="session_token=$token&csrf_token=$csrf&file_id=$file_id&make_public=true"
 visibility_public_output=$(

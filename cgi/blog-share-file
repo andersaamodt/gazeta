@@ -1,0 +1,7 @@
+#!/bin/sh
+# Create or revoke an unlisted attachment link through the Gazeta admin runtime.
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+exec /bin/sh "$SCRIPT_DIR/gazeta-admin-runtime-adapter" blog-share-file

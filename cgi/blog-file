@@ -61,6 +61,7 @@ file_id=$(resolve_file_id)
 file_id=$(printf '%s' "$file_id" | sed 's/[^A-Za-z0-9._~-]//g')
 req_token=$(blog_param session_token)
 req_csrf=$(blog_param csrf_token)
+req_share=$(blog_param share)
 record_path=$(blog_file_record_path "$file_id" 2>/dev/null || printf '')
 if [ -z "$file_id" ] || [ ! -f "$record_path" ]; then
   http-status 404 "Not Found"
@@ -78,7 +79,13 @@ if [ -n "$req_token" ] && blog_load_session "$req_token"; then
   fi
 fi
 
-if [ "$is_admin" != "true" ] && ! blog_file_is_public_effective "$file_id"; then
+share_allowed=false
+saved_share=$(config-get "$record_path" share_token 2>/dev/null || printf '')
+if [ -n "$req_share" ] && [ -n "$saved_share" ] && [ "$req_share" = "$saved_share" ]; then
+  share_allowed=true
+fi
+
+if [ "$is_admin" != "true" ] && [ "$share_allowed" != "true" ] && ! blog_file_is_public_effective "$file_id"; then
   http-status 403 "Forbidden"
   http-header "Content-Type" "text/plain; charset=utf-8"
   http-end-headers

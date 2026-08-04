@@ -59,6 +59,7 @@ pub fn run_action(action: &str) -> Result<CgiResponse> {
         "blog-upload-media" => blog_upload_media().map(CgiResponse::json),
         "blog-update-file" => blog_update_file().map(CgiResponse::json),
         "blog-set-file-visibility" => blog_set_file_visibility().map(CgiResponse::json),
+        "blog-share-file" => blog_share_file().map(CgiResponse::json),
         "blog-delete-file" => blog_delete_file().map(CgiResponse::json),
         _ => Err(AdminError::new(
             "bad_action",
@@ -902,6 +903,7 @@ fn blog_list_files() -> Result<Value> {
                 "post_path": record.post_path,
                 "explicit_public": record.explicit_public,
                 "effective_public": effective_public,
+                "share_url": file_share_url_for_record(&record),
                 "public_path": record.public_path,
                 "url": file_public_url_for_record(&paths, &record),
             })
@@ -1063,6 +1065,36 @@ fn blog_set_file_visibility() -> Result<Value> {
         "explicit_public": record.explicit_public,
         "effective_public": effective_public,
         "url": file_public_url_for_record(&paths, &record),
+    }))
+}
+
+fn blog_share_file() -> Result<Value> {
+    let paths = SitePaths::from_env()?;
+    let request = RequestParams::from_env_and_stdin();
+    let _session = require_admin_session(&paths, &request, true)?;
+
+    let file_id = request.value("file_id").unwrap_or_default();
+    let record_path = paths.file_record_path(&file_id);
+    let mut record = FileRecord::from_path(&record_path)
+        .ok_or_else(|| AdminError::new("not_found", "File not found"))?;
+
+    match request.value("action").unwrap_or_default().as_str() {
+        "create" | "regenerate" => record.share_token = random_hex(24)?,
+        "revoke" => record.share_token.clear(),
+        _ => {
+            return Err(AdminError::new(
+                "invalid_action",
+                "Share action must be create, regenerate, or revoke",
+            ))
+        }
+    }
+    record.updated_at = now_iso()?;
+    record.write_to(&record_path)?;
+
+    Ok(json!({
+        "success": true,
+        "file_id": record.file_id,
+        "share_url": file_share_url_for_record(&record),
     }))
 }
 
@@ -3663,6 +3695,7 @@ struct FileRecord {
     draft_id: String,
     post_path: String,
     explicit_public: bool,
+    share_token: String,
     public_path: String,
 }
 
@@ -3681,6 +3714,7 @@ impl FileRecord {
             draft_id: config_string(&config, "draft_id"),
             post_path: config_string(&config, "post_path"),
             explicit_public: boolish(Some(&config_string(&config, "explicit_public"))),
+            share_token: config_string(&config, "share_token"),
             public_path: config_string(&config, "public_path"),
         })
     }
@@ -3705,6 +3739,7 @@ impl FileRecord {
                 "false".to_string()
             },
         );
+        config.insert("share_token".to_string(), self.share_token.clone());
         config.insert("public_path".to_string(), self.public_path.clone());
         config
     }
@@ -3787,6 +3822,7 @@ fn index_untracked_files(paths: &SitePaths) -> Result<()> {
             draft_id: String::new(),
             post_path: String::new(),
             explicit_public: false,
+            share_token: String::new(),
             public_path: String::new(),
         };
         record.write_to(&paths.file_record_path(&record.file_id))?;
@@ -3835,6 +3871,18 @@ fn managed_page_path(paths: &SitePaths, rel: &str) -> Option<PathBuf> {
 fn file_is_public_effective(paths: &SitePaths, record: &FileRecord) -> bool {
     record.explicit_public
         || managed_page_path(paths, &record.post_path).is_some_and(|path| path.is_file())
+}
+
+fn file_share_url_for_record(record: &FileRecord) -> String {
+    if record.share_token.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "{}?share={}",
+            file_public_url(&record.file_id, &record.safe_name),
+            sanitize_public_segment(&record.share_token)
+        )
+    }
 }
 
 fn valid_public_alias(path: &str) -> bool {
