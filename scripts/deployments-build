@@ -106,8 +106,7 @@ if [ "$resolved_site_root" != "$release_dir" ] || [ "$site_data_name" != "$site_
   staged_sites_root=$(mktemp -d "${TMPDIR:-/tmp}/gazeta-deployment-site.XXXXXX")
   site_root="$staged_sites_root/$site_name"
   mkdir -p "$site_root"
-  cp -R "$release_dir/cgi" "$site_root/cgi"
-  cp -R "$release_dir/site" "$site_root/site"
+  cp -R "$release_dir/." "$site_root/"
   cp "$resolved_site_root/site.conf" "$site_root/site.conf"
   mkdir -p "$staged_sites_root/.sitedata"
   ln -s "$site_data_dir" "$staged_sites_root/.sitedata/$site_name"

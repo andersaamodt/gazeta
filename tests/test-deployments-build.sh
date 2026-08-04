@@ -25,6 +25,7 @@ original_site_conf="$tmp_root/original-site.conf"
 mkdir -p "$release_dir" "$site_root" "$site_data_root/content/posts" "$site_data_root/files/legacy-assets/oeuvre" "$wizardry_dir/spells/web"
 release_dir_real=$(CDPATH= cd -- "$release_dir" && pwd -P)
 mkdir -p "$release_dir/cgi" "$release_dir/site/lodestone/pages"
+printf '%s\n' 'fixture build input' > "$release_dir/Cargo.toml"
 
 cat > "$release_dir/cgi/pre-build" <<'EOFPREBUILD'
 #!/bin/sh
@@ -102,6 +103,10 @@ post_title=$(awk '/^title:/ { sub(/^title:[[:space:]]*/, "", $0); print; exit }'
 }
 [ -d "$site_root/site" ] || {
   printf '%s\n' "deployment build did not stage repo-owned site assets" >&2
+  exit 1
+}
+[ -f "$site_root/Cargo.toml" ] || {
+  printf '%s\n' "deployment build did not stage complete release source" >&2
   exit 1
 }
 [ ! -e "$site_root/cgi/blog-prerender-nostr-page-bootstraps" ] || {
