@@ -6171,6 +6171,19 @@ button.contact-value-link {
   box-shadow: 0 10px 22px rgba(31, 111, 168, 0.14);
 }
 
+.secure-chat-yosemite-frame {
+  display: block;
+  width: 100%;
+  min-height: 46rem;
+  border: 0;
+  border-radius: 1rem;
+  background: var(--surface, #fff);
+}
+
+.secure-chat-yosemite-missing {
+  padding: 1rem;
+}
+
 .secure-chat-simplex-info p {
   margin: 0;
   max-width: 58rem;

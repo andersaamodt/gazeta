@@ -84,7 +84,7 @@ license: "CC BY 4.0"
 
 <script src="/static/nostr-page-bootstrap/contact.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
-<script src="/static/contact-page.js?v=20260707-contact-video-widget-template1"></script>
+<script src="/static/contact-page.js?v=20260807-yosemite-private1"></script>
 EOFCONTACT
 
 mkdir -p "$tmp_root/bin"
@@ -199,23 +199,11 @@ grep -Fq 'https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js' "$canonical_
   printf '%s\n' "contact page still hardcodes the marked dependency after pre-build" >&2
   exit 1
 }
-grep -Fq '/static/simplex-web-transport.js' "$canonical_root/pages/contact.md" || {
-  printf '%s\n' "contact page missing simplex-web transport after pre-build" >&2
+if grep -Fq '/static/simplex-web-' "$canonical_root/pages/contact.md"; then
+  printf '%s\n' "contact page still loads deprecated simplex-web assets after pre-build" >&2
   exit 1
-}
-grep -Fq '/static/simplex-web-browser-adapter-init.mjs?v=20260516-browserprofilev2' "$canonical_root/pages/contact.md" || {
-  printf '%s\n' "contact page missing cache-busted simplex-web browser adapter after pre-build" >&2
-  exit 1
-}
-grep -Fq '/static/simplex-web-default-chat.js' "$canonical_root/pages/contact.md" || {
-  printf '%s\n' "contact page missing shared simplex-web renderer after pre-build" >&2
-  exit 1
-}
-grep -Fq '/static/simplex-web-session-store.js' "$canonical_root/pages/contact.md" || {
-  printf '%s\n' "contact page missing shared simplex-web session store after pre-build" >&2
-  exit 1
-}
-grep -Fq '/static/contact-page.js?v=20260707-contact-video-widget-template1' "$canonical_root/pages/contact.md" || {
+fi
+grep -Fq '/static/contact-page.js?v=20260807-yosemite-private1' "$canonical_root/pages/contact.md" || {
   printf '%s\n' "contact page missing cache-busted contact page script after pre-build" >&2
   exit 1
 }

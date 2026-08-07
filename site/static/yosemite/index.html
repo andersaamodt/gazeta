@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; style-src 'self'; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; img-src 'self' data:; media-src 'self' blob:; form-action 'none'; frame-ancestors *; base-uri 'none'">
+  <title>Yosemite private chat</title>
+  <link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+  <main>
+    <h1>Private chat with Anders</h1>
+    <p id="privacy">Your message is encrypted in this browser. The website gateway cannot read it.</p>
+    <section id="room-entry" hidden>
+      <h2 id="room-title">Encrypted Room</h2>
+      <p id="room-description">Join this voice or video Room without creating an account. The relay can see network addresses, timing, and occupancy; MLS and SFrame keep media private.</p>
+      <label for="room-capability">Invitation capability (private Rooms only)</label>
+      <input id="room-capability" type="password" autocomplete="off">
+      <label><input id="room-video-enabled" type="checkbox" checked> Join with camera</label>
+      <button id="join-room" type="button">Join Room</button>
+      <button id="leave-room" type="button" hidden>Leave Room</button>
+      <div id="room-invitation" hidden>
+        <label for="room-invitation-link">Invitation for this live Room</label>
+        <input id="room-invitation-link" type="url" readonly>
+        <button id="copy-room-invitation" type="button">Copy invitation</button>
+        <small>This link expires with the signed Room descriptor and will not join a later cryptographic instance.</small>
+      </div>
+    </section>
+    <section id="resume" hidden>
+      <h2>Continue your conversation</h2>
+      <form id="unlock">
+        <label for="unlock-passphrase">Recovery passphrase</label>
+        <input id="unlock-passphrase" type="password" required autocomplete="current-password">
+        <button type="submit">Unlock conversation</button>
+      </form>
+    </section>
+    <form id="chat">
+      <label for="message">Message</label>
+      <textarea id="message" required maxlength="20000" autofocus></textarea>
+      <label for="passphrase">Recovery passphrase</label>
+      <input id="passphrase" type="password" required minlength="12" autocomplete="new-password">
+      <small>This encrypts your identity and chat state on this device.</small>
+      <button type="submit">Send privately</button>
+    </form>
+    <p id="status" role="status" aria-live="polite"></p>
+    <section id="conversation" hidden>
+      <h2>Conversation</h2>
+      <ul id="messages"></ul>
+      <form id="continue-chat">
+        <label for="next-message">Reply</label>
+        <textarea id="next-message" maxlength="20000"></textarea>
+        <label for="attachment">Attachment (optional, up to 10 GiB)</label>
+        <input id="attachment" type="file">
+        <button type="submit">Send privately</button>
+      </form>
+      <section id="calling">
+        <h3>Encrypted call</h3>
+        <label for="call-relay">Trusted call relay</label>
+        <input id="call-relay" type="url" inputmode="url" placeholder="https://relay.example" required>
+        <small>The relay can see network addresses and timing, but SFrame keeps audio and video private.</small>
+        <p>
+          <button id="voice-call" type="button">Voice call</button>
+          <button id="video-call" type="button">Video call</button>
+          <button id="end-call" type="button" hidden>End call</button>
+        </p>
+        <p id="call-status" role="status" aria-live="polite"></p>
+        <div id="call-video" hidden>
+          <video id="remote-video" autoplay playsinline></video>
+          <video id="local-video" autoplay muted playsinline></video>
+        </div>
+      </section>
+    </section>
+    <button id="keep" type="button" hidden>Keep this contact in Yosemite</button>
+    <section id="promotion" hidden>
+      <h2>Finish keeping this contact</h2>
+      <p>Open the downloaded contact in Yosemite, then return its promotion receipt here.</p>
+      <label for="promotion-receipt">Promotion receipt</label>
+      <input id="promotion-receipt" type="file" accept=".bin,application/octet-stream">
+      <button id="verify-promotion" type="button">Verify receipt and show code</button>
+      <output id="promotion-code" aria-live="polite"></output>
+      <button id="retire-browser" type="button" hidden>Native Yosemite finished — clear retired browser keys</button>
+    </section>
+    <button id="download" type="button" hidden>Download encrypted recovery</button>
+    <button id="clear" type="button" hidden>Clear this browser</button>
+    <details>
+      <summary>Security limitation</summary>
+      <p>The site serving this page could replace its code. Yosemite still encrypts messages before the gateway receives them; for stronger assurance, compare the published release hash or use a native client.</p>
+      <p id="release"></p>
+    </details>
+  </main>
+  <script type="module" src="app.js?v=5"></script>
+</body>
+</html>

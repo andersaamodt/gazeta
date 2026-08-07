@@ -2333,46 +2333,26 @@
   }
 
   function renderSecureChatPanel() {
-    var sharedRenderer = secureChatRenderer();
-    if (!sharedRenderer) {
-      return renderContactSectionHeading('Secure Chat', 'secure-chat-title') +
-        '<section class="secure-chat-panel" aria-labelledby="secure-chat-title"></section>';
-    }
-    var combinedUploads = secureChatPersistableUploads();
     var loggedIn = hasUsableSecureChatSession();
-    return renderContactSectionHeading('Secure Chat', 'secure-chat-title') + sharedRenderer.renderPanel({
-      loggedIn: loggedIn,
-      loading: secureChatLoadingBeforeVerification(loggedIn),
-      loginGateHtml: secureChatLoginGateHtml(),
-      hasSigner: true,
-      error: state.chat.error,
-      sending: state.chat.sending,
-      draftText: state.chat.draftText || '',
-      service: state.chat.service || null,
-      messages: state.chat.messages || [],
-      uploads: combinedUploads,
-      pendingFiles: secureChatPendingFileMetas(),
-      sendWithModifier: state.chat.sendWithModifier === true,
-      shortcutModifierLabel: sharedRenderer.shortcutModifierLabel({}),
-      emojiPickerOpen: state.chat.emojiPickerOpen === true,
-      emojiPickerLoading: state.chat.emojiPickerLoading === true,
-      emojiPickerError: state.chat.emojiPickerError || '',
-      emojiPickerQuery: state.chat.emojiPickerQuery || '',
-      emojiGroups: state.chat.emojiGroups || [],
-      emojiSearchResults: state.chat.emojiSearchResults || [],
-      recentEmojis: normalizeSecureChatRecentEmojis(state.chat.recentEmojis),
-      voiceNoteSupported: secureChatVoiceNoteSupported(),
-      voicePermission: state.chat.voicePermission || 'locked',
-      voiceRecording: state.chat.voiceRecording === true,
-      simplexWebIntroDismissed: state.chat.simplexWebIntroDismissed === true,
-      chatStarted: state.chat.chatStarted === true,
-      chatOpening: state.chat.chatOpening === true,
-      chatClosing: state.chat.chatClosing === true,
-      hideHeading: true,
-      savedSummary: secureChatStoredHistorySummary(),
-      admin: isAdmin(),
-      adminMappings: state.chat.adminMappings || []
-    });
+    var heading = renderContactSectionHeading('Private chat', 'secure-chat-title');
+    if (!loggedIn) {
+      return heading + '<section class="secure-chat-panel" aria-labelledby="secure-chat-title">' + secureChatLoginGateHtml() + '</section>';
+    }
+    var bootstrapConfig = window.__wizardrySiteBootstrap && window.__wizardrySiteBootstrap.config;
+    var yosemite = bootstrapConfig && bootstrapConfig.yosemite && typeof bootstrapConfig.yosemite === 'object'
+      ? bootstrapConfig.yosemite
+      : {};
+    var descriptor = String(yosemite.descriptor_url || root.getAttribute('data-yosemite-descriptor-url') || '').trim();
+    var relay = String(yosemite.call_relay_url || root.getAttribute('data-yosemite-call-relay-url') || '').trim();
+    if (!descriptor) {
+      return heading + '<section class="secure-chat-panel secure-chat-yosemite-missing" aria-labelledby="secure-chat-title"><p>Yosemite private chat is awaiting its signed owner descriptor.</p></section>';
+    }
+    var params = new URLSearchParams();
+    params.set('descriptor', descriptor);
+    if (relay) params.set('relay', relay);
+    var pubkey = secureChatStoredPubkey();
+    if (pubkey) params.set('nostr', pubkey);
+    return heading + '<iframe class="secure-chat-yosemite-frame" title="Yosemite encrypted chat, file sharing, voice, and video" src="/static/yosemite/index.html?' + escapeHtml(params.toString()) + '" allow="camera; microphone" sandbox="allow-scripts allow-same-origin allow-downloads" referrerpolicy="no-referrer"></iframe>';
   }
 
   function captureSecureChatRenderState() {
@@ -4477,34 +4457,13 @@
       load();
       return;
     }
-    if (hasSecureChatSession()) {
-      refreshSecureChatState();
-      scheduleSecureChatPoll();
-      return;
-    }
-    if (storedSessionToken()) {
-      verifySecureChatStoredAuth().then(function (ok) {
-        if (ok) {
-          refreshSecureChatState({ reset: true }).finally(function () {
-            scheduleSecureChatPoll();
-          });
-        }
-      });
-    }
+    if (state.payload) renderContent();
   }
 
   function initializeSecureChatAfterLoad() {
     return verifySecureChatStoredAuth().then(function (ok) {
-      if (!ok) {
-        return false;
-      }
-      state.chat.simplexWebIntroDismissed = secureChatSimplexInfoDismissedFromBrowser();
-      if (hydrateSecureChatSessionFromBrowser()) {
-        renderContent();
-      }
-      return refreshSecureChatState({ reset: true }).finally(function () {
-        scheduleSecureChatPoll();
-      });
+      renderContent();
+      return ok;
     });
   }
 
@@ -4537,7 +4496,6 @@
     onChange: maybeReloadForAuthChange,
     onVisible: function () {
       maybeReloadForAuthChange();
-      scheduleSecureChatPoll();
     },
     onHidden: function () {
       if (state.chat.pollTimer) {
@@ -4556,6 +4514,5 @@
     isExpectedPayload: isExpectedPayload,
     renderPayload: renderBootstrapPayload
   });
-  secureChatRegisterBrowserNativeTransport();
   load();
 })();

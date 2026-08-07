@@ -59,7 +59,9 @@
       participant_limit: 6,
       token_ttl_seconds: 3600,
       janus_wss: '',
-      signaling_wss: ''
+      signaling_wss: '',
+      yosemite_descriptor_url: '',
+      yosemite_call_relay_url: ''
     },
     videoChatSaveTimer: null,
     videoChatOperatorInfo: null,
@@ -233,6 +235,8 @@
     videoChatPublicRooms: document.getElementById('video-chat-public-rooms'),
     videoChatRooms: document.getElementById('video-chat-rooms'),
     videoChatScheduledRooms: document.getElementById('video-chat-scheduled-rooms'),
+    yosemiteDescriptorUrl: document.getElementById('yosemite-descriptor-url'),
+    yosemiteCallRelayUrl: document.getElementById('yosemite-call-relay-url'),
     videoChatOperatorStatus: document.getElementById('video-chat-operator-status'),
     videoChatOperatorRefresh: document.getElementById('btn-video-chat-operator-refresh'),
     videoChatOperatorCallPanel: document.getElementById('video-chat-operator-call-panel'),
@@ -3860,7 +3864,9 @@
       rooms: rooms.map(function (room) { return String(room || '').replace(/\s+/g, ' ').trim(); }).filter(Boolean).slice(0, 12),
       active_rooms: activeRooms.map(function (room) { return String(room || '').replace(/\s+/g, ' ').trim(); }).filter(Boolean).slice(0, 24),
       room_settings: roomSettings,
-      scheduled_rooms: String(src.scheduled_rooms || '').replace(/\s*;\s*/g, '\n').trim()
+      scheduled_rooms: String(src.scheduled_rooms || '').replace(/\s*;\s*/g, '\n').trim(),
+      yosemite_descriptor_url: String(src.yosemite_descriptor_url || '').trim(),
+      yosemite_call_relay_url: String(src.yosemite_call_relay_url || '').trim()
     };
   }
 
@@ -3909,6 +3915,8 @@
       els.videoChatScheduledRooms.value = cfg.scheduled_rooms || '';
       els.videoChatScheduledRooms.disabled = !(state.plugins && state.plugins.video_chat) || !cfg.public_rooms;
     }
+    if (els.yosemiteDescriptorUrl) els.yosemiteDescriptorUrl.value = cfg.yosemite_descriptor_url;
+    if (els.yosemiteCallRelayUrl) els.yosemiteCallRelayUrl.value = cfg.yosemite_call_relay_url;
   }
 
   function setOverworldConfigFields() {
@@ -4244,7 +4252,9 @@
       public_rooms: !!(els.videoChatPublicRooms && els.videoChatPublicRooms.checked),
       rooms: els.videoChatRooms ? els.videoChatRooms.value : '',
       room_settings: els.videoChatRooms ? els.videoChatRooms.value : '',
-      scheduled_rooms: els.videoChatScheduledRooms ? els.videoChatScheduledRooms.value : ''
+      scheduled_rooms: els.videoChatScheduledRooms ? els.videoChatScheduledRooms.value : '',
+      yosemite_descriptor_url: els.yosemiteDescriptorUrl ? els.yosemiteDescriptorUrl.value : '',
+      yosemite_call_relay_url: els.yosemiteCallRelayUrl ? els.yosemiteCallRelayUrl.value : ''
     });
   }
 
@@ -4260,7 +4270,9 @@
         video_chat_signaling_wss: cfg.signaling_wss,
         video_chat_public_rooms: cfg.public_rooms ? 'true' : 'false',
         video_chat_rooms: cfg.room_settings,
-        video_chat_scheduled_rooms: cfg.scheduled_rooms
+        video_chat_scheduled_rooms: cfg.scheduled_rooms,
+        yosemite_descriptor_url: cfg.yosemite_descriptor_url,
+        yosemite_call_relay_url: cfg.yosemite_call_relay_url
       }, true);
       if (!data.success) {
         throw new Error(data.error || 'Failed to save video calling settings');
@@ -4678,7 +4690,10 @@
       }
       state.plugins = normalizePlugins(data.plugins || {});
       state.configHydrated = true;
-      state.videoChatConfig = normalizeVideoChatConfig(data.video_chat || {});
+      state.videoChatConfig = normalizeVideoChatConfig(Object.assign({}, data.video_chat || {}, {
+        yosemite_descriptor_url: data.yosemite && data.yosemite.descriptor_url || '',
+        yosemite_call_relay_url: data.yosemite && data.yosemite.call_relay_url || ''
+      }));
       state.overworldConfig = normalizeOverworldConfig(data.overworld || {});
       state.originConfig = normalizeOriginConfig(data.origin || {});
       setPluginCheckboxStates();
@@ -9024,7 +9039,9 @@
       els.videoChatSignalingWss,
       els.videoChatPublicRooms,
       els.videoChatRooms,
-      els.videoChatScheduledRooms
+      els.videoChatScheduledRooms,
+      els.yosemiteDescriptorUrl,
+      els.yosemiteCallRelayUrl
     ].filter(Boolean).forEach(function (input) {
       input.addEventListener('input', function () {
         if (input === els.videoChatPublicRooms) {

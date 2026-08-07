@@ -1,0 +1,16 @@
+:root { color-scheme: light dark; font: 16px/1.5 system-ui, sans-serif; }
+[hidden] { display: none !important; }
+body { margin: 0; background: Canvas; color: CanvasText; }
+main { box-sizing: border-box; max-width: 38rem; min-height: 100vh; margin: auto; padding: 2rem 1.25rem; }
+h1 { font-size: 1.65rem; margin: 0 0 .5rem; }
+form { display: grid; gap: .65rem; margin: 2rem 0 1rem; }
+textarea, input, button { box-sizing: border-box; width: 100%; padding: .8rem; font: inherit; border: 1px solid GrayText; border-radius: .5rem; }
+textarea { min-height: 9rem; resize: vertical; }
+button { cursor: pointer; font-weight: 650; }
+button[type="submit"] { margin-top: .5rem; background: #166534; color: white; border-color: #166534; }
+button:disabled { cursor: wait; opacity: .65; }
+small, details { color: GrayText; }
+#status[data-error="true"] { color: #b91c1c; }
+#call-video { display: grid; grid-template-columns: minmax(0, 2fr) minmax(8rem, 1fr); gap: .75rem; }
+#call-video video { width: 100%; min-height: 8rem; background: #111; border-radius: .5rem; }
+#messages li, #messages button, #room-title { unicode-bidi: isolate; overflow-wrap: anywhere; }

@@ -151,7 +151,7 @@ visibility: "public"  # Change from "draft"
 - The same shared navbar-title layer owns generic navbar-title reset lifecycle from payload/current state, so page scripts clear edit/input/busy shell state through one runtime helper instead of hand-resetting those fields per page.
 - Read-only managed pages let that shared navbar-title path consume `payload.nav_title` directly instead of rebuilding the same shell text in page-local `configuredText` glue.
 - Root-shell fallback text lookup stays there: page scripts may choose fallback attribute names and final default text, but `site/static/page-head.js` owns reading canonical title text from Lodestone-published root attributes instead of each page reimplementing `getAttribute(...)` chains.
-- Shared Secure Chat shell rendering lives in `site/static/simplex-web-default-chat.js`; `site/static/contact-page.js` owns Contact-specific state, transport integration, and DOM orchestration around that shared render shape.
+- The Contact page now embeds the vendored Yosemite browser endpoint after Nostr login. It provides encrypted chat, attachments, voice, and video without loading the deprecated SimpleX browser client.
 - Lodestone fragment projection details such as `content_html` / `content_attrs` and `description_html` / `description_attrs` are also shared-runtime concerns: page scripts should read structured fragment data from `site/static/page-head.js`, not parse Lodestone fragment keys themselves.
 - Shared first-paint bootstrap policy lives in `site/static/page-head.js`: page scripts may define how a payload becomes local state/UI, but cache-vs-prerender startup flow, managed-page payload commit/caching, and the simple managed-page prerender-adoption decision stay shared unless a page has materially different bootstrap behavior.
 - The same shared bootstrap layer owns the simple paint-ready shorthand for common managed pages, so page scripts can pass top-level `state`, `rootNode`, `loadingClass`, and `markPageReady` options instead of rebuilding nested notify envelopes.
@@ -287,6 +287,13 @@ To enable Nostr bridge for a site, turn on “Enable Nostr Bridge” in `/admin#
 - `.sitedata/<site>/nostr/state/relays.txt`
 
 `simplex-web` stays in its own repo; `gazeta` vendors the browser chat shell files with `./sync-simplex-web-vendor.sh`.
+
+The SimpleX service and vendored client remain deprecated rollback material and
+are not loaded by the Contact page. Configure the Yosemite replacement in
+`site.conf` with `yosemite_descriptor_url` (the signed public owner descriptor)
+and `yosemite_call_relay_url`. Publish the descriptor from the website owner's
+Yosemite daemon with `yosemited website-publish`; the same daemon receives the
+Nostr-attributed chats and encrypted call invitations for Yosemite or Stellar.
 Secure Chat durable state lives under `.sitedata/<site>/secure-chat/` as plain JSON/text files plus runtime logs and sockets.
 Secure Chat host overrides can be set in `site.conf` with `secure_chat_node_binary=/absolute/path/to/node` and `secure_chat_simplex_binary=/absolute/path/to/simplex-chat` when the site user PATH does not expose those binaries.
 
