@@ -44,6 +44,11 @@ html.artificer-web-route .content {
     var hasConfiguredTheme = Object.prototype.hasOwnProperty.call(config, 'theme');
     var cachedTheme = hasConfiguredTheme ? '' : (localStorage.getItem('wizardry_blog_theme_v1') || '');
     var nextTheme = String(hasConfiguredTheme ? config.theme : cachedTheme).trim();
+    var routeSlug = String(window.location.pathname || '').replace(/^\/+/, '').split('/')[0].replace(/\.html?$/i, '');
+    var publicationThemes = config.publication_themes && typeof config.publication_themes === 'object' ? config.publication_themes : {};
+    if (routeSlug && publicationThemes[routeSlug]) {
+      nextTheme = String(publicationThemes[routeSlug]).trim();
+    }
     if (nextTheme) {
       theme = nextTheme;
     }
@@ -115,8 +120,19 @@ html body .post-single-item :is(a, button).blog-year-pill:focus-visible {
 <script defer src="/static/page-head.js?v=20260707-shared-page-head1"></script>
 <script defer src="/static/zap-ui.js?v=20260524-zap-panel1"></script>
 <script defer src="/static/post-context.js?v=20260707-post-context-cleanup1"></script>
-<link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml" />
-<link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml" />
+<link id="rss-alternate" rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml" />
+<link id="atom-alternate" rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml" />
+<script>
+(function () {
+  var config = (window.__wizardrySiteBootstrap || {}).config || {};
+  var slug = String(window.location.pathname || '').replace(/^\/+/, '').split('/')[0].replace(/\.html?$/i, '');
+  if (!slug || !Array.isArray(config.publication_slugs) || config.publication_slugs.indexOf(slug) < 0) return;
+  var rss = document.getElementById('rss-alternate');
+  var atom = document.getElementById('atom-alternate');
+  if (rss) rss.href = '/' + slug + '/rss.xml';
+  if (atom) atom.href = '/' + slug + '/atom.xml';
+})();
+</script>
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />

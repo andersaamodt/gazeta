@@ -1495,6 +1495,19 @@ body.nav-cart-open {
   max-width: min(1780px, calc(100vw - 1rem));
 }
 
+.publication-head-with-image {
+  padding: clamp(1.5rem, 5vw, 4rem);
+  border-radius: var(--radius, 0.75rem);
+  background-position: center;
+  background-size: cover;
+  color: #fff;
+}
+
+.publication-head-with-image a,
+.publication-head-with-image .muted {
+  color: inherit;
+}
+
 .list-page-head h1 {
   margin: 0 0 0.5rem;
   display: flex;

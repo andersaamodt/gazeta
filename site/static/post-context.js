@@ -1952,12 +1952,22 @@
     }
 
     var createdAt = Math.floor(Date.now() / 1000);
+    var relayHint = currentNostrRelays.length ? String(currentNostrRelays[0] || '') : '';
+    function referencedTag(name, value) {
+      return relayHint ? [name, value, relayHint] : [name, value];
+    }
+    var kindText = String(currentNostrKind || '30023');
     var draftEvent = {
-      kind: 1,
+      kind: 1111,
       created_at: createdAt,
       tags: [
-        ['a', currentNostrAddress],
-        ['e', currentNostrEventId, '', 'reply']
+        referencedTag('A', currentNostrAddress),
+        ['K', kindText],
+        referencedTag('P', currentNostrPubkey),
+        referencedTag('a', currentNostrAddress),
+        referencedTag('e', currentNostrEventId),
+        ['k', kindText],
+        referencedTag('p', currentNostrPubkey)
       ],
       content: content
     };

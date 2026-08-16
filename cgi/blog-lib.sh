@@ -4775,6 +4775,7 @@ blog_nostr_event_json_by_parts() {
 blog_nostr_latest_event_by_kind_d() {
   kind=${1-}
   dtag=${2-}
+  expected_pubkey=${3-}
   [ -n "$kind" ] || return 1
   [ -n "$dtag" ] || return 1
   [ -d "$blog_nostr_events_dir" ] || return 1
@@ -4787,13 +4788,16 @@ blog_nostr_latest_event_by_kind_d() {
     rm -f "$tmp"
     return 1
   fi
-  out=$(jq -cs --argjson kind "$kind" --arg d "$dtag" '
+  out=$(jq -cs --argjson kind "$kind" --arg d "$dtag" --arg expected_pubkey "$expected_pubkey" '
     [ .[]
       | select(type=="object" and (.kind // 0) == $kind and (.tags|type)=="array")
+      | select(($expected_pubkey | length) == 0 or (.pubkey // "") == $expected_pubkey)
       | select((([.tags[]? | select(type=="array" and length>=2 and .[0]=="d") | .[1]] | first) // "") == $d)
-    ]
-    | sort_by((.created_at // 0), (.id // ""))
-    | last // empty
+    ] as $events
+    | (($events | map(.created_at // 0) | max) // null) as $latest
+    | if $latest == null then empty
+      else ($events | map(select((.created_at // 0) == $latest)) | sort_by(.id // "") | first // empty)
+      end
   ' "$tmp" 2>/dev/null || printf '')
   rm -f "$tmp"
   [ -n "$out" ] && [ "$out" != "null" ] || return 1
@@ -5613,8 +5617,8 @@ blog_nostr_rebuild_derived() {
 
   addresses_json=$(jq -c '[.[].address]' "$nostr_posts_tmp" 2>/dev/null || printf '[]')
   jq -s --argjson addresses "$addresses_json" --argjson blocked "$blocked_json" '
-    map(select(type=="object" and (.kind|type)=="number" and .kind==1 and (.id|type)=="string" and (.pubkey|type)=="string" and (.tags|type)=="array" and (.content|type)=="string"))
-    | map(. + {a_refs: ([.tags[]? | select(type=="array" and length>=2 and .[0]=="a") | .[1]] | map(select(type=="string")))})
+    map(select(type=="object" and (.kind|type)=="number" and (.kind==1 or .kind==1111) and (.id|type)=="string" and (.pubkey|type)=="string" and (.tags|type)=="array" and (.content|type)=="string"))
+    | map(. + {a_refs: ([.tags[]? | select(type=="array" and length>=2 and (.[0]=="a" or .[0]=="A")) | .[1]] | map(select(type=="string")))})
     | map(select((.pubkey as $pk | $blocked | index($pk)) == null))
     | map(select((.a_refs | map(select(($addresses | index(.)) != null)) | length) > 0))
     | sort_by((.created_at // 0), .id)
@@ -5941,6 +5945,10 @@ blog_nostr_mirror_posts() {
   authors_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-authors.XXXXXX")
   relays_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-relays.XXXXXX")
   blog_nostr_list_file_lines "$blog_nostr_authors_file" > "$authors_tmp"
+  if [ -f "$blog_state_dir/nostr-pages.json" ]; then
+    jq -r '.pages[]? | select((.type // "") == "publication") | (.owner_pubkey // .nostr_pubkey // "") | ascii_downcase | select(test("^[0-9a-f]{64}$"))' "$blog_state_dir/nostr-pages.json" 2>/dev/null >> "$authors_tmp" || true
+    sort -u -o "$authors_tmp" "$authors_tmp"
+  fi
   blog_nostr_list_file_lines "$blog_nostr_relays_file" > "$relays_tmp"
   if [ ! -s "$authors_tmp" ] || [ ! -s "$relays_tmp" ]; then
     rm -f "$authors_tmp" "$relays_tmp"
@@ -5951,8 +5959,10 @@ blog_nostr_mirror_posts() {
   out_longform_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-mirror-posts-longform.XXXXXX")
   out_blog_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-mirror-posts-blog.XXXXXX")
 
-  # Backward-compatibility: include legacy kind:30023 posts even if they predate t=blog tagging.
-  set -- nak req -k 30023
+  # Include addressable articles and NIP-51 publication/list definitions from
+  # the configured authors. The derived post index ignores kind 30004, while
+  # managed publication resolution consumes those stored events directly.
+  set -- nak req -k 30023 -k 30004
   while IFS= read -r author || [ -n "$author" ]; do
     [ -n "$author" ] || continue
     set -- "$@" -a "$author"
@@ -6027,6 +6037,10 @@ blog_nostr_mirror_comments_for_address() {
   fi
 
   out_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-mirror-comments.XXXXXX")
+  out_nip22_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-mirror-comments-nip22.XXXXXX")
+  : > "$out_nip22_tmp"
+  # Keep importing legacy kind:1 replies while using NIP-22 kind:1111 for all
+  # newly authored article comments.
   set -- nak req -k 1 -t "a=$address"
   while IFS= read -r relay || [ -n "$relay" ]; do
     [ -n "$relay" ] || continue
@@ -6037,9 +6051,21 @@ blog_nostr_mirror_comments_for_address() {
   "$@" > "$out_tmp" 2>/dev/null
   _status=$?
   set -e
-  if [ "$_status" -ne 0 ] && [ ! -s "$out_tmp" ]; then
-    rm -f "$relays_tmp" "$out_tmp"
+  set -- nak req -k 1111 -t "A=$address"
+  while IFS= read -r relay || [ -n "$relay" ]; do
+    [ -n "$relay" ] || continue
+    set -- "$@" "$relay"
+  done < "$relays_tmp"
+  set +e
+  "$@" > "$out_nip22_tmp" 2>/dev/null
+  _nip22_status=$?
+  set -e
+  if [ "$_status" -ne 0 ] && [ ! -s "$out_tmp" ] && [ "$_nip22_status" -ne 0 ] && [ ! -s "$out_nip22_tmp" ]; then
+    rm -f "$relays_tmp" "$out_tmp" "$out_nip22_tmp"
     return 1
+  fi
+  if [ "$_nip22_status" -eq 0 ] || [ -s "$out_nip22_tmp" ]; then
+    cat "$out_nip22_tmp" >> "$out_tmp"
   fi
 
   mirrored=0
@@ -6055,7 +6081,7 @@ blog_nostr_mirror_comments_for_address() {
     fi
   done < "$out_tmp"
 
-  rm -f "$relays_tmp" "$out_tmp"
+  rm -f "$relays_tmp" "$out_tmp" "$out_nip22_tmp"
   printf '%s\n' "$mirrored"
 }
 
@@ -6873,6 +6899,7 @@ blog_public_posts_catalog_build_json() {
         --arg post_type "$post_type" \
         --arg year "$year" \
         --arg source "$source" \
+        --arg nostr_address "$post_address" \
         --arg tags_csv "$tags" \
         --argjson word_count "$word_count" \
         --argjson reading_minutes "$reading_minutes" \
@@ -6893,6 +6920,7 @@ blog_public_posts_catalog_build_json() {
           type: $post_type,
           year: $year,
           source: $source,
+          nostr_address: $nostr_address,
           word_count: $word_count,
           reading_minutes: $reading_minutes,
           tags: ($tags_csv | split(",") | map(gsub("^\\s+|\\s+$"; "") | select(length > 0))),

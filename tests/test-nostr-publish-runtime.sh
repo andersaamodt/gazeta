@@ -339,6 +339,35 @@ fi
 
 /bin/sh "$ROOT_DIR/cgi/blog-maintenance" rebuild-public-posts >/dev/null
 
+publication_config=$(jq -cn '{pages:[{slug:"field-notes",type:"publication",show_in_nav:true,placeholder_title:"Field Notes",seed_tag:"nostr",theme:"druid"}]}')
+blog_nostr_pages_save_json "$publication_config"
+blog_public_posts_catalog_write_artifacts
+publication_state=$(blog_publication_seed_state_if_empty field-notes "$(blog_publication_default_state_json field-notes)")
+if printf '%s\n' "$publication_state" | jq -e '.type=="publication" and .member_addresses==["30023:1111111111111111111111111111111111111111111111111111111111111111:example-post","30023:1111111111111111111111111111111111111111111111111111111111111111:dated-example-post"]' >/dev/null 2>&1; then
+  pass
+else
+  fail 'publication seed tag resolves to ordered kind 30023 address members'
+fi
+publication_event=$(blog_nostr_sign_publication_event field-notes "$publication_state")
+if printf '%s\n' "$publication_event" | jq -e '.kind==30004 and .content=="" and ([.tags[] | select(.[0]=="a") | .[1]] == ["30023:1111111111111111111111111111111111111111111111111111111111111111:example-post","30023:1111111111111111111111111111111111111111111111111111111111111111:dated-example-post"])' >/dev/null 2>&1; then
+  pass
+else
+  fail 'publication signs as a strict ordered NIP-51 kind 30004 list'
+fi
+blog_nostr_publish_and_store_event_json "$publication_event" >/dev/null
+publication_loaded=$(blog_nostr_publication_latest_event_json field-notes)
+assert_equals "$(printf '%s\n' "$publication_loaded" | jq -r '.id')" "$(printf '%s\n' "$publication_event" | jq -r '.id')" 'publication resolver selects the configured owner event'
+blog_publication_write_web_artifacts "$(blog_nostr_pages_load_json)"
+assert_file_exists "$SITE_ROOT/site/pages/field-notes/archive.md" 'publication archive source is generated'
+assert_file_exists "$(blog_generated_build_pages_dir)/field-notes/rss.xml" 'publication RSS feed is generated'
+assert_file_exists "$(blog_generated_build_pages_dir)/field-notes/atom.xml" 'publication Atom feed is generated'
+
+nip22_comment=$(jq -cn --arg pubkey '2222222222222222222222222222222222222222222222222222222222222222' --arg address '30023:1111111111111111111111111111111111111111111111111111111111111111:example-post' --arg event_id "$post_event_id" '{id:"3333333333333333333333333333333333333333333333333333333333333333",pubkey:$pubkey,created_at:1770000000,kind:1111,tags:[["A",$address],["K","30023"],["P","1111111111111111111111111111111111111111111111111111111111111111"],["a",$address],["e",$event_id],["k","30023"],["p","1111111111111111111111111111111111111111111111111111111111111111"]],content:"NIP-22 reply",sig:"sig"}')
+blog_nostr_store_event_json "$nip22_comment" >/dev/null
+blog_nostr_rebuild_derived
+assert_contains "$(blog_nostr_comments_for_address_json '30023:1111111111111111111111111111111111111111111111111111111111111111:example-post')" '"content":"NIP-22 reply"' 'derived comments include NIP-22 kind 1111 events'
+assert_contains "$(cat "$ROOT_DIR/site/static/post-context.js")" 'kind: 1111' 'browser comment composer authors NIP-22 kind 1111 events'
+
 post_context_output=$(GAZETA_THEURGY_ALLOW_CARGO=1 QUERY_STRING='path=posts/example-post' REQUEST_METHOD=GET "$ROOT_DIR/cgi/blog-post-context")
 post_context_json=$(printf '%s\n' "$post_context_output" | tail -n 1)
 if printf '%s\n' "$post_context_json" | jq -e '(.current.nostr.id // "") != ""' >/dev/null 2>&1; then

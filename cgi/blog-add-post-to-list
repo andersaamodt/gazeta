@@ -56,6 +56,31 @@ if [ -z "$entry_markdown" ]; then
 fi
 
 page_type=$(blog_nostr_page_type_for_slug "$list_slug" 2>/dev/null || printf 'list')
+if [ "$page_type" = "publication" ]; then
+  post_address=$(blog_post_nostr_address_for_file "$file" 2>/dev/null || printf '')
+  case "$post_address" in
+    30023:[0-9a-f][0-9a-f]*) ;;
+    *)
+      blog_json_error "Publish this post to Nostr as kind 30023 before adding it to a publication" "post_not_nostr_addressable"
+      exit 0
+      ;;
+  esac
+  state_json=$(blog_nostr_page_load_draft_state_json "$list_slug" publication 2>/dev/null || printf '')
+  if [ -z "$state_json" ]; then
+    canonical_event=$(blog_nostr_publication_latest_event_json "$list_slug" 2>/dev/null || printf '')
+    if [ -n "$canonical_event" ]; then
+      state_json=$(blog_publication_state_from_event_json "$list_slug" "$canonical_event")
+    else
+      state_json=$(blog_publication_seed_state_if_empty "$list_slug" "$(blog_publication_default_state_json "$list_slug")")
+    fi
+  fi
+  next_state=$(blog_publication_normalize_state_json "$list_slug" "$state_json" | jq -c --arg address "$post_address" '.member_addresses |= (if index($address) == null then . + [$address] else . end)')
+  blog_nostr_page_save_draft_state_json "$list_slug" publication "$next_state"
+  validation_json=$(blog_publication_validate_state_json "$next_state" false)
+  jq -cn --arg list_slug "$list_slug" --argjson state "$next_state" --argjson validation "$validation_json" '{success:true,list_slug:$list_slug,state:$state,validation:$validation,message:"Post added to publication draft."}'
+  printf '\n'
+  exit 0
+fi
 case "$page_type" in
   list|icon-gallery|software-gallery) ;;
   *) page_type='list' ;;

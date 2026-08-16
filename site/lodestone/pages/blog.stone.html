@@ -3,12 +3,13 @@ title: Blog
 ---
 
 <lode-page>
-<section id="blog-page-root" class="blog-page" data-blog-slug={slug} data-page-type="blog" data-page-title={title} aria-live="polite"{@html prerender_attrs}>
+<section id="blog-page-root" class="blog-page" data-blog-slug={slug} data-page-type={page_type} data-page-title={title} aria-live="polite"{@html prerender_attrs}>
 <div class="blog-layout">
 <div class="blog-main-column">
 <div class="list-page-head">
 <h1 id="blog-page-title"><span class="list-page-title-text">{title}</span><span id="blog-page-title-static-actions" class="list-page-title-static-actions"><button id="blog-filter-toggle" type="button" class="blog-filter-toggle unobtrusive-icon-button" aria-expanded="false" aria-controls="blog-filter-panel" aria-label="Filter posts" title="Filter posts"><svg class="blog-filter-icon" viewBox="0 0 16 16" aria-hidden="true"><line x1="2" y1="3" x2="14" y2="3"></line><circle cx="6" cy="3" r="1.25"></circle><line x1="2" y1="8" x2="14" y2="8"></line><circle cx="10.5" cy="8" r="1.25"></circle><line x1="2" y1="13" x2="14" y2="13"></line><circle cx="4.5" cy="13" r="1.25"></circle></svg></button></span><span id="blog-page-title-actions" class="list-page-title-actions"></span><span data-page-nav-title-host="true" class="list-page-nav-title-row-wrap"></span></h1>
 <p id="blog-page-description" class="muted"{@html description_attrs}><span class="list-page-description-text">{@html description_html}</span></p>
+<nav class="publication-resources" aria-label="Publication resources"{@html publication_links_attrs}><a href="/{slug}/archive">Archive</a><a href="/{slug}/rss.xml">RSS</a><a href="/{slug}/atom.xml">Atom</a></nav>
 </div>
 <div id="blog-draft-notice" class="blog-draft-notice" hidden></div>
 <div id="blog-page-admin" class="list-admin" hidden></div>

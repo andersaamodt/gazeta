@@ -1059,6 +1059,7 @@ title: ""
 <label for="nostr-page-type-select"><strong>Page Type</strong></label>
 <select id="nostr-page-type-select" aria-label="Page type">
 <option value="blog">Blog Index (NIP-23 posts)</option>
+<option value="publication">Publication (NIP-51 kind 30004)</option>
 <option value="list">List Page (kind 30004)</option>
 <option value="software-gallery">Software Gallery (kind 30267)</option>
 <option value="icon-gallery">Generic Tile Gallery (kind 30004)</option>
@@ -1081,10 +1082,10 @@ title: ""
 
 <dialog id="post-add-to-list-dialog" class="admin-inline-dialog" aria-labelledby="post-add-to-list-title">
 <form id="post-add-to-list-form" method="dialog" class="admin-inline-dialog-form">
-<h4 id="post-add-to-list-title">Add Post to List</h4>
+<h4 id="post-add-to-list-title">Add Post to Collection</h4>
 <div class="field-row">
-<label for="post-add-to-list-select"><strong>List</strong></label>
-<select id="post-add-to-list-select" aria-label="List">
+<label for="post-add-to-list-select"><strong>List or publication</strong></label>
+<select id="post-add-to-list-select" aria-label="List or publication">
 <option value="">Loading lists...</option>
 </select>
 </div>
@@ -1102,7 +1103,7 @@ title: ""
 </div>
 <div class="admin-inline-dialog-actions">
 <button id="post-add-to-list-cancel" type="button">Cancel</button>
-<button id="post-add-to-list-confirm" type="submit" class="primary">Add to list</button>
+<button id="post-add-to-list-confirm" type="submit" class="primary">Add to collection</button>
 </div>
 </form>
 </dialog>

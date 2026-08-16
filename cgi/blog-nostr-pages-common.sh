@@ -99,6 +99,7 @@ blog_nostr_page_kind_for_type() {
   case "$page_type" in
     contact) printf '0\n' ;;
     public-ranking) printf '30040\n' ;;
+    publication) printf '30004\n' ;;
     overworld) printf '30023\n' ;;
     nip23|blog) printf '30023\n' ;;
     software-gallery) printf '30267\n' ;;
@@ -140,6 +141,7 @@ blog_nostr_pages_normalize_json() {
     def norm_type($v):
       (($v // "") | tostring | ascii_downcase) as $t
       | if $t == "contact" then "contact"
+        elif ($t == "publication" or $t == "publication-index" or $t == "publication_index") then "publication"
         elif ($t == "public-ranking" or $t == "public_ranking" or $t == "ranking") then "public-ranking"
         elif ($t == "overworld" or $t == "overworld-game" or $t == "overworld_game") then "overworld"
         elif ($t == "software-gallery" or $t == "software_gallery" or $t == "software") then "software-gallery"
@@ -172,6 +174,9 @@ blog_nostr_pages_normalize_json() {
             else false end
           ),
           default_tag: ((.default_tag // "") | tostring | gsub("^\\s+|\\s+$";"")),
+          seed_tag: ((.seed_tag // "") | tostring | gsub("^\\s+|\\s+$";"")),
+          theme: ((.theme // "") | tostring | ascii_downcase | gsub("[^a-z0-9-]";"-") | gsub("-+";"-") | gsub("(^-+|-+$)";"")),
+          owner_pubkey: ((.owner_pubkey // .nostr_pubkey // "") | tostring | ascii_downcase | if test("^[0-9a-f]{64}$") then . else "" end),
           placeholder_title: ((.placeholder_title // .title // "") | tostring),
           path: ((.path // "") | tostring)
         })
@@ -193,6 +198,7 @@ blog_nostr_pages_normalize_json() {
                .kind = (
                  if .type == "contact" then 0
                  elif .type == "public-ranking" then 30040
+                 elif .type == "publication" then 30004
                  elif .type == "overworld" then 30023
                  elif (.type == "nip23" or .type == "blog") then 30023
                  elif .type == "software-gallery" then 30267
@@ -202,6 +208,7 @@ blog_nostr_pages_normalize_json() {
              | .show_in_nav = (if .show_in_nav == false then false else true end)
              | .show_in_footer = (if .show_in_footer == true then true else false end)
              | .default_tag = (if .type == "blog" then (.default_tag // "") else "" end)
+             | .seed_tag = (if .type == "publication" then (.seed_tag // "") else "" end)
              | .placeholder_title = (if (.placeholder_title | length) > 0 then .placeholder_title else title_from_slug(.slug) end)
              | .path = norm_path(.slug; .type; .path)
              ))
@@ -303,6 +310,7 @@ blog_nostr_navbar_pages_json() {
     def norm_type($value):
       (($value // "") | tostring | ascii_downcase) as $type
       | if $type == "contact" then "contact"
+        elif ($type == "publication" or $type == "publication-index" or $type == "publication_index") then "publication"
         elif ($type == "public-ranking" or $type == "public_ranking" or $type == "ranking") then "public-ranking"
         elif ($type == "overworld" or $type == "overworld-game" or $type == "overworld_game") then "overworld"
         elif ($type == "software-gallery" or $type == "software_gallery" or $type == "software") then "software-gallery"
@@ -315,6 +323,7 @@ blog_nostr_navbar_pages_json() {
       if ($value | type) == "number" then $value
       elif $page_type == "contact" then 0
       elif $page_type == "public-ranking" then 30040
+      elif $page_type == "publication" then 30004
       elif $page_type == "overworld" then 30023
       elif ($page_type == "nip23" or $page_type == "blog") then 30023
       elif $page_type == "software-gallery" then 30267
@@ -461,7 +470,7 @@ blog_nostr_page_source_path() {
 blog_nostr_page_mount_is_prerender_owned() {
   page_type=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
   case "$page_type" in
-    list|icon-gallery|software-gallery|blog|nip23|contact|public-ranking|overworld|cart|checkout)
+    list|icon-gallery|software-gallery|blog|publication|nip23|contact|public-ranking|overworld|cart|checkout)
       return 0
       ;;
   esac
@@ -508,7 +517,7 @@ blog_nostr_page_front_matter_to_tmp() {
 blog_nostr_page_lodestone_template_relpath() {
   page_type=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
   case "$page_type" in
-    blog)
+    blog|publication)
       printf '%s\n' 'site/lodestone/pages/blog.stone.html'
       ;;
     software-gallery)
@@ -607,7 +616,7 @@ blog_nostr_page_render_lodestone_source() {
   : > "$render_filter_tags_tmp"
   : > "$render_filter_years_tmp"
   : > "$render_filter_types_tmp"
-  if [ "$render_page_type" = "blog" ] && [ -n "${BLOG_NOSTR_PRERENDER_PAYLOAD_FILE:-}" ] && [ -f "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" ]; then
+  if { [ "$render_page_type" = "blog" ] || [ "$render_page_type" = "publication" ]; } && [ -n "${BLOG_NOSTR_PRERENDER_PAYLOAD_FILE:-}" ] && [ -f "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" ]; then
     jq -c '.bootstrap_posts // []' "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" > "$render_posts_tmp" 2>/dev/null || printf '[]\n' > "$render_posts_tmp"
     printf '%s\n' "$render_projection_json" | jq -r '.filter_tags_html // ""' > "$render_filter_tags_tmp" 2>/dev/null || :
     printf '%s\n' "$render_projection_json" | jq -r '.filter_years_html // ""' > "$render_filter_years_tmp" 2>/dev/null || :
@@ -618,10 +627,15 @@ blog_nostr_page_render_lodestone_source() {
   render_posts_json=$(cat "$render_posts_tmp")
   render_empty_text=$(blog_post_cards_empty_text "$render_posts_json")
   render_empty_attrs=$(blog_post_cards_empty_attrs "$render_posts_json")
+  render_publication_links_attrs=' hidden'
+  if [ "$render_page_type" = "publication" ]; then
+    render_publication_links_attrs=''
+  fi
   "$render_lodestone_cmd" render-md "$render_template" \
     --set "title=$render_title" \
     --set "slug=$render_slug" \
     --set "page_type=$render_page_type" \
+    --set "publication_links_attrs=$render_publication_links_attrs" \
     --set "description=$render_description" \
     --set "description_attrs=$render_description_attrs" \
     --set "content_attrs=$render_content_attrs" \
@@ -682,6 +696,7 @@ blog_nostr_page_write_prerendered_source() {
     contact) tags='"nostr", "contact"' ;;
     nip23) tags='"nostr", "nip23"' ;;
     blog) tags='"nostr", "blog"' ;;
+    publication) tags='"nostr", "publication"' ;;
     public-ranking) tags='"nostr", "public-ranking"' ;;
     overworld) tags='"nostr", "overworld"' ;;
     icon-gallery) tags='"nostr", "list", "icon-gallery"' ;;
@@ -734,13 +749,14 @@ blog_nostr_page_load_draft_state_json() {
   [ -n "$raw" ] || return 1
   raw_type=$(printf '%s\n' "$raw" | jq -r '.type // ""' 2>/dev/null || printf '')
   case "$page_type:$raw_type" in
-    blog:nip23|nip23:blog|contact:blog|contact:nip23|contact:list|contact:public-ranking|public-ranking:blog|public-ranking:nip23|public-ranking:list|public-ranking:contact|list:blog|list:nip23|list:contact|list:public-ranking)
+    blog:nip23|nip23:blog|publication:blog|publication:nip23|publication:list|contact:blog|contact:nip23|contact:list|contact:publication|contact:public-ranking|public-ranking:blog|public-ranking:nip23|public-ranking:list|public-ranking:publication|public-ranking:contact|list:blog|list:nip23|list:contact|list:publication|list:public-ranking)
       return 1
       ;;
   esac
   case "$page_type" in
     contact) blog_contact_normalize_state_json "$slug" "$raw" ;;
     public-ranking) blog_public_ranking_normalize_state_json "$slug" "$raw" ;;
+    publication) blog_publication_normalize_state_json "$slug" "$raw" ;;
     nip23|blog) blog_nip23_normalize_state_json "$slug" "$raw" "$page_type" ;;
     *) blog_list_normalize_state_json "$slug" "$raw" ;;
   esac
@@ -754,11 +770,12 @@ blog_nostr_page_save_draft_state_json() {
   case "$page_type" in
     contact) normalized=$(blog_contact_normalize_state_json "$slug" "$state_json") ;;
     public-ranking) normalized=$(blog_public_ranking_normalize_state_json "$slug" "$state_json") ;;
+    publication) normalized=$(blog_publication_normalize_state_json "$slug" "$state_json") ;;
     nip23|blog) normalized=$(blog_nip23_normalize_state_json "$slug" "$state_json" "$page_type") ;;
     *) normalized=$(blog_list_normalize_state_json "$slug" "$state_json") ;;
   esac
   case "$page_type" in
-    nip23|blog|contact|public-ranking) markdown_state=$normalized ;;
+    nip23|blog|publication|contact|public-ranking) markdown_state=$normalized ;;
     *) markdown_state=$(printf '%s\n' "$normalized" | jq -c 'del(.entries, .tags)') ;;
   esac
   path=$(blog_nostr_page_draft_path "$slug")
@@ -900,6 +917,252 @@ blog_nostr_nip23_latest_event_json() {
     return 1
   fi
   printf '%s\n' "$out"
+}
+
+blog_publication_default_state_json() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  title=$(blog_nostr_page_default_title "$slug" publication)
+  jq -cn --arg slug "$slug" --arg title "$title" '{
+    slug: $slug,
+    type: "publication",
+    title: $title,
+    description: "",
+    image: "",
+    content: "",
+    member_addresses: [],
+    extras_after: ""
+  }'
+}
+
+blog_publication_normalize_state_json() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  raw_json=${2-}
+  if [ -z "$raw_json" ] || ! printf '%s\n' "$raw_json" | jq -e 'type=="object"' >/dev/null 2>&1; then
+    blog_publication_default_state_json "$slug"
+    return 0
+  fi
+  fallback_title=$(blog_nostr_page_default_title "$slug" publication)
+  printf '%s\n' "$raw_json" | jq -c --arg slug "$slug" --arg fallback_title "$fallback_title" '
+    def first_tag($key):
+      ([.tags[]? | select(type=="array" and length>=2 and .[0]==$key) | .[1]] | first);
+    def valid_article_address:
+      type=="string" and test("^30023:[0-9a-f]{64}:[^:]+$");
+    def ordered_unique:
+      reduce .[] as $item ([]; if index($item) == null then . + [$item] else . end);
+    ((if (.member_addresses | type) == "array" then .member_addresses
+       else [.tags[]? | select(type=="array" and length>=2 and .[0]=="a") | .[1]] end)
+      | map(ascii_downcase | select(valid_article_address))
+      | ordered_unique) as $members
+    | {
+        slug: $slug,
+        type: "publication",
+        title: ((.title // first_tag("title") // $fallback_title) | tostring),
+        description: ((.description // first_tag("description") // "") | tostring),
+        image: ((.image // .image_url // first_tag("image") // "") | tostring),
+        content: "",
+        member_addresses: $members,
+        extras_after: ((.extras_after // "") | tostring)
+      }
+  ' 2>/dev/null || blog_publication_default_state_json "$slug"
+}
+
+blog_publication_state_from_event_json() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  event_json=${2-}
+  [ -n "$event_json" ] || {
+    blog_publication_default_state_json "$slug"
+    return 0
+  }
+  raw=$(printf '%s\n' "$event_json" | jq -c --arg slug "$slug" '{slug:$slug,tags:(.tags // [])}' 2>/dev/null || printf '')
+  blog_publication_normalize_state_json "$slug" "$raw"
+}
+
+blog_publication_state_signature_json() {
+  state_json=${1-}
+  printf '%s\n' "$state_json" | jq -c '{
+    title: (.title // ""),
+    description: (.description // ""),
+    image: (.image // ""),
+    member_addresses: (.member_addresses // [])
+  }' 2>/dev/null || printf '{}\n'
+}
+
+blog_publication_validate_state_json() {
+  state_json=${1-}
+  strict=${2-false}
+  printf '%s\n' "$state_json" | jq -c --arg strict "$strict" '
+    (.title // "" | tostring) as $title
+    | (.member_addresses // []) as $members
+    | ([ $members[]? | select((type != "string") or (test("^30023:[0-9a-f]{64}:[^:]+$") | not)) ]) as $invalid
+    | {
+        errors: (
+          (if $strict == "true" and ($title | length) == 0 then ["Title is required"] else [] end)
+          + (if ($invalid | length) > 0 then ["Publication members must be kind 30023 address coordinates"] else [] end)
+        ),
+        warnings: (if ($members | length) == 0 then ["This publication does not contain any Nostr-addressable posts yet"] else [] end)
+      }
+    | .can_publish = ((.errors | length) == 0)
+  ' 2>/dev/null || printf '{"errors":[],"warnings":[],"can_publish":true}\n'
+}
+
+blog_publication_page_entry_json() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  blog_nostr_page_entry_json "$slug" 2>/dev/null || printf '{}\n'
+}
+
+blog_publication_owner_pubkey() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  entry=$(blog_publication_page_entry_json "$slug")
+  owner=$(printf '%s\n' "$entry" | jq -r '.owner_pubkey // ""' 2>/dev/null || printf '')
+  if [ -z "$owner" ]; then
+    owner=$(blog_nostr_site_pubkey 2>/dev/null || printf '')
+  fi
+  printf '%s\n' "$owner"
+}
+
+blog_nostr_publication_latest_event_json() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  [ -n "$slug" ] || return 1
+  owner=$(blog_publication_owner_pubkey "$slug")
+  if [ -n "$owner" ]; then
+    blog_nostr_latest_event_by_kind_d 30004 "$slug" "$owner"
+  else
+    blog_nostr_latest_event_by_kind_d 30004 "$slug"
+  fi
+}
+
+blog_publication_seed_member_addresses_json() {
+  seed_tag=${1-}
+  [ -n "$seed_tag" ] || {
+    printf '[]\n'
+    return 0
+  }
+  catalog=$(blog_public_posts_catalog_json 2>/dev/null || printf '')
+  [ -n "$catalog" ] || {
+    printf '[]\n'
+    return 0
+  }
+  printf '%s\n' "$catalog" | jq -c --arg seed_tag "$seed_tag" '[
+    .posts[]?
+    | select((((.tags // []) | map(tostring | ascii_downcase)) | index($seed_tag | ascii_downcase)) != null)
+    | (.nostr_address // "")
+    | select(test("^30023:[0-9a-f]{64}:[^:]+$"))
+  ] | reduce .[] as $item ([]; if index($item) == null then . + [$item] else . end)' 2>/dev/null || printf '[]\n'
+}
+
+blog_publication_seed_state_if_empty() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  state_json=${2-}
+  normalized=$(blog_publication_normalize_state_json "$slug" "$state_json")
+  member_count=$(printf '%s\n' "$normalized" | jq -r '.member_addresses | length' 2>/dev/null || printf '0')
+  case "$member_count" in ''|*[!0-9]*) member_count=0 ;; esac
+  if [ "$member_count" -gt 0 ]; then
+    printf '%s\n' "$normalized"
+    return 0
+  fi
+  entry=$(blog_publication_page_entry_json "$slug")
+  seed_tag=$(printf '%s\n' "$entry" | jq -r '.seed_tag // ""' 2>/dev/null || printf '')
+  members=$(blog_publication_seed_member_addresses_json "$seed_tag")
+  printf '%s\n' "$normalized" | jq -c --argjson members "$members" '.member_addresses = $members'
+}
+
+blog_nostr_sign_publication_event() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  state_json=$(blog_publication_normalize_state_json "$slug" "${2-}")
+  [ -n "$slug" ] || return 1
+  tags=$(printf '%s\n' "$state_json" | jq -c --arg slug "$slug" '[
+    ["d", $slug],
+    (if ((.title // "") | length) > 0 then ["title", .title] else empty end),
+    (if ((.description // "") | length) > 0 then ["description", .description] else empty end),
+    (if ((.image // "") | length) > 0 then ["image", .image] else empty end)
+  ] + [(.member_addresses // [])[] | ["a", .]]' 2>/dev/null || printf '')
+  [ -n "$tags" ] || return 1
+  blog_nostr_sign_event_with_tags 30004 "" "$tags"
+}
+
+blog_public_posts_catalog_for_publication_json() {
+  slug=$(blog_nostr_page_slug "${1-}")
+  state_json=${2-}
+  normalized=$(blog_publication_normalize_state_json "$slug" "$state_json")
+  members=$(printf '%s\n' "$normalized" | jq -c '.member_addresses // []' 2>/dev/null || printf '[]')
+  member_count=$(printf '%s\n' "$members" | jq -r 'length' 2>/dev/null || printf '0')
+  case "$member_count" in ''|*[!0-9]*) member_count=0 ;; esac
+  if [ "$member_count" -eq 0 ]; then
+    catalog=$(blog_public_posts_catalog_json) || return 1
+    printf '%s\n' "$catalog" | jq -c '.posts = []'
+    return 0
+  fi
+  catalog=$(blog_public_posts_catalog_json) || return 1
+  filtered=$(printf '%s\n' "$catalog" | jq -c --argjson members "$members" '.posts as $posts | .posts = [$members[] as $address | $posts[] | select((.nostr_address // "") == $address)]' 2>/dev/null || printf '%s\n' "$catalog")
+  printf '%s\n' "$filtered"
+}
+
+blog_publication_write_web_artifacts() {
+  cfg_json=${1-}
+  [ -n "$cfg_json" ] || cfg_json=$(blog_nostr_pages_load_json_fast)
+  base_url=$(blog_base_url | sed 's#/$##')
+  configured_slugs=$(printf '%s\n' "$cfg_json" | jq -r '[.pages[]? | select(.type=="publication") | .slug] | join("\n")' 2>/dev/null || printf '')
+  find "$(blog_managed_pages_dir)" -mindepth 2 -maxdepth 2 -type f -name archive.md 2>/dev/null | while IFS= read -r stale_archive || [ -n "$stale_archive" ]; do
+    grep -q 'class="list-page-shell publication-archive"' "$stale_archive" 2>/dev/null || continue
+    stale_slug=$(basename "$(dirname "$stale_archive")")
+    if ! printf '%s\n' "$configured_slugs" | grep -Fqx "$stale_slug"; then
+      rm -f "$stale_archive" "$(blog_generated_build_pages_dir)/$stale_slug/rss.xml" "$(blog_generated_build_pages_dir)/$stale_slug/atom.xml"
+    fi
+  done
+  printf '%s\n' "$cfg_json" | jq -c '.pages[]? | select(.type=="publication")' 2>/dev/null | while IFS= read -r page || [ -n "$page" ]; do
+    slug=$(printf '%s\n' "$page" | jq -r '.slug // ""')
+    [ -n "$slug" ] || continue
+    event=$(blog_nostr_publication_latest_event_json "$slug" 2>/dev/null || printf '')
+    if [ -n "$event" ]; then
+      state=$(blog_publication_state_from_event_json "$slug" "$event")
+    else
+      state=$(blog_nostr_page_load_draft_state_json "$slug" publication 2>/dev/null || printf '')
+      [ -n "$state" ] || state=$(blog_publication_seed_state_if_empty "$slug" "$(blog_publication_default_state_json "$slug")")
+    fi
+    catalog=$(blog_public_posts_catalog_for_publication_json "$slug" "$state" 2>/dev/null || printf '{"success":true,"posts":[]}')
+    title=$(printf '%s\n' "$state" | jq -r '.title // "Untitled"')
+    description=$(printf '%s\n' "$state" | jq -r '.description // ""')
+    publication_url="$base_url/$slug"
+
+    archive_dir="$(blog_managed_pages_dir)/$slug"
+    mkdir -p "$archive_dir"
+    archive_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-publication-archive.XXXXXX")
+    {
+      printf '%s\n' '---'
+      printf 'title: %s\n' "$(printf '%s\n' "$title Archive" | jq -R .)"
+      printf '%s\n' '---' ''
+      printf '<section class="list-page-shell publication-archive" data-page-slug="%s">\n' "$slug"
+      printf '<div class="list-page-head"><h1>%s Archive</h1><p><a href="/%s">Back to %s</a></p></div>\n' "$(printf '%s' "$title" | jq -Rr @html)" "$slug" "$(printf '%s' "$title" | jq -Rr @html)"
+      printf '<div class="list-page-content"><ul class="publication-archive-list">\n'
+      printf '%s\n' "$catalog" | jq -r '.posts[]? | "<li><a href=\"" + ((.url // "") | @html) + "\">" + ((.title // "Untitled") | @html) + "</a> <time datetime=\"" + ((.published_at // "") | @html) + "\">" + ((.published_date // .pub_date // "") | @html) + "</time></li>"'
+      printf '%s\n' '</ul></div></section>'
+    } > "$archive_tmp"
+    mv "$archive_tmp" "$archive_dir/archive.md"
+
+    feed_dir="$(blog_generated_build_pages_dir)/$slug"
+    mkdir -p "$feed_dir"
+    latest_iso=$(printf '%s\n' "$catalog" | jq -r '.posts[0].published_at // empty')
+    [ -n "$latest_iso" ] || latest_iso=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    build_date=$(LC_ALL=C date -u '+%a, %d %b %Y %H:%M:%S GMT')
+    rss_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-publication-rss.XXXXXX")
+    {
+      printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel>'
+      printf '<title>%s</title><link>%s</link><description>%s</description><lastBuildDate>%s</lastBuildDate>' "$(printf '%s' "$title" | jq -Rr @html)" "$(printf '%s' "$publication_url/" | jq -Rr @html)" "$(printf '%s' "$description" | jq -Rr @html)" "$build_date"
+      printf '<atom:link href="%s/rss.xml" rel="self" type="application/rss+xml"/>\n' "$(printf '%s' "$publication_url" | jq -Rr @html)"
+      printf '%s\n' "$catalog" | jq -r --arg base "$base_url" '.posts[]? | (.url // "") as $url | "<item><title>" + ((.title // "Untitled") | @html) + "</title><link>" + (($base + $url) | @html) + "</link><guid isPermaLink=\"true\">" + (($base + $url) | @html) + "</guid><description>" + ((.summary // "") | @html) + "</description></item>"'
+      printf '%s\n' '</channel></rss>'
+    } > "$rss_tmp"
+    mv "$rss_tmp" "$feed_dir/rss.xml"
+
+    atom_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-publication-atom.XXXXXX")
+    {
+      printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' '<feed xmlns="http://www.w3.org/2005/Atom">'
+      printf '<title>%s</title><link href="%s/atom.xml" rel="self"/><link href="%s/"/><id>%s/</id><updated>%s</updated>\n' "$(printf '%s' "$title" | jq -Rr @html)" "$(printf '%s' "$publication_url" | jq -Rr @html)" "$(printf '%s' "$publication_url" | jq -Rr @html)" "$(printf '%s' "$publication_url" | jq -Rr @html)" "$(printf '%s' "$latest_iso" | jq -Rr @html)"
+      printf '%s\n' "$catalog" | jq -r --arg base "$base_url" '.posts[]? | (.url // "") as $url | "<entry><title>" + ((.title // "Untitled") | @html) + "</title><link href=\"" + (($base + $url) | @html) + "\"/><id>" + (($base + $url) | @html) + "</id><updated>" + ((.published_at // "1970-01-01T00:00:00Z") | @html) + "</updated><summary>" + ((.summary // "") | @html) + "</summary></entry>"'
+      printf '%s\n' '</feed>'
+    } > "$atom_tmp"
+    mv "$atom_tmp" "$feed_dir/atom.xml"
+  done
 }
 
 blog_nip23_default_state_json() {
@@ -1369,6 +1632,9 @@ blog_nostr_backing_audit_json() {
       public-ranking)
         canonical_event=$(blog_nostr_public_ranking_latest_event_json "$slug" 2>/dev/null || printf '')
         ;;
+      publication)
+        canonical_event=$(blog_nostr_publication_latest_event_json "$slug" 2>/dev/null || printf '')
+        ;;
       nip23|blog|overworld)
         canonical_event=$(blog_nostr_latest_event_by_kind_d 30023 "$slug" 2>/dev/null || printf '')
         ;;
@@ -1826,6 +2092,14 @@ blog_nostr_page_canonical_title() {
         printf '\n'
       fi
       ;;
+    publication)
+      event=$(blog_nostr_publication_latest_event_json "$slug" 2>/dev/null || printf '')
+      if [ -n "$event" ]; then
+        printf '%s\n' "$event" | jq -r '([.tags[]? | select(type=="array" and length>=2 and .[0]=="title") | .[1]] | first) // ""' 2>/dev/null || printf ''
+      else
+        printf '\n'
+      fi
+      ;;
     blog)
       event=$(blog_nostr_nip23_latest_event_json "$slug" 2>/dev/null || printf '')
       if [ -n "$event" ]; then
@@ -1888,7 +2162,12 @@ blog_nostr_page_source_template_type() {
     return 0
   fi
   if grep -q 'id="blog-page-root"' "$file" 2>/dev/null; then
-    printf 'blog\n'
+    page_type=$(sed -n 's/.*data-page-type="\([^"]*\)".*/\1/p' "$file" 2>/dev/null | head -n 1 | tr '[:upper:]' '[:lower:]')
+    if [ "$page_type" = "publication" ]; then
+      printf 'publication\n'
+    else
+      printf 'blog\n'
+    fi
     return 0
   fi
   printf 'custom\n'
@@ -1921,7 +2200,7 @@ blog_nostr_page_template_is_current() {
   page_type=$(printf '%s' "${2-}" | tr '[:upper:]' '[:lower:]')
   [ -f "$file" ] || return 1
   case "$page_type" in
-    blog)
+    blog|publication)
       grep -q 'id="blog-page-title"' "$file" 2>/dev/null &&
       grep -q 'data-page-nav-title-host="true"' "$file" 2>/dev/null &&
       grep -q 'id="blog-page-admin"' "$file" 2>/dev/null &&
@@ -2114,6 +2393,7 @@ blog_nostr_page_ensure_source_page() {
         existing_slug=$(blog_nostr_page_source_template_slug "$page_file")
         if [ "$existing_type" = "$page_type" ] && { [ -z "$existing_slug" ] || [ "$existing_slug" = "$slug" ]; } && blog_nostr_page_template_is_current "$page_file" "$page_type"; then
           if blog_nostr_page_mount_is_prerender_owned "$page_type"; then
+            blog_nostr_page_sync_mount "$slug" "$page_type" >/dev/null 2>&1 || true
             return 0
           fi
           blog_nostr_page_sync_mount "$slug" "$page_type" >/dev/null 2>&1 || true
@@ -2127,7 +2407,7 @@ blog_nostr_page_ensure_source_page() {
   page_title=$(blog_nostr_page_default_title "$slug" "$page_type")
   initial_content_html=''
   case "$page_type" in
-    blog)
+    blog|publication)
       initial_content_html='<p class="placeholder">No posts to show yet.</p>'
       ;;
     overworld)
@@ -2137,6 +2417,7 @@ blog_nostr_page_ensure_source_page() {
   if blog_nostr_page_render_lodestone_source "$slug" "$page_type" "$page_title" "" "" "$initial_content_html" "$page_file"; then
     chmod 644 "$page_file" 2>/dev/null || true
     if blog_nostr_page_mount_is_prerender_owned "$page_type"; then
+      blog_nostr_page_sync_mount "$slug" "$page_type" >/dev/null 2>&1 || true
       return 0
     fi
     blog_nostr_page_sync_mount "$slug" "$page_type" >/dev/null 2>&1 || true
@@ -2193,7 +2474,7 @@ blog_nostr_pages_source_sync_signature() {
     blog_nostr_pages_source_sync_file_signature gazeta-lodestone-components "$SCRIPT_DIR/gazeta-lodestone-components"
     blog_nostr_pages_source_sync_file_signature gazeta-nostr-page-content-renderer "$SCRIPT_DIR/gazeta-nostr-page-content-renderer.sh"
     blog_nostr_pages_source_sync_file_signature blog-post-cards-common "$SCRIPT_DIR/blog-post-cards-common.sh"
-    for template_kind in blog list icon-gallery contact nip23 public-ranking overworld; do
+    for template_kind in blog publication list icon-gallery contact nip23 public-ranking overworld; do
       template_file=$(blog_nostr_page_lodestone_template_path "$template_kind" 2>/dev/null || printf '')
       blog_nostr_pages_source_sync_file_signature template "$template_file"
     done
@@ -2290,6 +2571,14 @@ blog_publish_nostr_page_json() {
           state_json=$(blog_public_ranking_default_state_json "$page_slug")
         fi
         ;;
+      publication)
+        canonical_event=$(blog_nostr_publication_latest_event_json "$page_slug" 2>/dev/null || printf '')
+        if [ -n "$canonical_event" ]; then
+          state_json=$(blog_publication_state_from_event_json "$page_slug" "$canonical_event")
+        else
+          state_json=$(blog_publication_seed_state_if_empty "$page_slug" "$(blog_publication_default_state_json "$page_slug")")
+        fi
+        ;;
       nip23|blog)
         canonical_event=$(blog_nostr_nip23_latest_event_json "$page_slug" 2>/dev/null || printf '')
         if [ -n "$canonical_event" ]; then
@@ -2377,6 +2666,38 @@ blog_publish_nostr_page_json() {
       canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {extras_after: ($local.extras_after // .extras_after)}')
       validation_after=$(blog_public_ranking_validate_and_enrich_state_json "$canonical_state_json" false)
       canonical_enriched=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson ranking "$(blog_public_ranking_view_json "$page_slug" "$canonical_state_json" "$event_json" true \"\" \"${BLOG_SESSION_USER_PUBKEY-}\")" '. + $ranking')
+      ;;
+    publication)
+      state_json=$(blog_publication_normalize_state_json "$page_slug" "$state_json")
+      validation_json=$(blog_publication_validate_state_json "$state_json")
+      can_publish=$(printf '%s\n' "$validation_json" | jq -r '.can_publish' 2>/dev/null || printf 'false')
+      if [ "$can_publish" != "true" ]; then
+        jq -cn --argjson validation "$validation_json" '{success:false,error:"Validation failed",code:"validation_failed",validation:$validation}'
+        printf '\n'
+        return 0
+      fi
+      if [ -n "$provided_event_json" ]; then
+        event_json=$provided_event_json
+      else
+        event_json=$(blog_nostr_sign_publication_event "$page_slug" "$state_json" 2>/dev/null || printf '')
+        if [ -z "$event_json" ]; then
+          reason=$(blog_nostr_publish_diagnostic 2>/dev/null || printf '')
+          [ -n "$reason" ] || reason="Could not sign publication event."
+          blog_json_error "$reason" "nostr_publish_failed"
+          return 0
+        fi
+      fi
+      canonical_state_json=$(blog_publication_state_from_event_json "$page_slug" "$event_json")
+      event_content=$(printf '%s\n' "$event_json" | jq -r '.content // ""' 2>/dev/null || printf '')
+      desired_signature=$(blog_publication_state_signature_json "$state_json")
+      event_signature=$(blog_publication_state_signature_json "$canonical_state_json")
+      if [ -n "$event_content" ] || [ "$desired_signature" != "$event_signature" ]; then
+        blog_json_error "Publication event must have empty content and exactly match the ordered publication metadata and members" "invalid_event_json"
+        return 0
+      fi
+      canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson local "$draft_local_json" '. + {extras_after: ($local.extras_after // "")}')
+      validation_after=$(blog_publication_validate_state_json "$canonical_state_json")
+      canonical_enriched=$canonical_state_json
       ;;
     nip23|blog)
       state_json=$(blog_nip23_normalize_state_json "$page_slug" "$state_json" "$page_type")
@@ -2495,6 +2816,7 @@ blog_publish_nostr_page_json() {
   case "$page_type" in
     contact) expected_kind='0' ;;
     public-ranking) expected_kind='30040' ;;
+    publication) expected_kind='30004' ;;
     nip23|blog) expected_kind='30023' ;;
     software-gallery) expected_kind='30267' ;;
   esac
@@ -2513,6 +2835,13 @@ blog_publish_nostr_page_json() {
   fi
 
   pubkey=$(printf '%s\n' "$event_json" | jq -r '.pubkey // empty' 2>/dev/null || printf '')
+  if [ "$page_type" = "publication" ]; then
+    publication_owner=$(blog_publication_owner_pubkey "$page_slug")
+    if [ -n "$publication_owner" ] && [ "$pubkey" != "$publication_owner" ]; then
+      blog_json_error "Publication event pubkey does not match its configured owner" "invalid_event_json"
+      return 0
+    fi
+  fi
   author_count=$(blog_nostr_list_file_lines "$blog_nostr_authors_file" | wc -l | tr -d ' ')
   if [ "${author_count:-0}" -eq 0 ] && [ -n "$pubkey" ]; then
     blog_nostr_append_author_if_missing "$pubkey" >/dev/null 2>&1 || true

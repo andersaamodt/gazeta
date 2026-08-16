@@ -908,7 +908,7 @@ blog_nostr_page_prerender_content_html() {
     nip23)
       blog_nostr_prerender_nip23_html "$payload_json"
       ;;
-    blog)
+    blog|publication)
       blog_nostr_prerender_blog_html "$payload_json"
       ;;
     public-ranking)

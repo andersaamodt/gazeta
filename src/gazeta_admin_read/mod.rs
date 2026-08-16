@@ -92,6 +92,10 @@ impl SitePaths {
         self.state_dir.join("nostr/state/authors")
     }
 
+    fn nostr_site_pubkey_file(&self) -> PathBuf {
+        self.state_dir.join("nostr/state/site_pubkey")
+    }
+
     fn nostr_blocklist_file(&self) -> PathBuf {
         self.state_dir.join("nostr/state/blocklist")
     }
@@ -307,6 +311,7 @@ fn blog_list_pages() -> Result<Value> {
 
     let mut slugs = BTreeSet::new();
     let mut non_list_slugs = BTreeSet::new();
+    let mut publication_slugs = BTreeSet::new();
     let mut event_titles = BTreeMap::new();
 
     for entry in fs::read_dir(paths.lists_dir())
@@ -353,7 +358,11 @@ fn blog_list_pages() -> Result<Value> {
                 Some(slug) => normalize_list_slug(slug),
                 None => continue,
             };
-            if page_type(page.get("type").and_then(Value::as_str)) == "list" {
+            let configured_type = page_type(page.get("type").and_then(Value::as_str));
+            if configured_type == "list" {
+                slugs.insert(slug);
+            } else if configured_type == "publication" {
+                publication_slugs.insert(slug.clone());
                 slugs.insert(slug);
             } else {
                 non_list_slugs.insert(slug);
@@ -368,7 +377,8 @@ fn blog_list_pages() -> Result<Value> {
             let title = draft_title(&paths, &slug)
                 .or_else(|| event_titles.get(&slug).map(|(_, _, title)| title.clone()))
                 .unwrap_or_else(|| slug.replace('-', " "));
-            json!({"slug": slug, "title": title})
+            let collection_type = if publication_slugs.contains(&slug) { "publication" } else { "list" };
+            json!({"slug": slug, "title": title, "type": collection_type})
         })
         .collect();
 
@@ -420,6 +430,9 @@ fn blog_list_nostr_pages() -> Result<Value> {
                 "title": title,
                 "placeholder_title": page.placeholder_title,
                 "default_tag": page.default_tag,
+                "seed_tag": page.seed_tag,
+                "theme": page.theme,
+                "owner_pubkey": page.owner_pubkey,
                 "connected_posts": if page.page_type == "blog" {
                     connected_posts_total
                 } else {
@@ -740,6 +753,7 @@ fn read_json(path: &Path) -> Option<Value> {
 fn normalized_nostr_page_type(raw: Option<&str>) -> String {
     match raw.unwrap_or("list").to_ascii_lowercase().as_str() {
         "contact" => "contact".to_string(),
+        "publication" | "publication-index" | "publication_index" => "publication".to_string(),
         "public-ranking" | "public_ranking" | "ranking" => "public-ranking".to_string(),
         "overworld" | "overworld-game" | "overworld_game" => "overworld".to_string(),
         "software-gallery" | "software_gallery" | "software" => "software-gallery".to_string(),
@@ -893,6 +907,41 @@ fn nip23_state_from_event(slug: &str, event: &Value, page_type: &str) -> Value {
     })
 }
 
+fn publication_default_state(slug: &str) -> Value {
+    json!({
+        "slug": slug,
+        "type": "publication",
+        "title": page_default_title(slug, "publication"),
+        "description": "",
+        "image": "",
+        "content": "",
+        "member_addresses": [],
+    })
+}
+
+fn publication_state_from_event(slug: &str, event: &Value) -> Value {
+    let mut members = Vec::<String>::new();
+    for address in tag_values(event, "a") {
+        let normalized = address.to_ascii_lowercase();
+        let mut parts = normalized.splitn(3, ':');
+        let valid = parts.next() == Some("30023")
+            && parts.next().map(|pubkey| pubkey.len() == 64 && pubkey.chars().all(|ch| ch.is_ascii_hexdigit())).unwrap_or(false)
+            && parts.next().map(|identifier| !identifier.is_empty()).unwrap_or(false);
+        if valid && !members.contains(&normalized) {
+            members.push(normalized);
+        }
+    }
+    json!({
+        "slug": slug,
+        "type": "publication",
+        "title": tag_value(event, "title").unwrap_or_else(|| page_default_title(slug, "publication")),
+        "description": tag_value(event, "description").unwrap_or_default(),
+        "image": tag_value(event, "image").unwrap_or_default(),
+        "content": "",
+        "member_addresses": members,
+    })
+}
+
 fn public_ranking_default_state(slug: &str) -> Value {
     json!({
         "slug": slug,
@@ -986,6 +1035,12 @@ fn page_state_signature(page_type: &str, state: &Value) -> Value {
             "default_metric": json_string_or(state, "default_metric", "momentum"),
             "blacklist_pubkeys": state.get("blacklist_pubkeys").cloned().unwrap_or_else(|| json!([])),
             "root_refs": state.get("root_refs").cloned().unwrap_or_else(|| json!([])),
+        }),
+        "publication" => json!({
+            "title": json_string(state, "title"),
+            "description": json_string(state, "description"),
+            "image": json_string(state, "image"),
+            "member_addresses": state.get("member_addresses").cloned().unwrap_or_else(|| json!([])),
         }),
         _ => json!({
             "title": json_string(state, "title"),
@@ -1146,6 +1201,9 @@ struct NostrPageConfig {
     show_in_nav: bool,
     show_in_footer: bool,
     default_tag: String,
+    seed_tag: String,
+    theme: String,
+    owner_pubkey: String,
     placeholder_title: String,
     path: String,
 }
@@ -1312,6 +1370,23 @@ fn load_nostr_pages_config(paths: &SitePaths) -> Vec<NostrPageConfig> {
         } else {
             String::new()
         };
+        let seed_tag = if page_type == "publication" {
+            object.get("seed_tag").and_then(Value::as_str).unwrap_or_default().trim().to_string()
+        } else {
+            String::new()
+        };
+        let theme = if page_type == "publication" {
+            object.get("theme").and_then(Value::as_str).unwrap_or_default().trim().to_string()
+        } else {
+            String::new()
+        };
+        let owner_pubkey = object
+            .get("owner_pubkey")
+            .or_else(|| object.get("nostr_pubkey"))
+            .and_then(Value::as_str)
+            .filter(|value| value.len() == 64 && value.chars().all(|ch| ch.is_ascii_hexdigit()))
+            .unwrap_or_default()
+            .to_ascii_lowercase();
         let placeholder_title = object
             .get("placeholder_title")
             .or_else(|| object.get("title"))
@@ -1328,6 +1403,9 @@ fn load_nostr_pages_config(paths: &SitePaths) -> Vec<NostrPageConfig> {
             show_in_nav,
             show_in_footer,
             default_tag,
+            seed_tag,
+            theme,
+            owner_pubkey,
             placeholder_title,
             path,
         });
@@ -1396,6 +1474,10 @@ fn draft_type_allowed(page_type: &str, draft_type: &str) -> bool {
         (page_type, draft_type),
         ("blog", "nip23")
             | ("nip23", "blog")
+            | ("publication", "blog")
+            | ("publication", "nip23")
+            | ("publication", "list")
+            | ("contact", "publication")
             | ("contact", "blog")
             | ("contact", "nip23")
             | ("contact", "list")
@@ -1403,10 +1485,12 @@ fn draft_type_allowed(page_type: &str, draft_type: &str) -> bool {
             | ("public-ranking", "blog")
             | ("public-ranking", "nip23")
             | ("public-ranking", "list")
+            | ("public-ranking", "publication")
             | ("public-ranking", "contact")
             | ("list", "blog")
             | ("list", "nip23")
             | ("list", "contact")
+            | ("list", "publication")
             | ("list", "public-ranking")
     )
 }
@@ -1420,6 +1504,10 @@ fn canonical_nostr_page_state(paths: &SitePaths, page: &NostrPageConfig) -> Cano
         "nip23" | "blog" => match latest_nip23_event(paths, &page.slug) {
             Some(event) => (true, nip23_state_from_event(&page.slug, &event, &page.page_type)),
             None => (false, nip23_default_state(&page.slug, &page.page_type)),
+        },
+        "publication" => match latest_publication_event(paths, page) {
+            Some(event) => (true, publication_state_from_event(&page.slug, &event)),
+            None => (false, publication_default_state(&page.slug)),
         },
         "public-ranking" => match latest_public_ranking_event(paths, &page.slug) {
             Some(event) => (true, public_ranking_state_from_event(&page.slug, &event)),
@@ -1472,6 +1560,28 @@ fn latest_public_ranking_event(paths: &SitePaths, slug: &str) -> Option<Value> {
     })
 }
 
+fn latest_publication_event(paths: &SitePaths, page: &NostrPageConfig) -> Option<Value> {
+    let authors = read_lines_set(&paths.nostr_authors_file());
+    let cached_site_pubkey = fs::read_to_string(paths.nostr_site_pubkey_file())
+        .ok()
+        .map(|value| value.trim().to_ascii_lowercase())
+        .filter(|value| value.len() == 64 && value.chars().all(|ch| ch.is_ascii_hexdigit()))
+        .unwrap_or_default();
+    latest_event(paths, &[30004], |event| {
+        let pubkey = event.get("pubkey").and_then(Value::as_str).unwrap_or_default();
+        let owner_matches = if page.owner_pubkey.is_empty() {
+            if cached_site_pubkey.is_empty() {
+                authors.is_empty() || authors.contains(pubkey)
+            } else {
+                pubkey == cached_site_pubkey
+            }
+        } else {
+            pubkey == page.owner_pubkey
+        };
+        (owner_matches && tag_value(event, "d").unwrap_or_default() == page.slug).then_some(true)
+    })
+}
+
 fn latest_list_page_event(paths: &SitePaths, slug: &str, kind: i64) -> Option<Value> {
     let kinds = if kind == 30267 {
         vec![30267]
@@ -1489,17 +1599,14 @@ where
 {
     let mut events = list_events(&paths.nostr_events_dir(), kinds);
     events.retain(|event| predicate(event) == Some(true));
-    events.sort_by(|left, right| {
-        (
-            left.get("created_at").and_then(Value::as_i64).unwrap_or(0),
-            left.get("id").and_then(Value::as_str).unwrap_or_default(),
-        )
-            .cmp(&(
-                right.get("created_at").and_then(Value::as_i64).unwrap_or(0),
-                right.get("id").and_then(Value::as_str).unwrap_or_default(),
-            ))
-    });
-    events.pop()
+    events.into_iter().max_by(|left, right| {
+        let left_created = left.get("created_at").and_then(Value::as_i64).unwrap_or(0);
+        let right_created = right.get("created_at").and_then(Value::as_i64).unwrap_or(0);
+        left_created.cmp(&right_created).then_with(|| {
+            right.get("id").and_then(Value::as_str).unwrap_or_default()
+                .cmp(left.get("id").and_then(Value::as_str).unwrap_or_default())
+        })
+    })
 }
 
 fn all_drafts(paths: &SitePaths) -> Vec<MarkdownDoc> {

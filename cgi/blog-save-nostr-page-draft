@@ -115,6 +115,19 @@ if [ -z "$state_json" ]; then
           extras_after: $extras_after
         }')
       ;;
+    publication)
+      title=$(blog_param title)
+      description=$(blog_param description)
+      image=$(blog_param image)
+      extras_after=$(blog_param extras_after)
+      member_addresses_json=$(blog_param member_addresses_json)
+      [ -n "$member_addresses_json" ] || member_addresses_json='[]'
+      if ! printf '%s\n' "$member_addresses_json" | jq -e 'type=="array"' >/dev/null 2>&1; then
+        blog_json_error "member_addresses_json must be a JSON array" "invalid_members"
+        exit 0
+      fi
+      state_json=$(jq -cn --arg slug "$page_slug" --arg title "$title" --arg description "$description" --arg image "$image" --arg extras_after "$extras_after" --argjson members "$member_addresses_json" '{slug:$slug,type:"publication",title:$title,description:$description,image:$image,extras_after:$extras_after,member_addresses:$members}')
+      ;;
     nip23|blog)
       title=$(blog_param title)
       content=$(blog_param content)
@@ -261,6 +274,12 @@ case "$page_type" in
     normalized=$(blog_public_ranking_normalize_state_json "$page_slug" "$state_json")
     blog_nostr_page_save_draft_state_json "$page_slug" "$page_type" "$normalized"
     validation_json=$(blog_public_ranking_validate_and_enrich_state_json "$normalized" false)
+    enriched=$normalized
+    ;;
+  publication)
+    normalized=$(blog_publication_normalize_state_json "$page_slug" "$state_json")
+    blog_nostr_page_save_draft_state_json "$page_slug" "$page_type" "$normalized"
+    validation_json=$(blog_publication_validate_state_json "$normalized" false)
     enriched=$normalized
     ;;
   nip23|blog)

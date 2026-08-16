@@ -33,7 +33,7 @@ if [ -z "$page_type" ]; then
   if [ -n "$local_mount_candidate" ] && [ -f "$local_mount_candidate" ]; then
     local_mount_type=$(blog_nostr_page_source_template_type "$local_mount_candidate" 2>/dev/null || printf 'custom')
     case "$local_mount_type" in
-      contact|public-ranking|overworld|list|icon-gallery|blog|nip23)
+      contact|public-ranking|overworld|list|icon-gallery|blog|publication|nip23)
         page_type=$local_mount_type
         ;;
       *)
@@ -98,6 +98,9 @@ if [ -n "$local_source_path" ] && [ -f "$local_source_path" ]; then
       public-ranking)
         local_state_json=$(blog_public_ranking_normalize_state_json "$page_slug" "$local_raw")
         ;;
+      publication)
+        local_state_json=$(blog_publication_normalize_state_json "$page_slug" "$local_raw")
+        ;;
       nip23|blog)
         local_state_json=$(blog_nip23_normalize_state_json "$page_slug" "$local_raw" "$page_type")
         ;;
@@ -130,6 +133,9 @@ if [ "$local_has_source" != "true" ]; then
         public-ranking)
           local_state_json=$(blog_public_ranking_normalize_state_json "$page_slug" "$local_raw")
           ;;
+        publication)
+          local_state_json=$(blog_publication_normalize_state_json "$page_slug" "$local_raw")
+          ;;
         nip23|blog)
           local_state_json=$(blog_nip23_normalize_state_json "$page_slug" "$local_raw" "$page_type")
           ;;
@@ -147,6 +153,9 @@ if [ -z "$local_state_json" ]; then
       ;;
     public-ranking)
       local_state_json=$(blog_public_ranking_default_state_json "$page_slug")
+      ;;
+    publication)
+      local_state_json=$(blog_publication_seed_state_if_empty "$page_slug" "$(blog_publication_default_state_json "$page_slug")")
       ;;
     nip23|blog)
       local_state_json=$(blog_nip23_default_state_json "$page_slug" "$page_type")
@@ -187,6 +196,15 @@ case "$page_type" in
       canonical_state_json=$local_state_json
     fi
     ;;
+  publication)
+    canonical_event_json=$(blog_nostr_publication_latest_event_json "$page_slug" 2>/dev/null || printf '')
+    if [ -n "$canonical_event_json" ]; then
+      canonical_exists=true
+      canonical_state_json=$(blog_publication_state_from_event_json "$page_slug" "$canonical_event_json")
+    else
+      canonical_state_json=$local_state_json
+    fi
+    ;;
   nip23|blog)
     canonical_event_json=$(blog_nostr_nip23_latest_event_json "$page_slug" 2>/dev/null || printf '')
     if [ -n "$canonical_event_json" ]; then
@@ -217,6 +235,9 @@ esac
 case "$page_type" in
   nip23|blog)
     canonical_state_json=$(blog_nip23_normalize_state_json "$page_slug" "$canonical_state_json" "$page_type")
+    ;;
+  publication)
+    canonical_state_json=$(blog_publication_normalize_state_json "$page_slug" "$canonical_state_json")
     ;;
   *)
     : # other page types are already normalized by source parsing
@@ -271,6 +292,13 @@ if [ "$page_type" = "blog" ]; then
   canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --arg default_tag "$default_tag" '. + {default_tag: $default_tag}' 2>/dev/null || printf '%s\n' "$canonical_state_json")
   view_state_json=$(printf '%s\n' "$view_state_json" | jq -c --arg default_tag "$default_tag" '. + {default_tag: $default_tag}' 2>/dev/null || printf '%s\n' "$view_state_json")
 fi
+if [ "$page_type" = "publication" ]; then
+  page_entry_json=$(blog_nostr_page_entry_json "$page_slug" 2>/dev/null || printf '{}')
+  seed_tag=$(printf '%s\n' "$page_entry_json" | jq -r '.seed_tag // ""' 2>/dev/null || printf '')
+  theme=$(printf '%s\n' "$page_entry_json" | jq -r '.theme // ""' 2>/dev/null || printf '')
+  canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --arg seed_tag "$seed_tag" --arg theme "$theme" '. + {seed_tag:$seed_tag,theme:$theme}')
+  view_state_json=$(printf '%s\n' "$view_state_json" | jq -c --arg seed_tag "$seed_tag" --arg theme "$theme" '. + {seed_tag:$seed_tag,theme:$theme}')
+fi
 if [ "$page_type" = "nip23" ] || [ "$page_type" = "blog" ]; then
   canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c 'del(.description, .publish_intro_to_nostr)' 2>/dev/null || printf '%s\n' "$canonical_state_json")
   view_state_json=$(printf '%s\n' "$view_state_json" | jq -c 'del(.description, .publish_intro_to_nostr)' 2>/dev/null || printf '%s\n' "$view_state_json")
@@ -323,6 +351,10 @@ if [ "$draft_exists" = "true" ]; then
       draft_sig=$(blog_public_ranking_state_signature_json "$draft_state_json")
       canonical_sig=$(blog_public_ranking_state_signature_json "$canonical_sig_state_json")
       ;;
+    publication)
+      draft_sig=$(blog_publication_state_signature_json "$draft_state_json")
+      canonical_sig=$(blog_publication_state_signature_json "$canonical_sig_state_json")
+      ;;
     nip23|blog)
       draft_sig=$(blog_nip23_state_signature_json "$draft_state_json")
       canonical_sig=$(blog_nip23_state_signature_json "$canonical_sig_state_json")
@@ -364,6 +396,9 @@ case "$page_type" in
     ranking_enriched=$(blog_public_ranking_view_json "$page_slug" "$view_state_json" "$canonical_event_json" "$include_pending" "$selected_metric" "$viewer_pubkey")
     view_state_json=$(printf '%s\n' "$view_state_json" | jq -c --argjson ranking "$ranking_enriched" '. + $ranking')
     canonical_state_json=$(printf '%s\n' "$canonical_state_json" | jq -c --argjson ranking "$(blog_public_ranking_view_json "$page_slug" "$canonical_state_json" "$canonical_event_json" false "$selected_metric" "$viewer_pubkey")" '. + $ranking')
+    ;;
+  publication)
+    validation_json=$(blog_publication_validate_state_json "$view_state_json" false)
     ;;
   nip23|blog)
     validation_json=$(blog_nip23_validate_and_enrich_state_json "$view_state_json" false)
@@ -466,6 +501,12 @@ if [ "$page_type" = "blog" ]; then
   blog_posts_json=$(blog_public_posts_catalog_for_default_tag_json "$default_tag" 2>/dev/null || printf '')
   if [ -n "$blog_posts_json" ]; then
     response_json=$(printf '%s\n' "$response_json" | jq -c --argjson posts "$blog_posts_json" '. + {bootstrap_posts: ($posts.posts // [])}' 2>/dev/null || printf '%s\n' "$response_json")
+  fi
+fi
+if [ "$page_type" = "publication" ]; then
+  publication_posts_json=$(blog_public_posts_catalog_for_publication_json "$page_slug" "$view_state_json" 2>/dev/null || printf '')
+  if [ -n "$publication_posts_json" ]; then
+    response_json=$(printf '%s\n' "$response_json" | jq -c --argjson posts "$publication_posts_json" '. + {bootstrap_posts: ($posts.posts // [])}' 2>/dev/null || printf '%s\n' "$response_json")
   fi
 fi
 blog_nostr_page_finalize_prerender_payload "$response_json" "$page_type"

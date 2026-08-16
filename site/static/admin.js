@@ -6888,6 +6888,9 @@
     if (type === 'blog') {
       return 'Blog Index (kind 30023)';
     }
+    if (type === 'publication') {
+      return 'Publication (kind 30004)';
+    }
     if (type === 'icon-gallery') {
       return 'Generic Tile Gallery (kind 30004)';
     }
@@ -6912,6 +6915,9 @@
   function nostrPageTypePillClass(pageType) {
     const type = String(pageType || '').trim().toLowerCase();
     if (type === 'blog') {
+      return 'is-type-blog';
+    }
+    if (type === 'publication') {
       return 'is-type-blog';
     }
     if (type === 'icon-gallery' || type === 'software-gallery') {
@@ -7200,6 +7206,14 @@
         html += '<div class="nostr-page-settings-blog-tools">';
         html += '<label class="nostr-page-default-tag"><select data-nostr-page-action="default-tag" data-index="' + String(idx) + '" aria-label="Default blog page tag filter">' + renderNostrPageDefaultTagOptions(defaultTag) + '</select></label>';
         html += '</div>';
+      } else if (pageType === 'publication') {
+        const seedTag = String(page.seed_tag || '').trim();
+        const theme = String(page.theme || '').trim();
+        html += '<div class="nostr-page-settings-blog-tools">';
+        html += '<label class="nostr-page-default-tag"><select data-nostr-page-action="seed-tag" data-index="' + String(idx) + '" aria-label="Initial publication tag">' + renderNostrPageDefaultTagOptions(seedTag) + '</select></label>';
+        html += '<label class="nostr-page-default-tag"><input type="text" data-nostr-page-action="theme" data-index="' + String(idx) + '" value="' + escapeAttr(theme) + '" placeholder="Site theme" aria-label="Publication theme"></label>';
+        html += '<label class="nostr-page-default-tag"><input type="text" data-nostr-page-action="owner-pubkey" data-index="' + String(idx) + '" value="' + escapeAttr(String(page.owner_pubkey || '')) + '" placeholder="Owner pubkey (optional)" aria-label="Publication owner pubkey"></label>';
+        html += '</div>';
       }
       html += '</div>';
       html += '<div class="nostr-page-nav-col">';
@@ -7209,7 +7223,7 @@
       html += '<label class="checkbox-control nostr-page-nav-check nostr-page-nav-check-only" title="Show in footer"><input type="radio" name="nostr-page-placement-' + String(idx) + '" value="footer" data-nostr-page-action="toggle-footer" data-index="' + String(idx) + '"' + (showInFooter ? ' checked' : '') + ' aria-label="Show in footer"></label>';
       html += '</div>';
       html += '<div class="nostr-page-publish-col">';
-      if (draftDiffers && publishable) {
+      if ((draftDiffers || !page.canonical_exists) && publishable) {
         html += '<button type="button" class="nostr-page-publish-btn" data-nostr-page-action="publish" data-index="' + String(idx) + '" aria-label="Publish page to Nostr">Publish...</button>';
       } else {
         html += '<span class="nostr-page-publish-empty" aria-hidden="true"></span>';
@@ -7565,8 +7579,8 @@
           : ((pickedType === 'public_ranking' || pickedType === 'ranking')
             ? 'public-ranking'
             : ((pickedType === 'overworld-game' || pickedType === 'overworld_game') ? 'overworld' : pickedType))));
-    if (normalizedType !== 'list' && normalizedType !== 'contact' && normalizedType !== 'nip23' && normalizedType !== 'blog' && normalizedType !== 'public-ranking' && normalizedType !== 'overworld') {
-      setOutput(els.outputNostrPages, 'Invalid page type. Use blog, list, public-ranking, overworld, metadata, or long-form.', 'warn');
+    if (normalizedType !== 'list' && normalizedType !== 'contact' && normalizedType !== 'nip23' && normalizedType !== 'blog' && normalizedType !== 'publication' && normalizedType !== 'public-ranking' && normalizedType !== 'overworld') {
+      setOutput(els.outputNostrPages, 'Invalid page type. Use blog, publication, list, public-ranking, overworld, metadata, or long-form.', 'warn');
       return false;
     }
     if (normalizedType === 'contact' && state.nostrPages.some(function (page) { return String(page.type || '') === 'contact'; })) {
@@ -7618,6 +7632,8 @@
     if (els.nostrPageSlugInput && String(els.nostrPageSlugInput.dataset.autoSuggest || '1') === '1') {
       if (els.nostrPageTypeSelect.value === 'blog') {
         els.nostrPageSlugInput.value = 'blog';
+      } else if (els.nostrPageTypeSelect.value === 'publication') {
+        els.nostrPageSlugInput.value = '';
       } else if (els.nostrPageTypeSelect.value === 'public-ranking') {
         els.nostrPageSlugInput.value = 'ranking';
       } else if (els.nostrPageTypeSelect.value === 'overworld') {
@@ -7634,7 +7650,7 @@
 
   function promptCreateNostrPage() {
     if (!(els.nostrPageCreateDialog instanceof HTMLDialogElement)) {
-      const pickedTypeRaw = window.prompt('Page type: blog, list, public-ranking, overworld, metadata, or long-form', 'blog');
+      const pickedTypeRaw = window.prompt('Page type: blog, publication, list, public-ranking, overworld, metadata, or long-form', 'blog');
       if (pickedTypeRaw === null) {
         return;
       }
@@ -8122,14 +8138,16 @@
       .map(function (item) {
         return {
           slug: normalizeNostrPageSlug(item && item.slug),
-          title: String((item && item.title) || '').trim()
+          title: String((item && item.title) || '').trim(),
+          type: String((item && item.type) || 'list').trim()
         };
       })
       .filter(function (item) { return !!item.slug; });
 
     let html = '';
     options.forEach(function (item) {
-      html += '<option value="' + escapeAttr(item.slug) + '">' + escapeHtml(item.title || item.slug) + '</option>';
+      const suffix = item.type === 'publication' ? ' (Publication)' : '';
+      html += '<option value="' + escapeAttr(item.slug) + '">' + escapeHtml((item.title || item.slug) + suffix) + '</option>';
     });
     html += '<option value="__new__">New list...</option>';
     els.postAddToListSelect.innerHTML = html;
@@ -9712,8 +9730,8 @@
           return;
         }
         const action = String(target.getAttribute('data-nostr-page-action') || '');
-        if (action === 'default-tag') {
-          if (!(target instanceof HTMLSelectElement)) {
+        if (action === 'default-tag' || action === 'seed-tag' || action === 'theme' || action === 'owner-pubkey') {
+          if (!(target instanceof HTMLSelectElement) && !(target instanceof HTMLInputElement)) {
             return;
           }
           const idx = Number(target.getAttribute('data-index'));
@@ -9722,7 +9740,8 @@
           }
           const before = state.nostrPages.slice();
           const next = state.nostrPages.slice();
-          next[idx] = Object.assign({}, next[idx], { default_tag: String(target.value || '').trim() });
+          const field = action === 'default-tag' ? 'default_tag' : (action === 'seed-tag' ? 'seed_tag' : (action === 'owner-pubkey' ? 'owner_pubkey' : 'theme'));
+          next[idx] = Object.assign({}, next[idx], { [field]: String(target.value || '').trim() });
           state.nostrPages = next;
           saveNostrPagesConfig().catch(function (err) {
             state.nostrPages = before;

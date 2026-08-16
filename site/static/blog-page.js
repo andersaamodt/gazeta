@@ -30,6 +30,7 @@
   }
 
   var slug = String(root.getAttribute('data-blog-slug') || 'blog').trim() || 'blog';
+  var pageType = String(root.getAttribute('data-page-type') || 'blog').trim().toLowerCase() || 'blog';
   var els = {
     title: document.getElementById('blog-page-title'),
     description: document.getElementById('blog-page-description'),
@@ -327,8 +328,13 @@
     return {
       slug: String(src.slug || slug),
       title: String(src.title || fallbackPageTitle()),
+      description: String(src.description || ''),
+      image: String(src.image || ''),
       content: String(src.content || ''),
       default_tag: String(src.default_tag || '').trim(),
+      seed_tag: String(src.seed_tag || '').trim(),
+      theme: String(src.theme || '').trim(),
+      member_addresses: Array.isArray(src.member_addresses) ? src.member_addresses.slice() : [],
       extras_after: String(src.extras_after || '')
     };
   }
@@ -336,6 +342,19 @@
   function filteredPostsForPageDefaults(posts, payload) {
     var list = Array.isArray(posts) ? posts.slice() : [];
     var page = payload && payload.state ? normalizePageState(payload.state) : null;
+    if (pageType === 'publication') {
+      var members = new Set(page && page.member_addresses || []);
+      if (members.size) {
+        var postsByAddress = {};
+        list.forEach(function (post) {
+          postsByAddress[String(post && post.nostr_address || '').trim().toLowerCase()] = post;
+        });
+        return Array.from(members).map(function (address) {
+          return postsByAddress[String(address || '').trim().toLowerCase()];
+        }).filter(Boolean);
+      }
+      return [];
+    }
     var defaultTag = String(page && page.default_tag || '').trim().toLowerCase();
     if (!defaultTag) {
       return list;
@@ -349,7 +368,7 @@
 
   function payloadHasDefaultPostTag(payload) {
     var page = payload && payload.state ? normalizePageState(payload.state) : null;
-    return !!String(page && page.default_tag || '').trim();
+    return !!String(page && (pageType === 'publication' ? page.seed_tag : page.default_tag) || '').trim();
   }
 
   function postsHaveRenderedHtml(posts) {
@@ -388,6 +407,15 @@
 
   function renderHead() {
     var page = getRenderState();
+    var publicationHead = root.querySelector('.list-page-head');
+    if (pageType === 'publication' && publicationHead instanceof HTMLElement) {
+      var imageUrl = String(page.image || '').trim();
+      var validImage = /^https?:\/\//i.test(imageUrl) || imageUrl.charAt(0) === '/';
+      publicationHead.classList.toggle('publication-head-with-image', validImage);
+      publicationHead.style.backgroundImage = validImage
+        ? 'linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,.5)), url("' + imageUrl.replace(/["\\\n\r]/g, '') + '")'
+        : '';
+    }
     window.__wizardryRenderManagedPageHeadForPage({
       isAdmin: false,
       payload: state.payload,
@@ -400,9 +428,9 @@
       },
       descriptionStateOptions: {
         format: 'html',
-        text: '',
-        html: '',
-        hidden: true
+        text: pageType === 'publication' ? page.description : '',
+        html: pageType === 'publication' ? markdownBlock(page.description) : '',
+        hidden: pageType !== 'publication' || !page.description
       },
       navbarTitleOptions: {
         renderState: page,
@@ -790,21 +818,96 @@
       return;
     }
     var page = getRenderState();
-    var selectedTag = String(page.default_tag || '').trim();
+    var selectedTag = String(pageType === 'publication' ? page.seed_tag : page.default_tag || '').trim();
     var tags = pageSettingsTags();
     var options = '<option value="">All posts</option>' + tags.map(function (tag) {
       return '<option value="' + escapeHtml(tag) + '"' + (selectedTag === tag ? ' selected' : '') + '>' + escapeHtml(tag) + '</option>';
     }).join('');
-    els.admin.innerHTML = '' +
+    if (pageType === 'publication') {
+      els.admin.innerHTML = '' +
+        '<div id="blog-page-settings-panel" class="blog-page-settings-panel' + (state.pageSettingsOpen ? ' is-open' : '') + '">' +
+          '<label><span>Title</span><input type="text" data-publication-setting="title" value="' + escapeHtml(page.title) + '"></label>' +
+          '<label><span>Description</span><textarea data-publication-setting="description">' + escapeHtml(page.description) + '</textarea></label>' +
+          '<label><span>Image URL</span><input type="url" data-publication-setting="image" value="' + escapeHtml(page.image) + '"></label>' +
+          '<label><span>Homepage content (local Markdown)</span><textarea data-publication-setting="extras_after">' + escapeHtml(page.extras_after) + '</textarea></label>' +
+          '<label><span>Posts (ordered Nostr addresses)</span><textarea data-publication-setting="member_addresses">' + escapeHtml(page.member_addresses.join('\n')) + '</textarea></label>' +
+          '<div class="blog-page-settings-actions"><button type="button" data-blog-action="save-publication">Save draft</button><button type="button" data-blog-action="publish-publication">Publish…</button></div>' +
+        '</div>';
+    } else {
+      els.admin.innerHTML = '' +
       '<div id="blog-page-settings-panel" class="blog-page-settings-panel' + (state.pageSettingsOpen ? ' is-open' : '') + '">' +
         '<label><span>Show posts</span><select data-blog-setting="default-tag">' + options + '</select></label>' +
       '</div>';
+    }
     if (state.pageSettingsOpen) {
       els.admin.hidden = false;
       els.admin.classList.add('is-open');
     } else {
       els.admin.hidden = true;
       els.admin.classList.remove('is-open');
+    }
+  }
+
+  function publicationDraftFromSettings() {
+    var current = getRenderState();
+    if (!els.admin) {
+      return current;
+    }
+    ['title', 'description', 'image', 'extras_after'].forEach(function (key) {
+      var field = els.admin.querySelector('[data-publication-setting="' + key + '"]');
+      if (field) {
+        current[key] = String(field.value || '').trim();
+      }
+    });
+    var membersField = els.admin.querySelector('[data-publication-setting="member_addresses"]');
+    if (membersField) {
+      current.member_addresses = String(membersField.value || '').split(/\r?\n/).map(function (address) {
+        return address.trim().toLowerCase();
+      }).filter(Boolean);
+    }
+    return current;
+  }
+
+  function savePublicationDraft() {
+    if (pageType !== 'publication' || !isAdmin()) {
+      return Promise.resolve(false);
+    }
+    var draft = publicationDraftFromSettings();
+    var auth = window.__wizardryAuthPayload();
+    return apiPost('/cgi/blog-save-nostr-page-draft', {
+      page_slug: slug,
+      state_json: JSON.stringify(draft),
+      session_token: auth.session_token,
+      csrf_token: auth.csrf_token
+    }).then(function (data) {
+      state.payload = Object.assign({}, state.payload || {}, data || {}, {
+        state: data.state || draft,
+        draft_exists: true,
+        draft_differs: true
+      });
+      renderAll();
+      return true;
+    }).catch(function (err) {
+      window.alert(err && err.message ? err.message : 'Could not save publication draft');
+      return false;
+    });
+  }
+
+  async function publishPublication() {
+    if (!await savePublicationDraft()) {
+      return;
+    }
+    var ensure = window.__wizardryEnsureNostrPublishDialog;
+    if (typeof ensure !== 'function' || !await ensure()) {
+      window.alert('Publish dialog unavailable');
+      return;
+    }
+    var published = await window.blogNostrPublishDialog.open({
+      pageSlug: slug,
+      pageLabel: String(getRenderState().title || slug).trim()
+    });
+    if (published) {
+      await loadPageState({ deferRender: false });
     }
   }
 
@@ -4268,7 +4371,7 @@
   function isExpectedPayload(payload) {
     var payloadType = String(payload && payload.page_type || '').trim().toLowerCase();
     var payloadSlug = String(payload && payload.slug || '').trim();
-    return payloadType === 'blog' && !!payloadSlug && managedSlugsEquivalent(payloadSlug, slug);
+    return payloadType === pageType && !!payloadSlug && managedSlugsEquivalent(payloadSlug, slug);
   }
 
   function readPrerenderPostsBootstrap(payload) {
@@ -4296,7 +4399,7 @@
     }
     postsCatalogReady = true;
     state.posts = prerenderedPosts;
-    if (!payloadHasDefaultPostTag(payload)) {
+    if (pageType !== 'publication' && !payloadHasDefaultPostTag(payload)) {
       writeCache(prerenderedPosts);
     }
     return true;
@@ -4427,7 +4530,7 @@
     }
     function applyFetchedPageState(data) {
       var pageType = String(data && data.page_type || '').trim().toLowerCase();
-      if (pageType && pageType !== 'blog') {
+      if (pageType && pageType !== String(root.getAttribute('data-page-type') || 'blog').trim().toLowerCase()) {
         maybeRepairRoute('blog-template-page-type-mismatch:' + pageType);
         return;
       }
@@ -4735,6 +4838,10 @@
       event.preventDefault();
       if (action.getAttribute('data-blog-action') === 'toggle-page-settings') {
         setPageSettingsOpen(!state.pageSettingsOpen);
+      } else if (action.getAttribute('data-blog-action') === 'save-publication') {
+        savePublicationDraft();
+      } else if (action.getAttribute('data-blog-action') === 'publish-publication') {
+        publishPublication();
       }
     }
   });

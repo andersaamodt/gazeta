@@ -31,7 +31,7 @@ mkdir -p "$(dirname "$input_signature_file")"
 
 is_prerender_type() {
   case "$1" in
-    list|icon-gallery|software-gallery|nip23|blog|contact|public-ranking)
+    list|icon-gallery|software-gallery|nip23|blog|publication|contact|public-ranking)
       return 0
       ;;
   esac
@@ -88,7 +88,7 @@ render_payload_json() {
   if ! printf '%s\n' "$payload" | jq -e --arg slug "$slug" '
     (.success == true) and
     ((.slug // "") | tostring == $slug) and
-    ((.page_type // "") | tostring | ascii_downcase | IN("list", "icon-gallery", "software-gallery", "nip23", "blog", "contact", "public-ranking"))
+    ((.page_type // "") | tostring | ascii_downcase | IN("list", "icon-gallery", "software-gallery", "nip23", "blog", "publication", "contact", "public-ranking"))
   ' >/dev/null 2>&1; then
     return 1
   fi
@@ -127,6 +127,16 @@ fallback_payload_json() {
     nip23|blog)
       state_json=$(blog_nostr_page_load_draft_state_json "$slug" "$page_type" 2>/dev/null || blog_nip23_default_state_json "$slug" "$page_type")
       validation_json=$(blog_nip23_validate_and_enrich_state_json "$state_json" false 2>/dev/null || printf '%s\n' "$validation_json")
+      ;;
+    publication)
+      canonical_event=$(blog_nostr_publication_latest_event_json "$slug" 2>/dev/null || printf '')
+      if [ -n "$canonical_event" ]; then
+        state_json=$(blog_publication_state_from_event_json "$slug" "$canonical_event")
+      else
+        state_json=$(blog_nostr_page_load_draft_state_json "$slug" "$page_type" 2>/dev/null || printf '')
+      fi
+      [ -n "$state_json" ] || state_json=$(blog_publication_seed_state_if_empty "$slug" "$(blog_publication_default_state_json "$slug")")
+      validation_json=$(blog_publication_validate_state_json "$state_json" false)
       ;;
     list|icon-gallery|software-gallery)
       state_json=$(blog_nostr_page_load_draft_state_json "$slug" "$page_type" 2>/dev/null || blog_list_default_state_json "$slug")
