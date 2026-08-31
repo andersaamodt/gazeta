@@ -16,6 +16,7 @@ gazeta is a single-author Nostr blog and self-hosted publishing console for wiza
 - **Archive index**: Month-grouped archive view with per-month counts
 - **Post context UX**: Canonical post header metadata, tags, and automatic older/newer links
 - **Nostr-first auth**: Nostr challenge login with optional delegated device sessions and optional SSH link
+- **Shared Book Club reading list**: `/reading-list` can follow one configured Book Club pubkey, render its NIP-51 `d=reading-list` set from Canon Work events, and count Work reactions as hype
 - **Video chat widget**: Self-contained Shadow-DOM WebRTC widget with Janus videoroom support, data-attribute auto-mount, manual init API, and iframe embed route
 
 ## Post Model
@@ -137,6 +138,11 @@ visibility: "public"  # Change from "draft"
 
 ### Ownership Model
 
+- The `reading-list` managed list is a read projection of Book Club's NIP-51
+  kind `30004` event. Its `a` tags reference kind `30078` Canon Works; Gazeta
+  mirrors and hydrates those Works and sends votes as kind `7` Work reactions.
+  The page's Book Club owner pubkey selects the one replaceable list identity.
+  Pairwise/global Canon scores are never used as list points.
 - Canonical authored content lives under `.sitedata/<site>/content/`, not in the template tree.
 - Public page source lives under `.sitedata/<site>/content/pages/`.
 - `site/pages/*.md` mounts and `site/pages/posts` are generated projections from that canonical content directory; the repo checkout is template code, not app state.

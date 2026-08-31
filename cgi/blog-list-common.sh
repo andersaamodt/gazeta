@@ -150,7 +150,12 @@ blog_list_normalize_state_json() {
             post_url: (flex_post_url(.))
           }
       ];
-    (
+    ([.work_coordinates[]?, (.tags[]? | select(type=="array" and length>=2 and .[0]=="a") | .[1])]
+      | map((. // "") | tostring)
+      | map(select(test("^30078:[0-9a-f]{64}:dev\\.wizardry\\.canon:work:[^[:space:]]+$")))
+      | unique
+    ) as $work_coordinates
+    | (
       if (.elements | type) == "array" then
         .elements
       elif (.entries | type) == "array" then
@@ -232,6 +237,7 @@ blog_list_normalize_state_json() {
         extras_before: ((.extras_before // (if ((.extras // null) | type) == "object" then .extras.before else empty end) // "") | tostring),
         extras_before_format: norm_extra_format(.extras_before_format // (if ((.extras // null) | type) == "object" then (.extras.before_format // .extras.before_type) else empty end) // "markdown"),
         extras_after: ((.extras_after // (if ((.extras // null) | type) == "object" then .extras.after else empty end) // "") | tostring),
+        work_coordinates: $work_coordinates,
         elements: $elements,
         entries: $elements
       }
@@ -248,6 +254,7 @@ blog_list_normalize_state_json() {
           (if (.group_by | length) > 0 then ["group_by", .group_by] else empty end),
           (if (.view_mode // "list") != "list" then ["view_mode", .view_mode] else empty end)
         ]
+        + (.work_coordinates | map(["a", .]))
         + (.elements | map(
             ["entry", (.event_id // ""), (.relay_hint // ""), (.marker // ""), (.date // ""), ((.depth // 0) | tostring), (.markdown // ""), (.image_url // ""), (.description // ""), (.post_url // "")]
           ))
@@ -394,7 +401,16 @@ blog_list_vote_context_for_slug() {
       *) kind=30004 ;;
     esac
   fi
-  pubkey=$(blog_nostr_site_pubkey 2>/dev/null || printf '')
+  pubkey=''
+  if [ "$slug" = "reading-list" ]; then
+    reading_list_event=$(blog_nostr_list_latest_event_json "$slug" 30004 2>/dev/null || printf '')
+    if [ -n "$reading_list_event" ]; then
+      pubkey=$(printf '%s\n' "$reading_list_event" | jq -r '.pubkey // ""' 2>/dev/null || printf '')
+    fi
+  fi
+  if [ -z "$pubkey" ]; then
+    pubkey=$(blog_nostr_site_pubkey 2>/dev/null || printf '')
+  fi
   if [ -n "$pubkey" ]; then
     printf '%s:%s:%s\n' "$kind" "$pubkey" "$slug"
   else
@@ -422,6 +438,18 @@ blog_list_nostr_vote_events_json() {
     printf '[]\n'
     return 0
   }
+  work_vote_targets='{}'
+  if [ "$slug" = "reading-list" ]; then
+    reading_list_event=$(blog_nostr_list_latest_event_json "$slug" 30004 2>/dev/null || printf '')
+    if [ -n "$reading_list_event" ]; then
+      work_elements=$(blog_list_book_club_work_elements_json "$reading_list_event")
+      work_vote_targets=$(printf '%s\n' "$work_elements" | jq -c 'reduce .[]? as $entry ({};
+        ($entry.entry_id // $entry.work_coordinate // "") as $entry_id
+        | (if (($entry.event_id // "") | length) > 0 then .[$entry.event_id] = $entry_id else . end)
+        | (if (($entry.work_coordinate // "") | length) > 0 then .[$entry.work_coordinate] = $entry_id else . end)
+      )' 2>/dev/null || printf '{}')
+    fi
+  fi
   tmp=$(mktemp "${TMPDIR:-/tmp}/blog-list-vote-events.XXXXXX")
   find "$blog_nostr_events_dir" -type f \( -path '*/7/*.json' -o -path '*/17/*.json' \) 2>/dev/null | while IFS= read -r file; do
     [ -f "$file" ] || continue
@@ -432,7 +460,7 @@ blog_list_nostr_vote_events_json() {
     printf '[]\n'
     return 0
   fi
-  jq -cs --arg context "$context" --argjson cooldown "$(blog_list_vote_cooldown_seconds)" '
+  jq -cs --arg context "$context" --argjson work_vote_targets "$work_vote_targets" --argjson cooldown "$(blog_list_vote_cooldown_seconds)" '
     def tagv($k): ([.tags[]? | select(type=="array" and length>=2 and .[0]==$k) | .[1]] | first // "");
     def vote_value:
       ((.content // "") | tostring | gsub("^\\s+|\\s+$"; "")) as $c
@@ -440,8 +468,12 @@ blog_list_nostr_vote_events_json() {
     [ .[]?
       | select(type=="object" and ((.kind == 7) or (.kind == 17)) and ((.tags // []) | type) == "array")
       | . as $ev
-      | select((tagv("context") == $context) or (tagv("list_context") == $context))
-      | (tagv("entry") // tagv("list_entry")) as $entry_id
+      | (tagv("e")) as $target_event_id
+      | (tagv("a")) as $target_coordinate
+      | ((tagv("context") == $context) or (tagv("list_context") == $context)) as $has_list_context
+      | ($work_vote_targets[$target_event_id] // $work_vote_targets[$target_coordinate] // "") as $work_entry_id
+      | select($has_list_context or ($work_entry_id | length) > 0)
+      | (if (tagv("entry") | length) > 0 then tagv("entry") elif (tagv("list_entry") | length) > 0 then tagv("list_entry") else $work_entry_id end) as $entry_id
       | (vote_value) as $value
       | select(($entry_id | length) > 0 and ($value != null))
       | (.created_at // 0 | tonumber? // 0) as $created_at
@@ -548,7 +580,9 @@ blog_list_merge_public_activity_json() {
           viewer_can_change_vote: viewer_can_change_vote_for($id),
           vote_cooldown_seconds: $vote_cooldown_seconds
         };
-        (($validation.elements // []) | to_entries | map(.value + {_list_entry_id: ("entry-" + (.key | tostring))})) as $base
+        (($validation.elements // []) | to_entries | map(
+          .value + {_list_entry_id: ((.value.entry_id // .value.work_coordinate // "") as $stable | if ($stable | length) > 0 then $stable else ("entry-" + (.key | tostring)) end)}
+        )) as $base
       | ($submissions | map({
           type: "entry",
           event_id: "",
@@ -590,7 +624,83 @@ blog_list_state_from_event_json() {
     return 0
   fi
   normalized=$(printf '%s\n' "$event_json" | jq -c --arg slug "$slug" '{ slug: $slug, content: (.content // ""), tags: (.tags // []) }')
-  blog_list_normalize_state_json "$slug" "$normalized"
+  normalized=$(blog_list_normalize_state_json "$slug" "$normalized")
+  if [ "$slug" = "reading-list" ]; then
+    work_elements=$(blog_list_book_club_work_elements_json "$event_json")
+    normalized=$(printf '%s\n' "$normalized" | jq -c --argjson work_elements "$work_elements" '
+      if ($work_elements | length) > 0 then
+        .elements = $work_elements
+        | .entries = $work_elements
+        | .work_coordinates = ([$work_elements[]?.work_coordinate] | unique)
+        | .tags = ([.tags[]? | select(.[0] != "entry" and .[0] != "a")] + (.work_coordinates | map(["a", .])))
+        | .group_by = ""
+        | .allow_signed_in_votes = true
+      else . end
+    ')
+  fi
+  printf '%s\n' "$normalized"
+}
+
+blog_list_book_club_work_elements_json() {
+  event_json=${1-}
+  [ -n "$event_json" ] || {
+    printf '[]\n'
+    return 0
+  }
+  coordinates_tmp=$(mktemp "${TMPDIR:-/tmp}/gazeta-reading-list-coordinates.XXXXXX")
+  elements_tmp=$(mktemp "${TMPDIR:-/tmp}/gazeta-reading-list-elements.XXXXXX")
+  printf '%s\n' "$event_json" | jq -r '.tags[]? | select(type=="array" and length>=2 and .[0]=="a") | .[1]' > "$coordinates_tmp" 2>/dev/null || true
+  : > "$elements_tmp"
+  while IFS= read -r coordinate || [ -n "$coordinate" ]; do
+    case "$coordinate" in
+      30078:*:dev.wizardry.canon:work:*) ;;
+      *) continue ;;
+    esac
+    coordinate_rest=${coordinate#30078:}
+    work_pubkey=${coordinate_rest%%:*}
+    work_identifier=${coordinate_rest#*:}
+    if ! printf '%s' "$work_pubkey" | grep -Eq '^[0-9a-f]{64}$'; then
+      continue
+    fi
+    work_event=$(blog_nostr_latest_event_by_kind_d 30078 "$work_identifier" "$work_pubkey" 2>/dev/null || printf '')
+    work_id=${work_identifier#dev.wizardry.canon:work:}
+    if [ -n "$work_event" ]; then
+      printf '%s\n' "$work_event" | jq -c --arg coordinate "$coordinate" --arg fallback_id "$work_id" '
+        ((.content // "{}") | fromjson? // {}) as $work
+        | ($work.title // $fallback_id | tostring) as $title
+        | (($work.creators // []) | if type=="array" then map(tostring) else [] end) as $creators
+        | {
+            type: "entry",
+            entry_id: $coordinate,
+            work_coordinate: $coordinate,
+            work_id: ($work.id // $fallback_id | tostring),
+            work_type: ($work.workType // "Book" | tostring),
+            work_creators: $creators,
+            event_id: (.id // ""),
+            relay_hint: "",
+            marker: ($work.category // "" | tostring),
+            date: ($work.publicationDate // "" | tostring),
+            depth: 0,
+            markdown: ($title + (if ($creators | length) > 0 then " by " + ($creators | join(", ")) else "" end)),
+            image_url: "",
+            description: ($work.description // "" | tostring),
+            post_url: ""
+          }
+      ' >> "$elements_tmp" 2>/dev/null || true
+    else
+      jq -cn --arg coordinate "$coordinate" --arg work_id "$work_id" '{
+        type:"entry", entry_id:$coordinate, work_coordinate:$coordinate, work_id:$work_id,
+        work_type:"Book", work_creators:[], event_id:"", relay_hint:"", marker:"", date:"",
+        depth:0, markdown:$work_id, image_url:"", description:"", post_url:""
+      }' >> "$elements_tmp"
+    fi
+  done < "$coordinates_tmp"
+  if [ -s "$elements_tmp" ]; then
+    jq -s '.' "$elements_tmp" 2>/dev/null || printf '[]\n'
+  else
+    printf '[]\n'
+  fi
+  rm -f "$coordinates_tmp" "$elements_tmp"
 }
 
 blog_list_load_canonical_state_json() {
@@ -705,6 +815,11 @@ blog_list_validate_and_enrich_state_json() {
     image_url=$(printf '%s\n' "$element" | jq -r '.image_url // .[7] // ""' 2>/dev/null || printf '')
     tile_description=$(printf '%s\n' "$element" | jq -r '.description // .[8] // ""' 2>/dev/null || printf '')
     explicit_post_url=$(printf '%s\n' "$element" | jq -r '.post_url // .[9] // ""' 2>/dev/null || printf '')
+    entry_id=$(printf '%s\n' "$element" | jq -r '.entry_id // .work_coordinate // ""' 2>/dev/null || printf '')
+    work_coordinate=$(printf '%s\n' "$element" | jq -r '.work_coordinate // ""' 2>/dev/null || printf '')
+    work_id=$(printf '%s\n' "$element" | jq -r '.work_id // ""' 2>/dev/null || printf '')
+    work_type=$(printf '%s\n' "$element" | jq -r '.work_type // ""' 2>/dev/null || printf '')
+    work_creators=$(printf '%s\n' "$element" | jq -c '.work_creators // []' 2>/dev/null || printf '[]')
     allow_votes=$(printf '%s\n' "$state_json" | jq -r '.allow_signed_in_votes // false | if . then "true" else "false" end' 2>/dev/null || printf 'false')
 
     resolved=false
@@ -816,6 +931,11 @@ blog_list_validate_and_enrich_state_json() {
       --arg post_url "$post_url" \
       --arg post_created_at "$post_created_at" \
       --arg post_list_date "$post_list_date" \
+      --arg entry_id "$entry_id" \
+      --arg work_coordinate "$work_coordinate" \
+      --arg work_id "$work_id" \
+      --arg work_type "$work_type" \
+      --argjson work_creators "$work_creators" \
       --arg vote_target_kind "$vote_target_kind" \
       --arg vote_target_ref "$vote_target_ref" \
       --argjson resolved "$( [ "$resolved" = "true" ] && printf true || printf false )" \
@@ -834,6 +954,11 @@ blog_list_validate_and_enrich_state_json() {
         post_url: $post_url,
         post_created_at: $post_created_at,
         post_list_date: $post_list_date,
+        entry_id: $entry_id,
+        work_coordinate: $work_coordinate,
+        work_id: $work_id,
+        work_type: $work_type,
+        work_creators: $work_creators,
         vote_target_kind: $vote_target_kind,
         vote_target_ref: $vote_target_ref
       }' | tee -a "$elements_tmp" >> "$entries_tmp"

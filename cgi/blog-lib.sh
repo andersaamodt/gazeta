@@ -5856,6 +5856,10 @@ blog_nostr_list_latest_event_json() {
   kind_filter=${2-auto}
   [ -n "$slug" ] || return 1
   [ -d "$blog_nostr_events_dir" ] || return 1
+  owner_pubkey=''
+  if command -v blog_nostr_page_entry_json >/dev/null 2>&1; then
+    owner_pubkey=$(blog_nostr_page_entry_json "$slug" 2>/dev/null | jq -r '.owner_pubkey // ""' 2>/dev/null || printf '')
+  fi
   case "$kind_filter" in
     30004|30267|auto) ;;
     *) kind_filter=auto ;;
@@ -5880,9 +5884,10 @@ blog_nostr_list_latest_event_json() {
   else
     kind_jq=".kind==$kind_filter"
   fi
-  out=$(jq -cs --arg slug "$slug" '
+  out=$(jq -cs --arg slug "$slug" --arg owner_pubkey "$owner_pubkey" '
     [ .[]
       | select(type=="object" and (.kind|type)=="number" and '"$kind_jq"' and (.tags|type)=="array")
+      | select(($owner_pubkey | length) == 0 or (.pubkey // "") == $owner_pubkey)
       | . as $ev
       | (([.tags[]? | select(type=="array" and length>=2 and .[0]=="d") | .[1]] | first) // "") as $d
       | select($d == $slug)
@@ -5946,7 +5951,7 @@ blog_nostr_mirror_posts() {
   relays_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-relays.XXXXXX")
   blog_nostr_list_file_lines "$blog_nostr_authors_file" > "$authors_tmp"
   if [ -f "$blog_state_dir/nostr-pages.json" ]; then
-    jq -r '.pages[]? | select((.type // "") == "publication") | (.owner_pubkey // .nostr_pubkey // "") | ascii_downcase | select(test("^[0-9a-f]{64}$"))' "$blog_state_dir/nostr-pages.json" 2>/dev/null >> "$authors_tmp" || true
+    jq -r '.pages[]? | (.owner_pubkey // .nostr_pubkey // "") | ascii_downcase | select(test("^[0-9a-f]{64}$"))' "$blog_state_dir/nostr-pages.json" 2>/dev/null >> "$authors_tmp" || true
     sort -u -o "$authors_tmp" "$authors_tmp"
   fi
   blog_nostr_list_file_lines "$blog_nostr_relays_file" > "$relays_tmp"
@@ -5959,10 +5964,10 @@ blog_nostr_mirror_posts() {
   out_longform_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-mirror-posts-longform.XXXXXX")
   out_blog_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-nostr-mirror-posts-blog.XXXXXX")
 
-  # Include addressable articles and NIP-51 publication/list definitions from
-  # the configured authors. The derived post index ignores kind 30004, while
-  # managed publication resolution consumes those stored events directly.
-  set -- nak req -k 30023 -k 30004
+  # Include addressable articles, NIP-51 lists, Canon Works, and reactions from
+  # configured page owners. Reading-list rendering resolves kind 30004 `a`
+  # references through the mirrored Work events.
+  set -- nak req -k 7 -k 30023 -k 30004 -k 30078
   while IFS= read -r author || [ -n "$author" ]; do
     [ -n "$author" ] || continue
     set -- "$@" -a "$author"

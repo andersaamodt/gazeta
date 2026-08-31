@@ -2101,6 +2101,11 @@
     var postUrl = String(entry && entry.post_url || '').trim();
     if (/^[0-9a-f]{64}$/.test(eventId)) {
       tags.push(relayHint ? ['e', eventId, relayHint] : ['e', eventId]);
+      var workCoordinate = String(entry && entry.work_coordinate || '').trim();
+      if (/^30078:[0-9a-f]{64}:dev\.wizardry\.canon:work:[^\s]+$/.test(workCoordinate)) {
+        tags.push(['a', workCoordinate]);
+        tags.push(['k', '30078']);
+      }
       return { kind: 7, tags: tags };
     }
     if (postUrl) {

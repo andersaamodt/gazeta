@@ -7214,6 +7214,10 @@
         html += '<label class="nostr-page-default-tag"><input type="text" data-nostr-page-action="theme" data-index="' + String(idx) + '" value="' + escapeAttr(theme) + '" placeholder="Site theme" aria-label="Publication theme"></label>';
         html += '<label class="nostr-page-default-tag"><input type="text" data-nostr-page-action="owner-pubkey" data-index="' + String(idx) + '" value="' + escapeAttr(String(page.owner_pubkey || '')) + '" placeholder="Owner pubkey (optional)" aria-label="Publication owner pubkey"></label>';
         html += '</div>';
+      } else if (pageType === 'list' && slug === 'reading-list') {
+        html += '<div class="nostr-page-settings-blog-tools">';
+        html += '<label class="nostr-page-default-tag"><input type="text" data-nostr-page-action="owner-pubkey" data-index="' + String(idx) + '" value="' + escapeAttr(String(page.owner_pubkey || '')) + '" placeholder="Book Club pubkey" aria-label="Book Club reading-list owner pubkey"></label>';
+        html += '</div>';
       }
       html += '</div>';
       html += '<div class="nostr-page-nav-col">';
