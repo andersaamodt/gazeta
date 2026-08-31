@@ -45,6 +45,7 @@
       nostr_login: true,
       nostr_bridge: true,
       nostr_posts: true,
+      reading_list: true,
       zaps: true,
       commerce: true,
       btcpay: true,
@@ -221,6 +222,7 @@
     pluginNostrLogin: document.getElementById('plugin-nostr-login'),
     pluginNostrBridge: document.getElementById('plugin-nostr-bridge'),
     pluginNostrPosts: document.getElementById('plugin-nostr-posts'),
+    pluginReadingList: document.getElementById('plugin-reading-list'),
     pluginZaps: document.getElementById('plugin-zaps'),
     pluginCommerce: document.getElementById('plugin-commerce'),
     pluginBtcpay: document.getElementById('plugin-btcpay'),
@@ -3819,6 +3821,7 @@
       nostr_login: true,
       nostr_bridge: src.nostr_bridge !== false,
       nostr_posts: src.nostr_posts !== false,
+      reading_list: src.reading_list !== false,
       zaps: src.zaps !== false,
       commerce: src.commerce !== false,
       btcpay: src.btcpay !== false,
@@ -3957,6 +3960,7 @@
     if (els.pluginNostrLogin) els.pluginNostrLogin.checked = !!p.nostr_login;
     if (els.pluginNostrBridge) els.pluginNostrBridge.checked = !!p.nostr_bridge;
     if (els.pluginNostrPosts) els.pluginNostrPosts.checked = !!p.nostr_posts;
+    if (els.pluginReadingList) els.pluginReadingList.checked = !!p.reading_list;
     if (els.pluginZaps) els.pluginZaps.checked = !!p.zaps;
     if (els.pluginCommerce) els.pluginCommerce.checked = !!p.commerce;
     if (els.pluginBtcpay) els.pluginBtcpay.checked = !!p.btcpay;
@@ -3967,7 +3971,7 @@
     if (els.pluginNostrSupport) els.pluginNostrSupport.disabled = true;
     if (els.pluginNostrLogin) els.pluginNostrLogin.disabled = true;
     const nostrSupportOn = !!p.nostr_support;
-    [els.pluginNostrBridge, els.pluginNostrPosts, els.pluginZaps].forEach(function (input) {
+    [els.pluginNostrBridge, els.pluginNostrPosts, els.pluginReadingList, els.pluginZaps].forEach(function (input) {
       if (!(input instanceof HTMLInputElement)) {
         return;
       }
@@ -4034,6 +4038,7 @@
       nostr_login: !!(els.pluginNostrLogin && els.pluginNostrLogin.checked),
       nostr_bridge: !!(els.pluginNostrBridge && els.pluginNostrBridge.checked),
       nostr_posts: !!(els.pluginNostrPosts && els.pluginNostrPosts.checked),
+      reading_list: !!(els.pluginReadingList && els.pluginReadingList.checked),
       zaps: !!(els.pluginZaps && els.pluginZaps.checked),
       commerce: !!(els.pluginCommerce && els.pluginCommerce.checked),
       btcpay: !!(els.pluginBtcpay && els.pluginBtcpay.checked),
@@ -4055,6 +4060,7 @@
         plugin_nostr_login: plugins.nostr_login ? 'true' : 'false',
         plugin_nostr_bridge: plugins.nostr_bridge ? 'true' : 'false',
         plugin_nostr_posts: plugins.nostr_posts ? 'true' : 'false',
+        plugin_reading_list: plugins.reading_list ? 'true' : 'false',
         plugin_zaps: plugins.zaps ? 'true' : 'false',
         plugin_commerce: plugins.commerce ? 'true' : 'false',
         plugin_btcpay: plugins.btcpay ? 'true' : 'false',
@@ -8990,6 +8996,7 @@
       els.pluginNostrLogin,
       els.pluginNostrBridge,
       els.pluginNostrPosts,
+      els.pluginReadingList,
       els.pluginZaps,
       els.pluginCommerce,
       els.pluginBtcpay,

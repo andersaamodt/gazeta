@@ -16,6 +16,10 @@ list_slug=$(blog_list_normalize_slug "$(blog_param list_slug)")
 if [ -z "$list_slug" ]; then
   list_slug="list"
 fi
+if [ "$list_slug" = "reading-list" ] && ! blog_plugin_enabled "reading_list"; then
+  blog_json_error "Reading List plugin is disabled for this site" "plugin_disabled"
+  exit 0
+fi
 page_type=$(blog_nostr_page_type_for_slug "$list_slug" 2>/dev/null || printf 'list')
 case "$page_type" in
   list|icon-gallery|software-gallery) ;;

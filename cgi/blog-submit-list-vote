@@ -24,6 +24,10 @@ if [ -z "$page_slug" ]; then
   blog_json_error "page_slug is required" "missing_page_slug"
   exit 0
 fi
+if [ "$page_slug" = "reading-list" ] && ! blog_plugin_enabled "reading_list"; then
+  blog_json_error "Reading List plugin is disabled for this site" "plugin_disabled"
+  exit 0
+fi
 
 page_type=$(blog_nostr_page_type_for_slug "$page_slug" 2>/dev/null || printf '')
 case "$page_type" in
@@ -64,7 +68,7 @@ case "$value" in
     ;;
 esac
 if [ "$page_slug" = "reading-list" ] && [ "$value" = "-1" ]; then
-  blog_json_error "Reading List votes only support upvote or unvote" "invalid_vote"
+  blog_json_error "Reading List Hype only supports add or clear" "invalid_vote"
   exit 0
 fi
 if [ -z "$entry_id" ]; then

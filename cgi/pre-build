@@ -20,10 +20,14 @@ export WIZARDRY_BUILD_IN_PROGRESS=1
 
 blog_init
 pages_json=$(blog_nostr_pages_load_json)
-blog_nostr_pages_sync_source_pages "$pages_json"
-blog_nostr_pages_prune_clean_url_build_dirs "$pages_json"
+build_pages_json=$pages_json
+if ! blog_plugin_enabled "reading_list"; then
+  build_pages_json=$(printf '%s\n' "$pages_json" | jq -c '.pages = [(.pages // [])[] | select((.slug // "") != "reading-list")]')
+fi
+blog_nostr_pages_sync_source_pages "$build_pages_json"
+blog_nostr_pages_prune_clean_url_build_dirs "$build_pages_json"
 blog_public_posts_catalog_write_artifacts
-blog_publication_write_web_artifacts "$pages_json"
+blog_publication_write_web_artifacts "$build_pages_json"
 blog_file_sync_public_aliases
 
 site_title=$(config-get "$blog_site_conf" site_title 2>/dev/null || printf '')
@@ -60,12 +64,12 @@ video_chat_json=$(jq -cn \
   --arg scheduled_rooms "$(printf '%s\n' "$video_chat_scheduled_rooms" | tr ';' '\n')" \
   --argjson room_theme_images "$video_chat_room_theme_images_json" \
   '{participant_limit:$participant_limit,token_ttl_seconds:$token_ttl_seconds,janus_wss:$janus_wss,signaling_wss:$signaling_wss,public_rooms:$public_rooms,rooms:$rooms,manual_rooms:$manual_rooms,active_rooms:$rooms,room_settings:$room_settings,scheduled_rooms:$scheduled_rooms,room_theme_images:$room_theme_images,include_syntax:"{{video-chat}}"}')
-navbar_json=$(blog_nostr_navbar_pages_json "$pages_json")
-footer_json=$(blog_nostr_footer_pages_json "$pages_json")
+navbar_json=$(blog_nostr_navbar_pages_json "$build_pages_json")
+footer_json=$(blog_nostr_footer_pages_json "$build_pages_json")
 navbar_pages_json=$(printf '%s\n' "$navbar_json" | jq -c '.pages // []' 2>/dev/null || printf '[]')
 footer_pages_json=$(printf '%s\n' "$footer_json" | jq -c '.pages // []' 2>/dev/null || printf '[]')
-publication_themes_json=$(printf '%s\n' "$pages_json" | jq -c 'reduce (.pages[]? | select(.type=="publication" and ((.theme // "") | length)>0)) as $page ({}; .[$page.slug] = $page.theme)' 2>/dev/null || printf '{}')
-publication_slugs_json=$(printf '%s\n' "$pages_json" | jq -c '[.pages[]? | select(.type=="publication") | .slug]' 2>/dev/null || printf '[]')
+publication_themes_json=$(printf '%s\n' "$build_pages_json" | jq -c 'reduce (.pages[]? | select(.type=="publication" and ((.theme // "") | length)>0)) as $page ({}; .[$page.slug] = $page.theme)' 2>/dev/null || printf '{}')
+publication_slugs_json=$(printf '%s\n' "$build_pages_json" | jq -c '[.pages[]? | select(.type=="publication") | .slug]' 2>/dev/null || printf '[]')
 
 [ -n "$site_title" ] || site_title='Site'
 [ -n "$theme" ] || theme='lapidarist'

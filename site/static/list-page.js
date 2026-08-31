@@ -2919,8 +2919,9 @@
   }
 
   function voteTooltipText(entry, signedIn) {
+    var hypeOnly = listVotesAreUpvoteOnly();
     if (!signedIn) {
-      return 'Sign in to vote.';
+      return hypeOnly ? 'Sign in to add Hype.' : 'Sign in to vote.';
     }
     var nowSeconds = Math.floor(Date.now() / 1000);
     var lastVoteAt = Number(entry && entry.viewer_vote_created_at || 0) || 0;
@@ -2928,17 +2929,17 @@
     var cooldownSeconds = Number(entry && entry.vote_cooldown_seconds || 64800) || 64800;
     var lines = [];
     if (nextVoteAt > nowSeconds) {
-      lines.push('You can vote again in ' + formatVoteDuration(nextVoteAt - nowSeconds, true) + '. Everyone can vote every ' + formatVoteDuration(cooldownSeconds, false) + '.');
+      lines.push('You can ' + (hypeOnly ? 'add Hype' : 'vote') + ' again in ' + formatVoteDuration(nextVoteAt - nowSeconds, true) + '. Everyone can ' + (hypeOnly ? 'add Hype' : 'vote') + ' every ' + formatVoteDuration(cooldownSeconds, false) + '.');
     } else {
-      lines.push('You can vote now. Everyone can vote every ' + formatVoteDuration(cooldownSeconds, false) + '.');
+      lines.push('You can ' + (hypeOnly ? 'add Hype' : 'vote') + ' now. Everyone can ' + (hypeOnly ? 'add Hype' : 'vote') + ' every ' + formatVoteDuration(cooldownSeconds, false) + '.');
     }
     if (lastVoteAt > 0) {
       var total = Math.max(1, Number(entry && entry.viewer_vote_total || 0) || 0);
       var opinion = (Number(entry && entry.viewer_vote || 0) || 0) * total;
-      lines.push('You last voted on this ' + formatVoteDuration(nowSeconds - lastVoteAt, true) + ' ago.');
-      lines.push('Your opinion on this: ' + formatSignedVoteOpinion(opinion) + '.');
+      lines.push('You last ' + (hypeOnly ? 'added Hype to' : 'voted on') + ' this ' + formatVoteDuration(nowSeconds - lastVoteAt, true) + ' ago.');
+      lines.push((hypeOnly ? 'Your Hype for this: ' : 'Your opinion on this: ') + formatSignedVoteOpinion(opinion) + '.');
     } else {
-      lines.push('You have not voted on this yet.');
+      lines.push(hypeOnly ? 'You have not added Hype to this yet.' : 'You have not voted on this yet.');
     }
     return lines.join(' ');
   }
@@ -2985,8 +2986,8 @@
       var downvoteClass = 'list-entry-vote-btn is-downvote' + (signedIn && viewerVote < 0 ? (viewerCanVoteNow ? ' is-stale' : ' is-active') : '');
       var voteTitle = voteTooltipText(entry, signedIn);
       var upvoteOnly = listVotesAreUpvoteOnly();
-      voteControls = '<span class="list-entry-vote-controls' + (upvoteOnly ? ' is-upvote-only' : '') + '" data-list-entry-id="' + escapeHtml(entryId) + '" aria-label="Entry score" title="' + escapeHtml(voteTitle) + '">' +
-        '<button type="button" class="' + upvoteClass + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="1" aria-label="Upvote"' + disabledAttrs + '>' + listVoteArrowSvg('up') + '</button>' +
+      voteControls = '<span class="list-entry-vote-controls' + (upvoteOnly ? ' is-upvote-only' : '') + '" data-list-entry-id="' + escapeHtml(entryId) + '" aria-label="' + (upvoteOnly ? 'Hype score' : 'Entry score') + '" title="' + escapeHtml(voteTitle) + '">' +
+        '<button type="button" class="' + upvoteClass + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="1" aria-label="' + (upvoteOnly ? 'Add Hype' : 'Upvote') + '"' + disabledAttrs + '>' + listVoteArrowSvg('up') + '</button>' +
         '<span class="list-entry-score">' + escapeHtml(String(score)) + '</span>' +
         (upvoteOnly ? '' : '<button type="button" class="' + downvoteClass + '" data-list-public-action="vote" data-list-entry-id="' + escapeHtml(entryId) + '" data-list-vote-value="-1" aria-label="Downvote"' + disabledAttrs + '>' + listVoteArrowSvg('down') + '</button>') +
       '</span>';

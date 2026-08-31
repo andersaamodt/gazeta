@@ -420,17 +420,20 @@ def list_vote_arrow_svg(direction):
     return '<svg class="list-entry-vote-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="%s" fill="currentColor"/></svg>' % path
 
 def vote_tooltip(entry, signed_in):
+    hype_only = page_slug == "reading-list"
     if not signed_in:
-        return "Sign in to vote."
+        return "Sign in to add Hype." if hype_only else "Sign in to vote."
     viewer_vote = normalize_vote_value(entry.get("viewer_vote"))
     viewer_can_vote_now = entry.get("viewer_can_vote_now") is not False
     if viewer_vote > 0:
+        if hype_only:
+            return "Your Hype is recorded%s." % ("" if viewer_can_vote_now else " for the current cooldown window")
         return "Signed-in voting enabled. Your upvote is recorded%s." % ("" if viewer_can_vote_now else " for the current cooldown window")
     if viewer_vote < 0:
         return "Signed-in voting enabled. Your downvote is recorded%s." % ("" if viewer_can_vote_now else " for the current cooldown window")
     if not viewer_can_vote_now:
         return "Signed-in voting enabled. You have already voted in the current cooldown window."
-    return "Signed-in voting enabled."
+    return "Signed-in Hype enabled." if hype_only else "Signed-in voting enabled."
 
 def vote_controls(entry, allow_votes, signed_in):
     entry_id = entry_key(entry)
@@ -456,18 +459,22 @@ def vote_controls(entry, allow_votes, signed_in):
         '<button type="button" class="%s" data-list-public-action="vote" data-list-entry-id="%s" data-list-vote-value="-1" aria-label="Downvote"%s>%s</button>'
         % (downvote_class, escaped_id, disabled_attrs, list_vote_arrow_svg("down"))
     )
+    score_label = "Hype score" if upvote_only else "Entry score"
+    action_label = "Add Hype" if upvote_only else "Upvote"
     return (
-        '<span class="%s" data-list-entry-id="%s" aria-label="Entry score" title="%s">'
-        '<button type="button" class="%s" data-list-public-action="vote" data-list-entry-id="%s" data-list-vote-value="1" aria-label="Upvote"%s>%s</button>'
+        '<span class="%s" data-list-entry-id="%s" aria-label="%s" title="%s">'
+        '<button type="button" class="%s" data-list-public-action="vote" data-list-entry-id="%s" data-list-vote-value="1" aria-label="%s"%s>%s</button>'
         '<span class="list-entry-score">%s</span>'
         '%s'
         '</span>'
     ) % (
         control_class,
         escaped_id,
+        score_label,
         html.escape(vote_tooltip(entry, signed_in), quote=True),
         upvote_class,
         escaped_id,
+        action_label,
         disabled_attrs,
         list_vote_arrow_svg("up"),
         html.escape(str(score), quote=True),

@@ -2579,7 +2579,7 @@ blog_json_error() {
 blog_plugin_supported() {
   key=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
   case "$key" in
-    nostr_support|nostr_login|nostr_bridge|nostr_posts|zaps|commerce|btcpay|crossmint|merch_store|video_chat|overworld) return 0 ;;
+    nostr_support|nostr_login|nostr_bridge|nostr_posts|reading_list|zaps|commerce|btcpay|crossmint|merch_store|video_chat|overworld) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -2588,7 +2588,7 @@ blog_plugin_default_enabled() {
   key=$(printf '%s' "${1-}" | tr '[:upper:]' '[:lower:]')
   case "$key" in
     crossmint|merch_store|video_chat|overworld) printf 'false\n' ;;
-    nostr_support|nostr_login|nostr_bridge|nostr_posts|zaps|commerce|btcpay) printf 'true\n' ;;
+    nostr_support|nostr_login|nostr_bridge|nostr_posts|reading_list|zaps|commerce|btcpay) printf 'true\n' ;;
     *) printf 'false\n' ;;
   esac
 }
@@ -2622,7 +2622,7 @@ blog_plugin_enabled() {
     return 1
   fi
   case "$key" in
-    nostr_login|nostr_bridge|nostr_posts|zaps)
+    nostr_login|nostr_bridge|nostr_posts|reading_list|zaps)
       support_enabled=$(blog_plugin_raw_enabled "nostr_support")
       [ "$support_enabled" = "true" ] || return 1
       ;;
@@ -2644,6 +2644,7 @@ blog_plugins_json() {
   nostr_login=$(blog_plugin_enabled_json "nostr_login")
   nostr_bridge=$(blog_plugin_enabled_json "nostr_bridge")
   nostr_posts=$(blog_plugin_enabled_json "nostr_posts")
+  reading_list=$(blog_plugin_enabled_json "reading_list")
   zaps=$(blog_plugin_enabled_json "zaps")
   commerce=$(blog_plugin_enabled_json "commerce")
   btcpay=$(blog_plugin_enabled_json "btcpay")
@@ -2656,6 +2657,7 @@ blog_plugins_json() {
   printf '"nostr_login":%s,' "$nostr_login"
   printf '"nostr_bridge":%s,' "$nostr_bridge"
   printf '"nostr_posts":%s,' "$nostr_posts"
+  printf '"reading_list":%s,' "$reading_list"
   printf '"zaps":%s,' "$zaps"
   printf '"commerce":%s,' "$commerce"
   printf '"btcpay":%s,' "$btcpay"
