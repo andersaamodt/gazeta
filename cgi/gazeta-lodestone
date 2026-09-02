@@ -12,6 +12,10 @@ component_command="$script_dir/gazeta-lodestone-components"
   exit 1
 }
 
+lodestone_supports_component_command() {
+  "$1" --help 2>&1 | grep -Fq -- '--component-command'
+}
+
 delegate_lodestone() {
   lodestone_cmd=$1
   shift
@@ -23,14 +27,20 @@ delegate_lodestone() {
       source_file=$2
       output_file=$3
       shift 3
-      exec "$lodestone_cmd" "$action" "$source_file" "$output_file" --component-command "$component_command" "$@"
+      if lodestone_supports_component_command "$lodestone_cmd"; then
+        exec "$lodestone_cmd" "$action" "$source_file" "$output_file" --component-command "$component_command" "$@"
+      fi
+      exec "$lodestone_cmd" "$action" "$source_file" "$output_file" "$@"
       ;;
     render|render-md|manifest|verify)
       [ "$#" -ge 2 ] || exec "$lodestone_cmd" "$@"
       action=$1
       source_file=$2
       shift 2
-      exec "$lodestone_cmd" "$action" "$source_file" --component-command "$component_command" "$@"
+      if lodestone_supports_component_command "$lodestone_cmd"; then
+        exec "$lodestone_cmd" "$action" "$source_file" --component-command "$component_command" "$@"
+      fi
+      exec "$lodestone_cmd" "$action" "$source_file" "$@"
       ;;
     *)
       exec "$lodestone_cmd" "$@"

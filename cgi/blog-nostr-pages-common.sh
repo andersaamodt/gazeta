@@ -578,6 +578,7 @@ blog_nostr_page_render_lodestone_source() {
   render_content_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-lodestone-content.XXXXXX")
   render_description_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-lodestone-description.XXXXXX")
   render_posts_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-lodestone-posts.XXXXXX")
+  render_post_list_tmp=$(mktemp "${TMPDIR:-/tmp}/blog-lodestone-post-list.XXXXXX")
   render_description_html=$(blog_nostr_prerender_inline_html_from_text "$render_description")
   render_description_attrs=''
   render_content_attrs=''
@@ -625,6 +626,11 @@ blog_nostr_page_render_lodestone_source() {
     printf '[]\n' > "$render_posts_tmp"
   fi
   render_posts_json=$(cat "$render_posts_tmp")
+  render_active_tag=''
+  if [ -n "${BLOG_NOSTR_PRERENDER_PAYLOAD_FILE:-}" ] && [ -f "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" ]; then
+    render_active_tag=$(jq -r '.state.default_tag // ""' "$BLOG_NOSTR_PRERENDER_PAYLOAD_FILE" 2>/dev/null || printf '')
+  fi
+  blog_post_cards_render_list_html "$render_posts_json" "$render_active_tag" > "$render_post_list_tmp"
   render_empty_text=$(blog_post_cards_empty_text "$render_posts_json")
   render_empty_attrs=$(blog_post_cards_empty_attrs "$render_posts_json")
   render_publication_links_attrs=' hidden'
@@ -653,10 +659,11 @@ blog_nostr_page_render_lodestone_source() {
     --html-file "description_html=$render_description_tmp" \
     --html-file "content_html=$render_content_tmp" \
     --html-file "posts_json=$render_posts_tmp" \
+    --html-file "post_list_html=$render_post_list_tmp" \
     --html-file "filter_tags_html=$render_filter_tags_tmp" \
     --html-file "filter_years_html=$render_filter_years_tmp" \
     --html-file "filter_types_html=$render_filter_types_tmp" > "$render_out"
-  rm -f "$render_content_tmp" "$render_description_tmp" "$render_posts_tmp" "$render_filter_tags_tmp" "$render_filter_years_tmp" "$render_filter_types_tmp"
+  rm -f "$render_content_tmp" "$render_description_tmp" "$render_posts_tmp" "$render_post_list_tmp" "$render_filter_tags_tmp" "$render_filter_years_tmp" "$render_filter_types_tmp"
 }
 
 blog_install_generated_file_if_changed() {

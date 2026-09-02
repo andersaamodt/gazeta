@@ -8740,6 +8740,11 @@ a:not(.tag):not(.feed-link):not(.footer-feed-link):not(.btn-login):not(.btn-logi
   justify-items: center;
 }
 
+gazeta-blog-post-list,
+gazeta-nostr-page-content {
+  display: contents;
+}
+
 .post-item {
   box-sizing: border-box;
   width: 100%;
