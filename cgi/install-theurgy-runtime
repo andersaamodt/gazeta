@@ -11,12 +11,39 @@ REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd -P)
 cd "$REPO_ROOT"
 CARGO_BUILD_JOBS=${CARGO_BUILD_JOBS:-1}
 export CARGO_BUILD_JOBS
-"$SCRIPT_DIR/gazeta-cargo" build --release \
-  --bin gazeta-admin \
-  --bin gazeta-admin-read \
-  --bin gazeta-read \
-  --bin gazeta-nostr-read \
-  --bin gazeta-commerce-read
+
+runtime_signature=$(
+  {
+    cksum Cargo.toml
+    if [ -f Cargo.lock ]; then
+      cksum Cargo.lock
+    fi
+    find src -type f -print | sort | while IFS= read -r source_file || [ -n "$source_file" ]; do
+      [ -n "$source_file" ] || continue
+      cksum "$source_file"
+    done
+  } | cksum | awk '{ printf "%s-%s\n", $1, $2 }'
+)
+runtime_signature_file="$(gazeta_cargo_target_dir)/.gazeta-runtime-source-signature"
+
+runtime_binaries_ready() {
+  for runtime_binary in gazeta-admin gazeta-admin-read gazeta-read gazeta-nostr-read gazeta-commerce-read; do
+    [ -x "$(gazeta_runtime_path release "$runtime_binary")" ] || return 1
+  done
+}
+
+cached_runtime_signature=$(cat "$runtime_signature_file" 2>/dev/null || printf '')
+if [ "$cached_runtime_signature" != "$runtime_signature" ] || ! runtime_binaries_ready; then
+  "$SCRIPT_DIR/gazeta-cargo" build --release \
+    --bin gazeta-admin \
+    --bin gazeta-admin-read \
+    --bin gazeta-read \
+    --bin gazeta-nostr-read \
+    --bin gazeta-commerce-read
+  runtime_signature_tmp="$runtime_signature_file.$$.tmp"
+  printf '%s\n' "$runtime_signature" > "$runtime_signature_tmp"
+  mv "$runtime_signature_tmp" "$runtime_signature_file"
+fi
 
 printf '%s\n' "$(gazeta_runtime_path release gazeta-admin)"
 printf '%s\n' "$(gazeta_runtime_path release gazeta-admin-read)"
