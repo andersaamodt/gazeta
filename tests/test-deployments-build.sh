@@ -231,4 +231,34 @@ grep -Fq '"site_name":"example.test"' "$manifest_path" || {
   exit 1
 }
 
+server_release="$tmp_root/releases/20260902102330"
+server_build_dir="$tmp_root/server-build-output"
+server_manifest_path="$tmp_root/server-build-manifest.json"
+mkdir -p "$(dirname "$server_release")"
+cp -R "$release_dir/." "$server_release/"
+mkdir -p "$server_release/scripts"
+cp "$ROOT_DIR/scripts/deployments-build" "$server_release/scripts/deployments-build"
+chmod +x "$server_release/scripts/deployments-build"
+cat > "$server_release/site.conf" <<EOFCONF
+domain=$site_name
+site-name=$site_name
+local-template=$server_release
+site_title=Fixture Site
+EOFCONF
+
+DEPLOYMENTS_RELEASE_DIR="$server_release" \
+DEPLOYMENTS_SITE_DATA_DIR="$site_data_root" \
+WIZARDRY_DIR="$wizardry_dir" \
+DEPLOYMENTS_BUILD_MANIFEST="$server_manifest_path" \
+"$server_release/scripts/deployments-build" "$server_build_dir"
+
+grep -Fq 'site=example.test' "$server_build_dir/pages/blog.html" || {
+  printf '%s\n' "server release build used its timestamp as the site name" >&2
+  exit 1
+}
+grep -Fq '"site_name":"example.test"' "$server_manifest_path" || {
+  printf '%s\n' "server release manifest did not preserve the configured site name" >&2
+  exit 1
+}
+
 printf '%s\n' 'deployment template-site resolution tests passed'

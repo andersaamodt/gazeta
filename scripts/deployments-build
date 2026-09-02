@@ -88,7 +88,10 @@ resolve_site_context() {
     fi
   fi
   resolved_web_root=$(dirname "$resolved_site_root")
-  resolved_site_name=$(basename "$resolved_site_root")
+  resolved_site_name=$(site_conf_value "$resolved_site_root/site.conf" site-name 2>/dev/null || printf '')
+  if [ -z "$resolved_site_name" ]; then
+    resolved_site_name=$(basename "$resolved_site_root")
+  fi
 }
 
 [ -x "$builder" ] || {
