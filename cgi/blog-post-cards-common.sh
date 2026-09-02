@@ -64,8 +64,8 @@ blog_post_cards_render_card_html() {
       (($value // "") | tostring | gsub("_"; "-") | split("-"))
       | map(select(length > 0) | (.[:1] | ascii_upcase) + .[1:])
       | join(" ");
-    def render_blog_filter_pill($class_name; $group; $value; $label):
-      "<button type=\"button\" class=\"\($class_name | @html)\" data-inline-filter-group=\"\($group | @html)\" data-inline-filter-value=\"\($value | @html)\" aria-pressed=\"false\" aria-label=\"Filter by \($label | @html)\">\($label | @html)</button>";
+    def render_blog_filter_pill($class_name; $group; $value; $label_text):
+      "<button type=\"button\" class=\"\($class_name | @html)\" data-inline-filter-group=\"\($group | @html)\" data-inline-filter-value=\"\($value | @html)\" aria-pressed=\"false\" aria-label=\"Filter by \($label_text | @html)\">\($label_text | @html)</button>";
     def render_blog_link_note($author):
       (trimmed(.link_url)) as $link_url
       | "<div class=\"post-offsite-link-note\"><span class=\"post-offsite-link-kind\">Off-site link</span><span>Linked by \($author | @html)</span>"
@@ -195,9 +195,9 @@ blog_post_cards_filter_chip_html() {
     --arg class_name "$class_name" \
     --arg group "$group" \
     --arg value "$value" \
-    --arg label "$label" \
+    --arg label_text "$label" \
     --arg aria_pressed "$aria_pressed" \
-    '"<button type=\"button\" class=\"\($class_name | @html)\" data-filter-group=\"\($group | @html)\" data-filter-value=\"\($value | @html)\" aria-pressed=\"\($aria_pressed)\">\($label | @html)</button>"' 2>/dev/null
+    '"<button type=\"button\" class=\"\($class_name | @html)\" data-filter-group=\"\($group | @html)\" data-filter-value=\"\($value | @html)\" aria-pressed=\"\($aria_pressed)\">\($label_text | @html)</button>"' 2>/dev/null
 }
 
 blog_post_cards_render_tag_filter_html() {

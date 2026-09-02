@@ -702,8 +702,8 @@ PY
           if ($text | has_markdown_link) then
             "<span class=\"" + $class + "\">" + ($text | md_inline) + "</span>" + external_post_url_link($u)
           else
-            ($text | md_inline_link_label) as $label
-            | "<a class=\"" + $class + " is-post-url-linked\" href=\"" + ($u | h) + "\" title=\"Open linked post\">" + (if ($label | length) > 0 then $label else ($u | h) end) + "</a>"
+            ($text | md_inline_link_label) as $label_text
+            | "<a class=\"" + $class + " is-post-url-linked\" href=\"" + ($u | h) + "\" title=\"Open linked post\">" + (if ($label_text | length) > 0 then $label_text else ($u | h) end) + "</a>"
           end
         else
           "<span class=\"" + $class + "\">" + ($text | md_inline) + "</span>"
@@ -808,13 +808,13 @@ PY
       elif (["year", "first_letter", "month", "marker"] | index($group_by)) then
         $submit + (
           reduce $entries[] as $e ({html:"", label:"__initial__", open:false};
-            (group_label($e; $group_by)) as $label
-            | if .label != $label then
-                .html = (.html + (if .open then (if $view == "tile" then "</ul></section>" else "</ul></section>" end) else "" end) + "<section class=\"list-year-group\"><div class=\"list-year-head\"><h3 class=\"list-year-heading\">" + ($label | h) + "</h3></div>" + (if $view == "tile" then "<ul class=\"list-tiles\">" else "<ul class=\"list-entries\">" end))
-                | .label = $label
+            (group_label($e; $group_by)) as $label_text
+            | if .label != $label_text then
+                .html = (.html + (if .open then (if $view == "tile" then "</ul></section>" else "</ul></section>" end) else "" end) + "<section class=\"list-year-group\"><div class=\"list-year-head\"><h3 class=\"list-year-heading\">" + ($label_text | h) + "</h3></div>" + (if $view == "tile" then "<ul class=\"list-tiles\">" else "<ul class=\"list-entries\">" end))
+                | .label = $label_text
                 | .open = true
               else . end
-            | .html = (.html + (if $view == "tile" then tile_html($e) else row_html($e; $group_by; $label; $show_markers; $gallery; $viewer_authenticated) end))
+            | .html = (.html + (if $view == "tile" then tile_html($e) else row_html($e; $group_by; $label_text; $show_markers; $gallery; $viewer_authenticated) end))
           )
           | .html + "</ul></section>"
         ) + $after
