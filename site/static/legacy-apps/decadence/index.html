@@ -138,13 +138,15 @@
 			var score = 0;
 			var low = 0;
 			var high = 9;
-			// This checkbox doesn't do anything anymore. todo: fix it with onclicks
-				/*if(document.getElementById("subdecadenceCheckbox").checked) {
-					low = 0;
-					document.getElementById("Title").innerHTML = "Subdecadence";
-				} else {
-					document.getElementById("Title").innerHTML = "Decadence";
-				}*/
+
+			function setGameMode() {
+				var isSubdecadence = document.getElementById("subdecadenceCheckbox").checked;
+				document.getElementById("lowTextbox").value = isSubdecadence ? 0 : 1;
+				document.getElementById("highTextbox").value = 9;
+				document.getElementById("Title").innerHTML = isSubdecadence ? "Subdecadence" : "Decadence";
+				newDeck();
+				deal();
+			}
 
 			function resetScore() {
 				score = 0;
@@ -550,7 +552,7 @@
 			<label for="highTextbox" style="margin-left: 0.5em;">High: <input id="highTextbox" type="text" size="2" value="9"></input9</label>
 			<button id="Card04" type="button" style="width: 100px; height: 100px; margin-left: 208px; margin-bottom: 8px;"></button>
 			<button onclick="shuffle(true); deal();" style="width: 100px; height: 50px; margin-left: 255px; font-size: 1.5em;" disabled="true">Shuffle</button>
-			<input type="checkbox" id="subdecadenceCheckbox" style="margin-left: 1.5em;" checked /><label for="subdecadenceCheckbox" style="display: inline-block; width: 10em; vertical-align: -40%; line-height: 1em; margin-left: 0.25em;">Subdecadence<br />(the ultimate blasphemy)</label>
+			<input type="checkbox" id="subdecadenceCheckbox" style="margin-left: 1.5em;" onchange="setGameMode();" checked /><label for="subdecadenceCheckbox" style="display: inline-block; width: 10em; vertical-align: -40%; line-height: 1em; margin-left: 0.25em;">Subdecadence<br />(the ultimate blasphemy)</label>
 		</div>
 		<div>
 			<button id="Card10" type="button" style="width: 100px; height: 100px"></button>

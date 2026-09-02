@@ -182,6 +182,12 @@ BLOG_NOSTR_PAGE_PRERENDER_ENABLED=0 \
   printf '%s\n' "deployments-build: build directory was not created: $build_dir" >&2
   exit 1
 }
+
+decadence_page="$build_dir/static/legacy-apps/decadence/index.html"
+if [ -f "$decadence_page" ]; then
+  cp "$decadence_page" "$build_dir/decadence.php"
+fi
+
 mkdir -p "$build_dir/cgi"
 cp -R "$site_root/cgi/." "$build_dir/cgi/"
 

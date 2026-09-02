@@ -151,12 +151,13 @@ configured_legacy_assets=$(awk -F= '$1 == "blog_legacy_assets_dir" { value=$0; s
   printf '%s\n' "expected --full build mode" >&2
   exit 1
 }
-mkdir -p "$build_dir/pages"
+mkdir -p "$build_dir/pages" "$build_dir/static/legacy-apps/decadence"
 cat > "$build_dir/pages/blog.html" <<EOFHTML
 site=$site_name
 template=$template_dir
 post=$post_title
 EOFHTML
+printf '%s\n' 'fixture-decadence-page' > "$build_dir/static/legacy-apps/decadence/index.html"
 printf 'fixture-public.pdf\t%s\t11\t0\n' "$WIZARDRY_SITES_DATA_DIR/$site_name/files/fixture-public.pdf" > "$build_dir/.file-aliases.manifest"
 printf 'essay\t%s\n' "$WIZARDRY_SITES_DATA_DIR/$site_name/files/legacy-assets/root/essay" > "$build_dir/.legacy-asset-aliases.manifest"
 EOFBUILD
@@ -182,6 +183,10 @@ grep -Fq "template=$release_dir_real" "$build_dir/pages/blog.html" || {
 }
 grep -Fq 'post=Fixture Post' "$build_dir/pages/blog.html" || {
   printf '%s\n' "deployment build did not use live site data" >&2
+  exit 1
+}
+cmp -s "$build_dir/static/legacy-apps/decadence/index.html" "$build_dir/decadence.php" || {
+  printf '%s\n' "deployment build did not publish the historical Decadence URL" >&2
   exit 1
 }
 [ ! -e "$release_dir/site.conf" ] || {
