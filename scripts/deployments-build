@@ -186,9 +186,35 @@ BLOG_NOSTR_PAGE_PRERENDER_ENABLED=0 \
   exit 1
 }
 
+preserve_generated_publication_pages() {
+  previous_release=${DEPLOYMENTS_PREVIOUS_RELEASE:-}
+  [ -n "$previous_release" ] || return 0
+  releases_dir=$(dirname "$previous_release")
+  for page_name in blog index archive tags; do
+    page_dest="$build_dir/pages/$page_name.html"
+    [ -f "$page_dest" ] && continue
+    page_source=
+    if [ -f "$previous_release/build/pages/$page_name.html" ]; then
+      page_source="$previous_release/build/pages/$page_name.html"
+    else
+      for release_candidate in "$releases_dir"/*; do
+        [ -f "$release_candidate/build/pages/$page_name.html" ] || continue
+        page_source="$release_candidate/build/pages/$page_name.html"
+      done
+    fi
+    [ -n "$page_source" ] || continue
+    mkdir -p "$(dirname "$page_dest")"
+    cp "$page_source" "$page_dest"
+  done
+}
+
+preserve_generated_publication_pages
+
 decadence_page="$build_dir/static/legacy-apps/decadence/index.html"
 if [ -f "$decadence_page" ]; then
-  cp "$decadence_page" "$build_dir/decadence.php"
+  rm -rf "$build_dir/decadence.php"
+  mkdir -p "$build_dir/decadence.php"
+  cp "$decadence_page" "$build_dir/decadence.php/index.html"
 fi
 
 mkdir -p "$build_dir/cgi"

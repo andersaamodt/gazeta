@@ -185,7 +185,7 @@ grep -Fq 'post=Fixture Post' "$build_dir/pages/blog.html" || {
   printf '%s\n' "deployment build did not use live site data" >&2
   exit 1
 }
-cmp -s "$build_dir/static/legacy-apps/decadence/index.html" "$build_dir/decadence.php" || {
+cmp -s "$build_dir/static/legacy-apps/decadence/index.html" "$build_dir/decadence.php/index.html" || {
   printf '%s\n' "deployment build did not publish the historical Decadence URL" >&2
   exit 1
 }
@@ -232,9 +232,13 @@ grep -Fq '"site_name":"example.test"' "$manifest_path" || {
 }
 
 server_release="$tmp_root/releases/20260902102330"
+previous_release="$tmp_root/releases/20260831042335"
 server_build_dir="$tmp_root/server-build-output"
 server_manifest_path="$tmp_root/server-build-manifest.json"
 mkdir -p "$(dirname "$server_release")"
+mkdir -p "$previous_release/build/pages"
+printf '%s\n' 'preserved publication index' > "$previous_release/build/pages/index.html"
+printf '%s\n' 'preserved publication archive' > "$previous_release/build/pages/archive.html"
 cp -R "$release_dir/." "$server_release/"
 mkdir -p "$server_release/scripts"
 cp "$ROOT_DIR/scripts/deployments-build" "$server_release/scripts/deployments-build"
@@ -247,6 +251,7 @@ site_title=Fixture Site
 EOFCONF
 
 DEPLOYMENTS_RELEASE_DIR="$server_release" \
+DEPLOYMENTS_PREVIOUS_RELEASE="$previous_release" \
 DEPLOYMENTS_SITE_DATA_DIR="$site_data_root" \
 WIZARDRY_DIR="$wizardry_dir" \
 DEPLOYMENTS_BUILD_MANIFEST="$server_manifest_path" \
@@ -254,6 +259,14 @@ DEPLOYMENTS_BUILD_MANIFEST="$server_manifest_path" \
 
 grep -Fq 'site=example.test' "$server_build_dir/pages/blog.html" || {
   printf '%s\n' "server release build used its timestamp as the site name" >&2
+  exit 1
+}
+grep -Fq 'preserved publication index' "$server_build_dir/pages/index.html" || {
+  printf '%s\n' "server release build did not preserve a missing generated publication page" >&2
+  exit 1
+}
+grep -Fq 'preserved publication archive' "$server_build_dir/pages/archive.html" || {
+  printf '%s\n' "server release build did not recover a missing generated page from an older release" >&2
   exit 1
 }
 grep -Fq '"site_name":"example.test"' "$server_manifest_path" || {
