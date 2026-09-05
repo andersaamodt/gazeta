@@ -61,8 +61,12 @@ bitcoin_root() {
   printf '%s/.sitedata/site/bitcoin\n' "$(site_home)"
 }
 
+bitcoin_state_root() {
+  printf '/var/lib/gazeta/%s/bitcoin\n' "$site_user"
+}
+
 bitcoin_data_dir() {
-  printf '%s/data\n' "$(bitcoin_root)"
+  printf '%s/data\n' "$(bitcoin_state_root)"
 }
 
 bitcoin_conf_file() {
@@ -70,7 +74,7 @@ bitcoin_conf_file() {
 }
 
 snapshot_dir() {
-  printf '%s/snapshots\n' "$(bitcoin_root)"
+  printf '%s/snapshots\n' "$(bitcoin_state_root)"
 }
 
 snapshot_path() {

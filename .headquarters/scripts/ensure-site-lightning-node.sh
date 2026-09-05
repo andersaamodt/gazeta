@@ -65,12 +65,8 @@ release_site_conf() {
   printf '%s/.wizardry.hq/release-config/site.conf\n' "$(site_home)"
 }
 
-bitcoin_root() {
-  printf '%s/.sitedata/site/bitcoin\n' "$(site_home)"
-}
-
 bitcoin_data_dir() {
-  printf '%s/data\n' "$(bitcoin_root)"
+  printf '/var/lib/gazeta/%s/bitcoin/data\n' "$site_user"
 }
 
 bitcoin_service_name() {

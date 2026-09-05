@@ -56,12 +56,32 @@ bitcoin_root() {
   printf '%s/.sitedata/site/bitcoin\n' "$(site_home)"
 }
 
+bitcoin_state_root() {
+  printf '/var/lib/gazeta/%s/bitcoin\n' "$site_user"
+}
+
 bitcoin_data_dir() {
-  printf '%s/data\n' "$(bitcoin_root)"
+  printf '%s/data\n' "$(bitcoin_state_root)"
 }
 
 bitcoin_conf_file() {
   printf '%s/bitcoin.conf\n' "$(bitcoin_root)"
+}
+
+bitcoin_snapshot_dir() {
+  printf '%s/snapshots\n' "$(bitcoin_state_root)"
+}
+
+bitcoin_pid_file() {
+  printf '%s/bitcoind.pid\n' "$(bitcoin_state_root)"
+}
+
+legacy_bitcoin_data_dir() {
+  printf '%s/data\n' "$(bitcoin_root)"
+}
+
+legacy_bitcoin_snapshot_dir() {
+  printf '%s/snapshots\n' "$(bitcoin_root)"
 }
 
 service_name() {
@@ -348,6 +368,47 @@ ensure_bitcoin_installed() {
   fi
 }
 
+directory_has_entries() {
+  [ -n "$(run_root find "$1" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]
+}
+
+migrate_legacy_directory() {
+  legacy_dir=$1
+  state_dir=$2
+  label=$3
+  [ -d "$legacy_dir" ] || return 0
+  if ! directory_has_entries "$legacy_dir"; then
+    run_root rmdir "$legacy_dir"
+    return 0
+  fi
+  if [ -d "$state_dir" ]; then
+    if directory_has_entries "$state_dir"; then
+      status_bad "Both legacy site-data and host-local $label directories contain data; refusing to merge them."
+      exit 1
+    fi
+    run_root rmdir "$state_dir"
+  fi
+  run_root mv "$legacy_dir" "$state_dir"
+}
+
+ensure_bitcoin_storage() {
+  run_root install -d -o root -g root -m 755 /var/lib/gazeta
+  run_root install -d -o "$site_user" -g "$site_user" -m 700 \
+    "/var/lib/gazeta/$site_user" "$(bitcoin_state_root)"
+
+  if [ -d "$(legacy_bitcoin_data_dir)" ] || [ -d "$(legacy_bitcoin_snapshot_dir)" ]; then
+    if command -v systemctl >/dev/null 2>&1 && run_root systemctl is-active --quiet "$(service_name)"; then
+      run_root systemctl stop "$(service_name)"
+    fi
+    migrate_legacy_directory "$(legacy_bitcoin_data_dir)" "$(bitcoin_data_dir)" "Bitcoin data"
+    migrate_legacy_directory "$(legacy_bitcoin_snapshot_dir)" "$(bitcoin_snapshot_dir)" "Bitcoin snapshot"
+  fi
+
+  run_root install -d -o "$site_user" -g "$site_user" -m 700 \
+    "$(bitcoin_data_dir)" "$(bitcoin_snapshot_dir)"
+  run_root rm -f "$(bitcoin_root)/bitcoind.pid"
+}
+
 write_conf_file() {
   tmp=$(mktemp "${TMPDIR:-/tmp}/site-bitcoin-conf.XXXXXX")
   prune_target=$(recommended_prune_mb)
@@ -380,7 +441,6 @@ maxsigcachesize=$sigcache_target
 dbbatchsize=$dbbatch_target
 EOF_CONF
   run_root install -d -o "$site_user" -g "$site_user" -m 700 "$(bitcoin_root)"
-  run_root install -d -o "$site_user" -g "$site_user" -m 700 "$(bitcoin_data_dir)"
   run_root install -o "$site_user" -g "$site_user" -m 600 "$tmp" "$(bitcoin_conf_file)"
   rm -f "$tmp"
 }
@@ -420,7 +480,7 @@ IOSchedulingPriority=7
 # bitcoind writes its own debug.log; dropping stdout avoids extra journal churn.
 StandardOutput=null
 StandardError=journal
-ExecStart=$bitcoind_bin -conf=$(bitcoin_conf_file) -datadir=$(bitcoin_data_dir) -pid=$(bitcoin_root)/bitcoind.pid
+ExecStart=$bitcoind_bin -conf=$(bitcoin_conf_file) -datadir=$(bitcoin_data_dir) -pid=$(bitcoin_pid_file)
 ExecStop=$bitcoin_cli_bin -conf=$(bitcoin_conf_file) -datadir=$(bitcoin_data_dir) stop
 Restart=on-failure
 RestartSec=10
@@ -491,6 +551,7 @@ esac
 
 require_site_context
 ensure_bitcoin_installed
+ensure_bitcoin_storage
 write_conf_file
 write_service_file
 run_root systemctl daemon-reload
