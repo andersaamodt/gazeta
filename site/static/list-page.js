@@ -304,7 +304,7 @@
   function markdownInline(md) {
     return window.__wizardryRenderManagedMarkdownInline(md, {
       upgradeState: markedUpgradeState,
-      onUpgrade: renderAll,
+      onUpgrade: renderList,
       renderFallback: window.__wizardryRenderManagedMarkdownInlineLinkFallback
     });
   }
@@ -371,7 +371,7 @@
   function markdownBlock(md) {
     return window.__wizardryRenderManagedMarkdownBlock(md, {
       upgradeState: markedUpgradeState,
-      onUpgrade: renderAll
+      onUpgrade: renderList
     });
   }
 

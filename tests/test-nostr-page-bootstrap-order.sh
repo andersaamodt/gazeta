@@ -5,6 +5,12 @@ TESTS_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 ROOT_DIR=$(dirname "$TESTS_DIR")
 SITE_SOURCE_ROOT="$ROOT_DIR/site"
 
+# Body page bundles execute while parsing, so their shared helpers must too.
+if ! grep -Eq '<script src="/static/page-head\.js[^" ]*"></script>' "$SITE_SOURCE_ROOT/includes/head.html"; then
+  printf '%s\n' 'page-head helpers must load synchronously before body page bundles' >&2
+  exit 1
+fi
+
 check_script_then_marked() {
   file=$1
   local_script=$2
@@ -87,6 +93,39 @@ EOS
   rm -rf "$tmp_root"
   trap - EXIT INT TERM
 }
+
+# Exercise both markdown paths: undefined upgrade callbacks abort list rendering.
+node - "$SITE_SOURCE_ROOT/static/list-page.js" <<'JS'
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const source = fs.readFileSync(process.argv[2], 'utf8');
+let renders = 0;
+const context = {
+  markedUpgradeState: {},
+  renderList() { renders += 1; },
+  window: {
+    __wizardryRenderManagedMarkdownInlineLinkFallback() {},
+    __wizardryRenderManagedMarkdownInline(text, options) {
+      options.onUpgrade();
+      return text;
+    },
+    __wizardryRenderManagedMarkdownBlock(text, options) {
+      options.onUpgrade();
+      return text;
+    }
+  }
+};
+vm.createContext(context);
+for (const name of ['markdownInline', 'markdownBlock']) {
+  const start = source.indexOf('  function ' + name + '(');
+  assert.ok(start >= 0);
+  const end = source.indexOf('\n  function ', start + 1);
+  vm.runInContext(source.slice(start, end), context);
+  assert.equal(context[name]('Example entry'), 'Example entry');
+}
+assert.equal(renders, 2);
+JS
 
 check_generated_shell "blog" "blog" '/static/blog-page.js' no
 check_generated_shell "about" "nip23" '/static/nip23-page.js' no
