@@ -16,26 +16,26 @@ title: ""
 </svg>
 </button>
 </div>
-<div class="admin-nav-list" role="tablist" aria-label="Admin sections">
-<button type="button" class="admin-nav-item is-compose" data-admin-nav="compose" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 18L7.2 13.8L15.8 5.2a2 2 0 1 1 2.8 2.8L10 16.6L6 18Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 21H19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class="admin-nav-label">Compose</span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="drafts" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Drafts <span id="admin-nav-drafts-count" class="admin-nav-count">(0)</span></span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="queue" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Queue <span id="admin-nav-queue-count" class="admin-nav-count">(0)</span></span></button>
-<button type="button" class="admin-nav-item admin-nav-divider-after" data-admin-nav="posts" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Posts <span id="admin-nav-posts-count" class="admin-nav-count">(0)</span></span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="crossposting" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Cross-posting</span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="account" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Account</span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="nostr-pages" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Pages</span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="files" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Files</span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="moderation" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Moderation</span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="users" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Users</span></button>
-<button type="button" class="admin-nav-item is-active admin-nav-divider-after" data-admin-nav="settings" aria-selected="true"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Site Settings</span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="nostr-bridge" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Nostr <span id="admin-nav-noster-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="zaps" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Zaps <span id="admin-nav-zaps-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="btcpay" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Lightning <span id="admin-nav-btcpay-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="btcpay-checkout" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">BTCPay <span id="admin-nav-btcpay-checkout-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="merch" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Merch</span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="video-calling" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Video Calling <span id="admin-nav-video-calling-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="overworld" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Overworld</span></button>
-<button type="button" class="admin-nav-item" data-admin-nav="plugins" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Plugins</span></button>
+<div class="admin-nav-list" role="tablist" aria-label="Admin sections" aria-orientation="vertical">
+<button type="button" class="admin-nav-item is-compose" data-admin-nav="compose" id="admin-tab-compose" role="tab" aria-controls="admin-section-compose" tabindex="-1" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 18L7.2 13.8L15.8 5.2a2 2 0 1 1 2.8 2.8L10 16.6L6 18Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 21H19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class="admin-nav-label">Compose</span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="drafts" id="admin-tab-drafts" role="tab" aria-controls="admin-section-drafts" tabindex="-1" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Drafts <span id="admin-nav-drafts-count" class="admin-nav-count">(0)</span></span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="queue" id="admin-tab-queue" role="tab" aria-controls="admin-section-queue" tabindex="-1" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Queue <span id="admin-nav-queue-count" class="admin-nav-count">(0)</span></span></button>
+<button type="button" class="admin-nav-item admin-nav-divider-after" data-admin-nav="posts" id="admin-tab-posts" role="tab" aria-controls="admin-section-posts" tabindex="-1" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Posts <span id="admin-nav-posts-count" class="admin-nav-count">(0)</span></span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="crossposting" id="admin-tab-crossposting" role="tab" aria-controls="admin-section-crossposting" tabindex="-1" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Cross-posting</span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="account" id="admin-tab-account" role="tab" aria-controls="admin-section-account" tabindex="-1" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Account</span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="nostr-pages" id="admin-tab-nostr-pages" role="tab" aria-controls="admin-section-nostr-pages" tabindex="-1" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Pages</span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="files" id="admin-tab-files" role="tab" aria-controls="admin-section-files" tabindex="-1" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Files</span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="moderation" id="admin-tab-moderation" role="tab" aria-controls="admin-section-moderation" tabindex="-1" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Moderation</span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="users" id="admin-tab-users" role="tab" aria-controls="admin-section-users" tabindex="-1" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Users</span></button>
+<button type="button" class="admin-nav-item is-active admin-nav-divider-after" data-admin-nav="settings" id="admin-tab-settings" role="tab" aria-controls="admin-section-settings" tabindex="0" aria-selected="true"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Site Settings</span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="nostr-bridge" id="admin-tab-nostr-bridge" role="tab" aria-controls="admin-section-nostr-bridge" tabindex="-1" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Nostr <span id="admin-nav-noster-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="zaps" id="admin-tab-zaps" role="tab" aria-controls="admin-section-zaps" tabindex="-1" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Zaps <span id="admin-nav-zaps-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="btcpay" id="admin-tab-btcpay" role="tab" aria-controls="admin-section-btcpay" tabindex="-1" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Lightning <span id="admin-nav-btcpay-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="btcpay-checkout" id="admin-tab-btcpay-checkout" role="tab" aria-controls="admin-section-btcpay-checkout" tabindex="-1" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">BTCPay <span id="admin-nav-btcpay-checkout-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="merch" id="admin-tab-merch" role="tab" aria-controls="admin-section-merch" tabindex="-1" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Merch</span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="video-calling" id="admin-tab-video-calling" role="tab" aria-controls="admin-section-video-calling" tabindex="-1" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label admin-nav-label-with-pill">Video Calling <span id="admin-nav-video-calling-status" class="admin-nav-status-pill is-loading" aria-label="Loading status"><span class="admin-nav-status-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span></span></span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="overworld" id="admin-tab-overworld" role="tab" aria-controls="admin-section-overworld" tabindex="-1" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Overworld</span></button>
+<button type="button" class="admin-nav-item" data-admin-nav="plugins" id="admin-tab-plugins" role="tab" aria-controls="admin-section-plugins" tabindex="-1" aria-selected="false"><span class="admin-nav-icon-slot" aria-hidden="true"></span><span class="admin-nav-label">Plugins</span></button>
 </div>
 </aside>
 <button id="btn-admin-sidebar-reveal" type="button" class="unobtrusive-icon-button admin-sidebar-reveal" aria-label="Show admin sidebar" title="Show sidebar" hidden>
@@ -47,7 +47,7 @@ title: ""
 </button>
 
 <div class="admin-content">
-<section class="admin-section" data-admin-section="settings" hidden>
+<section class="admin-section" data-admin-section="settings" id="admin-section-settings" role="tabpanel" aria-labelledby="admin-tab-settings" tabindex="0" hidden>
 <div class="demo-box admin-card">
 <div class="section-head">
 <h3>Site Settings</h3>
@@ -146,7 +146,7 @@ title: ""
 </div>
 </section>
 
-<section class="admin-section" data-admin-section="crossposting" hidden>
+<section class="admin-section" data-admin-section="crossposting" id="admin-section-crossposting" role="tabpanel" aria-labelledby="admin-tab-crossposting" tabindex="0" hidden>
 <div class="demo-box admin-card">
 <div class="row-head">
 <div>
@@ -179,7 +179,7 @@ title: ""
 </div>
 </section>
 
-<section class="admin-section" data-admin-section="nostr-bridge" hidden>
+<section class="admin-section" data-admin-section="nostr-bridge" id="admin-section-nostr-bridge" role="tabpanel" aria-labelledby="admin-tab-nostr-bridge" tabindex="0" hidden>
 <div class="demo-box admin-card">
 <div class="row-head">
 <div>
@@ -201,7 +201,7 @@ title: ""
 </div>
 </section>
 
-<section class="admin-section" data-admin-section="zaps" hidden>
+<section class="admin-section" data-admin-section="zaps" id="admin-section-zaps" role="tabpanel" aria-labelledby="admin-tab-zaps" tabindex="0" hidden>
 <div class="demo-box admin-card">
 <div class="row-head">
 <div>
@@ -262,7 +262,7 @@ title: ""
 </div>
 </section>
 
-<section class="admin-section" data-admin-section="btcpay" hidden>
+<section class="admin-section" data-admin-section="btcpay" id="admin-section-btcpay" role="tabpanel" aria-labelledby="admin-tab-btcpay" tabindex="0" hidden>
 <div class="demo-box admin-card">
 <div class="row-head">
 <div>
@@ -284,7 +284,7 @@ title: ""
 </div>
 </section>
 
-<section class="admin-section" data-admin-section="btcpay-checkout" hidden>
+<section class="admin-section" data-admin-section="btcpay-checkout" id="admin-section-btcpay-checkout" role="tabpanel" aria-labelledby="admin-tab-btcpay-checkout" tabindex="0" hidden>
 <div class="demo-box admin-card">
 <div class="row-head">
 <div>
@@ -306,7 +306,7 @@ title: ""
 </div>
 </section>
 
-<section class="admin-section" data-admin-section="video-calling" hidden>
+<section class="admin-section" data-admin-section="video-calling" id="admin-section-video-calling" role="tabpanel" aria-labelledby="admin-tab-video-calling" tabindex="0" hidden>
 <div class="demo-box admin-card">
 <div class="row-head">
 <div>
@@ -400,7 +400,7 @@ title: ""
 </div>
 </section>
 
-<section class="admin-section" data-admin-section="overworld" hidden>
+<section class="admin-section" data-admin-section="overworld" id="admin-section-overworld" role="tabpanel" aria-labelledby="admin-tab-overworld" tabindex="0" hidden>
 <div class="demo-box admin-card">
 <div class="row-head">
 <div>
@@ -466,7 +466,7 @@ title: ""
 </div>
 </section>
 
-<section class="admin-section" data-admin-section="plugins" hidden>
+<section class="admin-section" data-admin-section="plugins" id="admin-section-plugins" role="tabpanel" aria-labelledby="admin-tab-plugins" tabindex="0" hidden>
 <div class="demo-box admin-card">
 <div class="row-head">
 <div>
@@ -543,7 +543,7 @@ title: ""
 </div>
 </section>
 
-<section class="admin-section" data-admin-section="merch" hidden>
+<section class="admin-section" data-admin-section="merch" id="admin-section-merch" role="tabpanel" aria-labelledby="admin-tab-merch" tabindex="0" hidden>
 <div class="demo-box admin-card">
 <div class="row-head">
 <div>
@@ -564,7 +564,7 @@ title: ""
 </div>
 </section>
 
-<section class="admin-section" data-admin-section="users" hidden>
+<section class="admin-section" data-admin-section="users" id="admin-section-users" role="tabpanel" aria-labelledby="admin-tab-users" tabindex="0" hidden>
 <div class="demo-box admin-card">
 <div class="section-head">
 <h3>Users</h3>
@@ -574,7 +574,7 @@ title: ""
 </div>
 </section>
 
-<section class="admin-section" data-admin-section="compose" hidden>
+<section class="admin-section" data-admin-section="compose" id="admin-section-compose" role="tabpanel" aria-labelledby="admin-tab-compose" tabindex="0" hidden>
 <div class="demo-box admin-card compose-shell">
 <div class="composer-head">
 <div>
@@ -810,7 +810,7 @@ title: ""
 </div>
 </section>
 
-<section class="admin-section" data-admin-section="drafts" hidden>
+<section class="admin-section" data-admin-section="drafts" id="admin-section-drafts" role="tabpanel" aria-labelledby="admin-tab-drafts" tabindex="0" hidden>
 <div class="demo-box admin-card">
 <div class="row-head">
 <div>
@@ -821,7 +821,7 @@ title: ""
 </div>
 </section>
 
-<section class="admin-section" data-admin-section="queue" hidden>
+<section class="admin-section" data-admin-section="queue" id="admin-section-queue" role="tabpanel" aria-labelledby="admin-tab-queue" tabindex="0" hidden>
 <div class="demo-box admin-card">
 <div class="row-head">
 <div>
@@ -862,7 +862,7 @@ title: ""
 </div>
 </section>
 
-<section class="admin-section" data-admin-section="posts" hidden>
+<section class="admin-section" data-admin-section="posts" id="admin-section-posts" role="tabpanel" aria-labelledby="admin-tab-posts" tabindex="0" hidden>
 <div class="demo-box admin-card">
 <div class="row-head">
 <div>
@@ -877,7 +877,7 @@ title: ""
 </div>
 </section>
 
-<section class="admin-section" data-admin-section="nostr-pages" hidden>
+<section class="admin-section" data-admin-section="nostr-pages" id="admin-section-nostr-pages" role="tabpanel" aria-labelledby="admin-tab-nostr-pages" tabindex="0" hidden>
 <div class="demo-box admin-card">
 <div class="row-head">
 <div>
@@ -893,7 +893,7 @@ title: ""
 </div>
 </section>
 
-<section class="admin-section" data-admin-section="files" hidden>
+<section class="admin-section" data-admin-section="files" id="admin-section-files" role="tabpanel" aria-labelledby="admin-tab-files" tabindex="0" hidden>
 <div class="demo-box admin-card files-admin-card">
 <div class="row-head">
 <div>
@@ -914,7 +914,7 @@ title: ""
 </div>
 </section>
 
-<section class="admin-section" data-admin-section="moderation" hidden>
+<section class="admin-section" data-admin-section="moderation" id="admin-section-moderation" role="tabpanel" aria-labelledby="admin-tab-moderation" tabindex="0" hidden>
 <div class="demo-box admin-card">
 <div class="row-head">
 <div>
@@ -937,7 +937,7 @@ title: ""
 </div>
 </section>
 
-<section class="admin-section" data-admin-section="account" hidden>
+<section class="admin-section" data-admin-section="account" id="admin-section-account" role="tabpanel" aria-labelledby="admin-tab-account" tabindex="0" hidden>
 <div class="demo-box admin-card">
 <div class="row-head">
 <div>
@@ -1128,7 +1128,7 @@ title: ""
 
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 <script src="/static/nostr-publish-dialog.js"></script>
-<script src="/static/admin.js?v=20260524-janus-default1"></script>
+<script src="/static/admin.js?v=20261013-admin-navigation1"></script>
 
 <style>
 header#title-block-header {
@@ -6027,10 +6027,13 @@ body {
   background-image: none !important;
 }
 
-#admin-panel .admin-nav-list .admin-nav-item:focus,
+#admin-panel .admin-nav-list .admin-nav-item[hidden] {
+  display: none !important;
+}
+
 #admin-panel .admin-nav-list .admin-nav-item:focus-visible {
-  outline: none !important;
-  box-shadow: none !important;
+  outline: 2px solid currentColor !important;
+  outline-offset: -3px;
 }
 
 #admin-panel .admin-nav-list .admin-nav-item .admin-nav-label,

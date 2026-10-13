@@ -20,7 +20,9 @@
     open: false,
     host: null,
     options: null,
-    state: null
+    state: null,
+    generation: 0,
+    invoiceAttempt: null
   };
   var zapIconId = 0;
 
@@ -235,18 +237,23 @@
   }
 
   function signerUnavailableError(err) {
+    if (err && err.name === 'AbortError') return false;
+    if (/reject|denied|refus|cancel/i.test(String(err && err.message || err || ''))) return false;
     return window.citrine.nostr.signerUnavailableError(err);
   }
 
-  function signerIsAvailable(api) {
-    return window.citrine.nostr.signerIsAvailable(api);
-  }
-
-  function promptPhoneSignerForZap() {
-    if (window.blogAuth && typeof window.blogAuth.openLoginModal === 'function') {
-      window.blogAuth.openLoginModal('phone');
-    }
-    throw new Error('Connect a phone signer with the phone signer link, then return here and create the zap invoice again.');
+  function signerIsAvailable(api, attempt) {
+    return Promise.resolve().then(function () {
+      attempt.requireCurrent();
+      return typeof api.getStatus === 'function' ? api.getStatus() : { available: true };
+    }).then(function (status) {
+      attempt.requireCurrent();
+      return !!(status && status.available);
+    }, function (err) {
+      attempt.requireCurrent();
+      if (signerUnavailableError(err)) return false;
+      throw err;
+    });
   }
 
   function statusHtml(state) {
@@ -387,6 +394,8 @@
   }
 
   function openDialog(host, options, state) {
+    cancelInvoiceAttempt();
+    modalState.generation += 1;
     modalState.open = true;
     modalState.host = host;
     modalState.options = options;
@@ -433,6 +442,8 @@
   }
 
   function closeDialog() {
+    cancelInvoiceAttempt();
+    modalState.generation += 1;
     modalState.open = false;
     modalState.host = null;
     modalState.options = null;
@@ -495,44 +506,89 @@
     renderInvoiceQr();
   }
 
-  function loadLnurlInfo(lud16) {
+  function loadLnurlInfo(lud16, attempt) {
     var key = String(lud16 || '').trim().toLowerCase();
     if (lnurlCache[key]) {
-      return lnurlCache[key];
+      return Promise.resolve(lnurlCache[key]);
     }
-    var request = window.citrine.zaps.loadLnurlZapInfo(key, { fetch: fetch }).then(function (info) {
+    return window.citrine.zaps.loadLnurlZapInfo(key, {
+      fetch: attempt.fetch,
+      signal: attempt.controller.signal
+    }).then(function (info) {
+      attempt.requireCurrent();
       if (!isHex64(info.nostrPubkey)) {
         throw new Error('Lightning provider does not advertise Nostr zap support.');
       }
+      lnurlCache[key] = info;
       return info;
     });
-    lnurlCache[key] = request;
-    return request;
   }
 
-  function createZapEvent(options, lnurlInfo, amountMsats, note) {
-    var api = signerApi();
-    if (!api) {
-      return Promise.reject(new Error('A Nostr signer is required. Use a browser signer or pair a phone signer from Sign In.'));
-    }
-    return window.citrine.zaps.createSignedZapRequest({
-      signer: api,
-      lnurlInfo: lnurlInfo,
-      zapConfig: options.zapConfig,
-      target: options.target,
-      amountMsats: amountMsats,
-      note: note
+  function createZapEvent(options, lnurlInfo, amountMsats, note, api, attempt) {
+    return Promise.resolve().then(function () {
+      attempt.requireCurrent();
+      return api.__wizardryShared && typeof api.resolve === 'function'
+        ? api.resolve({ signal: attempt.controller.signal }) : api;
+    }).then(function (provider) {
+      attempt.requireCurrent();
+      var keyFailed = false;
+      var keyError;
+      // Older Citrine catches key-lookup errors; retain them at the signing boundary.
+      var guardedSigner = {
+        getPublicKey: function () {
+          return Promise.resolve().then(function () {
+            attempt.requireCurrent();
+            return typeof provider.getPublicKey === 'function' ? provider.getPublicKey() : '';
+          }).then(function (key) {
+            attempt.requireCurrent();
+            return key;
+          }).catch(function (err) {
+            keyFailed = true;
+            keyError = err;
+            throw err;
+          });
+        },
+        signEvent: function (template) {
+          attempt.requireCurrent();
+          if (keyFailed) throw keyError;
+          return provider.signEvent(template);
+        }
+      };
+      return window.citrine.zaps.createSignedZapRequest({
+        signer: guardedSigner,
+        lnurlInfo: lnurlInfo,
+        zapConfig: options.zapConfig,
+        target: options.target,
+        amountMsats: amountMsats,
+        note: note,
+        signal: attempt.controller.signal
+      });
     });
   }
 
-  function requestInvoice(options, signedEvent, amountMsats, lnurlInfo, note) {
+  function requestInvoice(options, signedEvent, amountMsats, lnurlInfo, note, attempt) {
+    attempt.requireCurrent();
     return window.citrine.zaps.requestZapInvoice({
       lnurlInfo: lnurlInfo,
       amountMsats: amountMsats,
       signedEvent: signedEvent,
       note: note,
-      fetch: fetch
+      fetch: attempt.fetch,
+      signal: attempt.controller.signal
     });
+  }
+
+  function cancelInvoiceAttempt() {
+    var attempt = modalState.invoiceAttempt;
+    modalState.invoiceAttempt = null;
+    if (attempt) {
+      attempt.controller.abort();
+      attempt.state.busy = false;
+    }
+  }
+
+  function isCurrentDialog(state, generation) {
+    return modalState.open && modalState.state === state && modalState.generation === generation;
   }
 
   function setDialogStatus(message, tone) {
@@ -544,8 +600,9 @@
     renderDialog();
   }
 
-  function revealInvoiceControls() {
+  function revealInvoiceControls(state, generation) {
     window.setTimeout(function () {
+      if (!isCurrentDialog(state, generation)) return;
       var invoiceBlock = document.querySelector('[data-zap-invoice-block="true"]');
       var invoiceText = document.querySelector('[data-zap-invoice-text="true"]');
       if (invoiceBlock && typeof invoiceBlock.scrollIntoView === 'function') {
@@ -564,93 +621,129 @@
     if (!modalState.open || !modalState.options || !modalState.state || modalState.state.busy) {
       return;
     }
-    var sats = currentSats();
-    var amountMsats = sats * 1000;
-    modalState.state.busy = true;
-    modalState.state.invoice = '';
-    modalState.state.invoiceAmountMsats = 0;
+    var amountMsats = currentSats() * 1000;
+    var state = modalState.state;
+    var options = modalState.options;
+    var note = state.note || '';
+    var generation = modalState.generation;
+    var attempt = { state: state, controller: new AbortController() };
+    attempt.isCurrent = function () {
+      return modalState.invoiceAttempt === attempt && isCurrentDialog(state, generation)
+        && !attempt.controller.signal.aborted;
+    };
+    attempt.requireCurrent = function () {
+      if (!attempt.isCurrent()) throw new DOMException('Invoice attempt cancelled', 'AbortError');
+    };
+    // Keep cancellation effective with either the current or an older Citrine bundle.
+    attempt.fetch = function (url, init) {
+      attempt.requireCurrent();
+      return fetch(url, Object.assign({}, init, { signal: attempt.controller.signal }));
+    };
+    modalState.invoiceAttempt = attempt;
+    state.busy = true;
+    state.invoice = '';
+    state.invoiceAmountMsats = 0;
     var createdSignedZap = false;
     setDialogStatus('Fetching Lightning zap details…', 'info');
 
-    loadLnurlInfo(modalState.options.zapConfig.lud16).then(function (lnurlInfo) {
+    return Promise.resolve().then(function () {
+      attempt.requireCurrent();
+      return loadLnurlInfo(options.zapConfig.lud16, attempt);
+    }).then(function (lnurlInfo) {
+      attempt.requireCurrent();
       if ((lnurlInfo.minSendable > 0 && amountMsats < lnurlInfo.minSendable) || (lnurlInfo.maxSendable > 0 && amountMsats > lnurlInfo.maxSendable)) {
         throw new Error('Amount must be between ' + String(Math.ceil(lnurlInfo.minSendable / 1000)) + ' and ' + String(Math.floor(lnurlInfo.maxSendable / 1000)) + ' sats for this wallet.');
       }
       var api = signerApi();
       var requestUnsignedInvoice = function () {
+        attempt.requireCurrent();
+        createdSignedZap = false;
         setDialogStatus('Creating a copyable Lightning invoice...', 'info');
-        return requestInvoice(modalState.options, null, amountMsats, lnurlInfo, modalState.state.note || '');
+        return requestInvoice(options, null, amountMsats, lnurlInfo, note, attempt);
       };
-      if (!api) {
-        return requestUnsignedInvoice();
-      }
-      return signerIsAvailable(api).then(function (available) {
-        if (!available) {
-          if (api.__wizardryShared === true) {
-            return promptPhoneSignerForZap();
-          }
-          return requestUnsignedInvoice();
-        }
+      if (!api) return requestUnsignedInvoice();
+      return signerIsAvailable(api, attempt).then(function (available) {
+        attempt.requireCurrent();
+        if (!available) return requestUnsignedInvoice();
         setDialogStatus('Waiting for signer approval…', 'info');
-        return createZapEvent(modalState.options, lnurlInfo, amountMsats, modalState.state.note || '').then(function (signedEvent) {
+        return Promise.resolve().then(function () {
+          attempt.requireCurrent();
+          return createZapEvent(options, lnurlInfo, amountMsats, note, api, attempt);
+        }).then(function (signedEvent) {
+          attempt.requireCurrent();
           createdSignedZap = true;
           setDialogStatus('Requesting invoice…', 'info');
-          return requestInvoice(modalState.options, signedEvent, amountMsats, lnurlInfo, modalState.state.note || '');
-        }).catch(function (err) {
-          if (signerUnavailableError(err)) {
-            if (api.__wizardryShared === true) {
-              return promptPhoneSignerForZap();
-            }
-            return requestUnsignedInvoice();
-          }
+          return requestInvoice(options, signedEvent, amountMsats, lnurlInfo, note, attempt);
+        }, function (err) {
+          attempt.requireCurrent();
+          if (signerUnavailableError(err)) return requestUnsignedInvoice();
           throw err;
         });
       });
     }).then(function (invoice) {
-      modalState.state.invoice = invoice;
-      modalState.state.invoiceAmountMsats = amountMsats;
+      attempt.requireCurrent();
+      state.invoice = invoice;
+      state.invoiceAmountMsats = amountMsats;
       setDialogStatus(createdSignedZap
         ? 'Invoice ready. Pay it in your wallet to complete the zap.'
-        : 'Invoice ready. Copy it or open it in a Lightning wallet to complete the zap.',
-        'ok');
-      revealInvoiceControls();
+        : 'Invoice ready. Copy it or open it in a Lightning wallet to complete the zap.', 'ok');
+      revealInvoiceControls(state, generation);
     }).catch(function (err) {
-      setDialogStatus(err && err.message ? err.message : 'Could not create a zap invoice.', 'error');
+      if (attempt.isCurrent()) {
+        setDialogStatus(err && err.message ? err.message : 'Could not create a zap invoice.', 'error');
+      }
     }).finally(function () {
-      if (modalState.state) {
-        modalState.state.busy = false;
+      if (attempt.isCurrent()) {
+        modalState.invoiceAttempt = null;
+        state.busy = false;
         renderDialog();
       }
     });
   }
 
   function copyInvoice() {
-    if (!modalState.state || !modalState.state.invoice) {
-      return;
-    }
-    var invoice = modalState.state.invoice;
-    window.citrine.zaps.copyTextToClipboard(invoice, window).then(function () {
-      setDialogStatus('Lightning invoice copied.', 'ok');
+    if (!modalState.state || !modalState.state.invoice) return;
+    var state = modalState.state;
+    var generation = modalState.generation;
+    return window.citrine.zaps.copyTextToClipboard(state.invoice, window).then(function () {
+      if (isCurrentDialog(state, generation)) setDialogStatus('Lightning invoice copied.', 'ok');
     }).catch(function (err) {
-      setDialogStatus(err && err.message ? err.message : 'Could not copy invoice.', 'error');
+      if (isCurrentDialog(state, generation)) setDialogStatus(err && err.message ? err.message : 'Could not copy invoice.', 'error');
     });
   }
 
   function payWithWebln() {
-    if (!modalState.state || !modalState.state.invoice || modalState.state.paying) {
-      return;
-    }
-    modalState.state.paying = true;
-    renderDialog();
-    window.citrine.zaps.payLightningInvoiceWithWebLN(modalState.state.invoice, window).then(function () {
-      setDialogStatus('Payment submitted through WebLN. The recipient server will publish the zap receipt after settlement.', 'ok');
-    }).catch(function (err) {
-      setDialogStatus(err && err.message ? err.message : 'WebLN payment failed.', 'error');
-    }).finally(function () {
-      if (modalState.state) {
-        modalState.state.paying = false;
-        renderDialog();
+    if (!modalState.state || !modalState.state.invoice || modalState.state.paying) return;
+    var state = modalState.state;
+    var generation = modalState.generation;
+    var provider = window.webln;
+    function requireCurrentPayment() {
+      if (!isCurrentDialog(state, generation) || window.webln !== provider) {
+        throw new DOMException('Payment attempt cancelled', 'AbortError');
       }
+    }
+    var target = { webln: provider && {
+      enable: function () {
+        requireCurrentPayment();
+        return typeof provider.enable === 'function' ? provider.enable() : null;
+      },
+      sendPayment: function (invoice) {
+        requireCurrentPayment();
+        return provider.sendPayment(invoice);
+      }
+    } };
+    state.paying = true;
+    renderDialog();
+    return Promise.resolve().then(function () {
+      requireCurrentPayment();
+      return window.citrine.zaps.payLightningInvoiceWithWebLN(state.invoice, target);
+    }).then(function () {
+      if (isCurrentDialog(state, generation)) setDialogStatus('Payment submitted through WebLN. The recipient server will publish the zap receipt after settlement.', 'ok');
+    }).catch(function (err) {
+      if (isCurrentDialog(state, generation)) setDialogStatus(err && err.message ? err.message : 'WebLN payment failed.', 'error');
+    }).finally(function () {
+      state.paying = false;
+      if (isCurrentDialog(state, generation)) renderDialog();
     });
   }
 

@@ -1102,6 +1102,7 @@
       const active = button.getAttribute('data-admin-nav') === sectionName;
       button.classList.toggle('is-active', active);
       button.setAttribute('aria-selected', active ? 'true' : 'false');
+      button.tabIndex = active ? 0 : -1;
       if (active) {
         button.setAttribute('aria-current', 'page');
       } else {
@@ -1323,12 +1324,42 @@
     }
   }
 
+  function onAdminSectionKeydown(event) {
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+      return;
+    }
+    if (['ArrowDown', 'ArrowUp', 'Home', 'End'].indexOf(event.key) < 0) {
+      return;
+    }
+    const buttons = els.sectionButtons.filter(function (button) {
+      const section = button.getAttribute('data-admin-nav');
+      return !button.hidden && !button.disabled
+        && button.getAttribute('aria-hidden') !== 'true'
+        && (state.isAdmin || section === 'account')
+        && adminSectionIsAvailable(section);
+    });
+    const index = buttons.indexOf(event.currentTarget);
+    if (index < 0 || !buttons.length) {
+      return;
+    }
+    event.preventDefault();
+    const nextIndex = event.key === 'Home' ? 0
+      : event.key === 'End' ? buttons.length - 1
+      : (index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
+    const next = buttons[nextIndex];
+    if (next !== event.currentTarget) {
+      activateSection(next.getAttribute('data-admin-nav'), true);
+    }
+    next.focus();
+  }
+
   function initSectionNavigation() {
     if (!els.sectionButtons.length || !els.sections.length) {
       return;
     }
     activateSection(getSectionFromHash(), false);
     els.sectionButtons.forEach(function (button) {
+      button.addEventListener('keydown', onAdminSectionKeydown);
       button.addEventListener('click', function () {
         const targetSection = button.getAttribute('data-admin-nav') || 'settings';
         if (targetSection === state.activeSection) {
